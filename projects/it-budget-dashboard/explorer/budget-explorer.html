@@ -4,304 +4,357 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>IT Budget Explorer</title>
-<meta name="description" content="Drop any budget CSV to explore IT licences, services and contracts spend. Runs entirely in the browser.">
+<meta name="description" content="Explore an IT licences, services and contracts budget from any CSV. Runs entirely in the browser.">
 <style>
+/* =====================================================================
+   Design tokens. Structure follows IBM Carbon (UI shell, data table,
+   tags, categorical palette) and Fluent 2 (overlay drawer). No external
+   fonts or libraries, so the page works offline on a locked-down network.
+   ===================================================================== */
 :root {
-  --bg:#f5f6f8; --surface:#fff; --surface-2:#eef0f3; --text:#1b1f24; --muted:#5b6470; --border:#d9dde3;
-  --accent:#2459a8; --bar:#4a74b5; --bar-hover:#2459a8; --grid:#e3e6ea; --other:#9aa0aa;
-  --c1:#3a6fc4; --c2:#d9822b; --c3:#2f9e7a; --c4:#8e5bbf; --c5:#c4466b; --c6:#3f9fb5; --c7:#a68a22; --c8:#6b7a8f;
-  --urg-passed:#c62f2f; --urg-30:#e2662b; --urg-60:#e3a21a; --urg-90:#c9b928; --urg-later:#7f98b8;
-  --good:#23855f; --bad:#c62f2f; --shadow:0 1px 2px rgba(16,24,40,.06); --radius:10px; color-scheme:light;
+  --font: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --bg:#f2f4f8; --layer:#ffffff; --layer-2:#f6f7f9; --layer-hover:#e8ebef; --selected:#e0e6ee;
+  --border:#dde1e6; --border-strong:#a2a9b0; --text:#161616; --text-2:#525252; --text-3:#6f6f6f;
+  --primary:#0f62fe; --primary-hover:#0050e6; --primary-weak:#edf5ff; --link:#0f62fe; --on-primary:#ffffff;
+  --header:#161616; --header-text:#f4f4f4; --header-2:#c6c6c6; --header-hover:#2c2c2c; --header-border:#393939;
+  --nav-bg:#ffffff; --scrim:rgba(22,22,22,.5);
+  --bar:#0f62fe; --other:#a8a8a8; --grid:#e8e8e8; --up:#da1e28; --down:#198038;
+  --c1:#6929c4; --c2:#1192e8; --c3:#005d5d; --c4:#9f1853; --c5:#fa4d56; --c6:#570408; --c7:#198038; --c8:#002d9c;
+  --urg-passed:#da1e28; --urg-30:#eb6200; --urg-60:#d2a106; --urg-90:#8d8d8d; --urg-later:#78a9ff;
+  --tag-red-bg:#ffd7d9; --tag-red:#a2191f; --tag-orange-bg:#ffe2cc; --tag-orange:#8a3800;
+  --tag-yellow-bg:#fcf4d6; --tag-yellow:#684e00; --tag-green-bg:#defbe6; --tag-green:#0e6027;
+  --tag-blue-bg:#d0e2ff; --tag-blue:#0043ce; --tag-gray-bg:#e0e0e0; --tag-gray:#393939;
+  --tag-purple-bg:#e8daff; --tag-purple:#6929c4;
+  --shadow-drawer:-8px 0 24px rgba(0,0,0,.18); --radius:4px; color-scheme:light;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg:#111418; --surface:#1a1e24; --surface-2:#232830; --text:#e6e9ee; --muted:#9aa3ae; --border:#2e343d;
-  --accent:#7aa7ec; --bar:#5d8fd9; --bar-hover:#8fb5ef; --grid:#2a3038; --other:#6f7680;
-  --c1:#6c9bea; --c2:#f0a05a; --c3:#4cc39b; --c4:#b38be0; --c5:#e7799a; --c6:#62c3d8; --c7:#d2b44a; --c8:#9aa8bb;
-  --urg-later:#6f8cb3; --good:#4cc39b; --bad:#f07272; --shadow:none; color-scheme:dark; } }
+  --bg:#161616; --layer:#262626; --layer-2:#2e2e2e; --layer-hover:#333333; --selected:#393939;
+  --border:#393939; --border-strong:#6f6f6f; --text:#f4f4f4; --text-2:#c6c6c6; --text-3:#8d8d8d;
+  --primary:#0f62fe; --primary-hover:#0353e9; --primary-weak:#0b2350; --link:#78a9ff;
+  --header:#161616; --header-border:#393939; --nav-bg:#1e1e1e; --scrim:rgba(0,0,0,.6);
+  --bar:#4589ff; --other:#6f6f6f; --grid:#333333; --up:#fa4d56; --down:#42be65;
+  --c1:#8a3ffc; --c2:#33b1ff; --c3:#08bdba; --c4:#ff7eb6; --c5:#fa4d56; --c6:#d4bbff; --c7:#6fdc8c; --c8:#4589ff;
+  --urg-later:#4589ff;
+  --tag-red-bg:#a2191f; --tag-red:#ffd7d9; --tag-orange-bg:#8a3800; --tag-orange:#ffe2cc;
+  --tag-yellow-bg:#684e00; --tag-yellow:#fcf4d6; --tag-green-bg:#0e6027; --tag-green:#defbe6;
+  --tag-blue-bg:#0043ce; --tag-blue:#d0e2ff; --tag-gray-bg:#525252; --tag-gray:#f4f4f4;
+  --tag-purple-bg:#6929c4; --tag-purple:#e8daff; --shadow-drawer:-8px 0 24px rgba(0,0,0,.5); color-scheme:dark; } }
 :root[data-theme="dark"] {
-  --bg:#111418; --surface:#1a1e24; --surface-2:#232830; --text:#e6e9ee; --muted:#9aa3ae; --border:#2e343d;
-  --accent:#7aa7ec; --bar:#5d8fd9; --bar-hover:#8fb5ef; --grid:#2a3038; --other:#6f7680;
-  --c1:#6c9bea; --c2:#f0a05a; --c3:#4cc39b; --c4:#b38be0; --c5:#e7799a; --c6:#62c3d8; --c7:#d2b44a; --c8:#9aa8bb;
-  --urg-later:#6f8cb3; --good:#4cc39b; --bad:#f07272; --shadow:none; color-scheme:dark; }
+  --bg:#161616; --layer:#262626; --layer-2:#2e2e2e; --layer-hover:#333333; --selected:#393939;
+  --border:#393939; --border-strong:#6f6f6f; --text:#f4f4f4; --text-2:#c6c6c6; --text-3:#8d8d8d;
+  --primary:#0f62fe; --primary-hover:#0353e9; --primary-weak:#0b2350; --link:#78a9ff;
+  --header:#161616; --header-border:#393939; --nav-bg:#1e1e1e; --scrim:rgba(0,0,0,.6);
+  --bar:#4589ff; --other:#6f6f6f; --grid:#333333; --up:#fa4d56; --down:#42be65;
+  --c1:#8a3ffc; --c2:#33b1ff; --c3:#08bdba; --c4:#ff7eb6; --c5:#fa4d56; --c6:#d4bbff; --c7:#6fdc8c; --c8:#4589ff;
+  --urg-later:#4589ff;
+  --tag-red-bg:#a2191f; --tag-red:#ffd7d9; --tag-orange-bg:#8a3800; --tag-orange:#ffe2cc;
+  --tag-yellow-bg:#684e00; --tag-yellow:#fcf4d6; --tag-green-bg:#0e6027; --tag-green:#defbe6;
+  --tag-blue-bg:#0043ce; --tag-blue:#d0e2ff; --tag-gray-bg:#525252; --tag-gray:#f4f4f4;
+  --tag-purple-bg:#6929c4; --tag-purple:#e8daff; --shadow-drawer:-8px 0 24px rgba(0,0,0,.5); color-scheme:dark; }
 
 * { box-sizing:border-box; }
-html { -webkit-text-size-adjust:100%; }
-body { margin:0; background:var(--bg); color:var(--text);
-  font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; font-variant-numeric:tabular-nums; }
-h1 { font-size:1.3rem; margin:0; font-weight:650; }
-h2 { font-size:1.05rem; margin:0; font-weight:650; display:inline; }
-h3 { font-size:.8rem; margin:0 0 .5rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
-.sub { color:var(--muted); margin:-.25rem 0 .75rem; font-size:.85rem; }
-.wrap { max-width:1320px; margin:0 auto; padding:0 16px; }
-button { font:inherit; color:inherit; cursor:pointer; }
-.btn { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:6px 12px; white-space:nowrap; }
-.btn:hover { border-color:var(--accent); }
-.btn.primary { background:var(--accent); border-color:var(--accent); color:var(--bg); font-weight:600; }
-.btn.small { padding:1px 8px; font-size:.75rem; }
-:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-select, input { font:inherit; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:6px 8px; min-width:0; }
+html, body { height:100%; }
+body { margin:0; background:var(--bg); color:var(--text); font:14px/1.43 var(--font); font-variant-numeric:tabular-nums; -webkit-text-size-adjust:100%; }
+button, input, select { font:inherit; color:inherit; }
+button { cursor:pointer; }
+a { color:var(--link); text-decoration:none; } a:hover { text-decoration:underline; }
+:focus-visible { outline:2px solid var(--primary); outline-offset:-2px; }
 [hidden] { display:none !important; }
+.icon { flex:none; vertical-align:middle; }
 
-/* header */
-.top { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding-top:18px; padding-bottom:10px; flex-wrap:wrap; }
-.top .meta { color:var(--muted); font-size:.85rem; margin-top:.2rem; }
-.top .actions { display:flex; gap:8px; flex-wrap:wrap; }
+/* ---------- shell ---------- */
+.shell { display:grid; grid-template-rows:48px minmax(0,1fr); grid-template-columns:256px minmax(0,1fr); height:100vh; }
+body.nav-collapsed .shell { grid-template-columns:48px minmax(0,1fr); }
+.topbar { grid-column:1 / -1; display:flex; align-items:center; background:var(--header); color:var(--header-text); border-bottom:1px solid var(--header-border); min-width:0; }
+.tb-btn { height:48px; min-width:48px; display:inline-flex; align-items:center; justify-content:center; gap:8px; background:none; border:0; color:var(--header-text); padding:0 14px; }
+.tb-btn:hover { background:var(--header-hover); }
+.tb-btn:focus-visible { outline:2px solid #fff; outline-offset:-2px; }
+.brand { display:flex; align-items:center; gap:10px; padding:0 16px 0 4px; font-weight:600; white-space:nowrap; min-width:0; overflow:hidden; }
+.brand-mark { width:22px; height:22px; border-radius:3px; background:var(--primary); display:grid; place-items:center; font-size:11px; font-weight:700; color:#fff; flex:none; }
+.brand small { font-weight:400; color:var(--header-2); }
+.dataset { display:flex; align-items:center; gap:8px; min-width:0; padding:0 16px; border-left:1px solid var(--header-border); height:100%; color:var(--header-2); font-size:13px; }
+.dataset span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tb-spacer { flex:1; }
 
-/* landing */
-.drop { margin:40px auto; max-width:720px; border:2px dashed var(--border); border-radius:16px; padding:48px 24px; text-align:center; background:var(--surface); }
-.drop.over, body.dragging .drop { border-color:var(--accent); background:var(--surface-2); }
-.drop h2 { display:block; font-size:1.3rem; margin-bottom:8px; }
-.drop p { color:var(--muted); margin:6px 0; }
-.drop .actions { display:flex; gap:10px; justify-content:center; margin:20px 0 12px; flex-wrap:wrap; }
-.drop ul { text-align:left; color:var(--muted); max-width:520px; margin:16px auto 0; font-size:.85rem; }
-body.dragging::after { content:"Drop CSV files to load"; position:fixed; inset:0; display:grid; place-items:center; font-size:1.4rem; font-weight:600;
-  background:color-mix(in srgb, var(--bg) 85%, transparent); border:3px dashed var(--accent); z-index:50; pointer-events:none; }
+.sidenav { grid-row:2; background:var(--nav-bg); border-right:1px solid var(--border); overflow-y:auto; overflow-x:hidden; padding:8px 0 16px; }
+.nav-group { margin-top:12px; }
+.nav-h { font-size:12px; color:var(--text-3); padding:6px 16px; letter-spacing:.32px; white-space:nowrap; }
+.nav-a { position:relative; display:flex; align-items:center; gap:12px; height:36px; padding:0 16px; color:var(--text-2); text-decoration:none !important; white-space:nowrap; }
+.nav-a:hover { background:var(--layer-hover); color:var(--text); }
+.nav-a[aria-current="page"] { background:var(--selected); color:var(--text); font-weight:600; }
+.nav-a[aria-current="page"]::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--primary); }
+.nav-a.muted { color:var(--text-3); }
+.nav-a.disabled { pointer-events:none; opacity:.45; }
+.nav-a .nav-l { flex:1; overflow:hidden; text-overflow:ellipsis; }
+.nav-badge { font-size:11px; font-weight:600; min-width:20px; height:18px; padding:0 6px; border-radius:9px; display:inline-grid; place-items:center; background:var(--tag-gray-bg); color:var(--tag-gray); }
+.nav-badge.red { background:var(--urg-passed); color:#fff; }
+body.nav-collapsed .nav-h, body.nav-collapsed .nav-l, body.nav-collapsed .nav-badge { display:none; }
+body.nav-collapsed .nav-a { padding:0; justify-content:center; }
+.nav-foot { border-top:1px solid var(--border); margin-top:16px; padding:12px 16px; font-size:12px; color:var(--text-3); display:flex; gap:6px; align-items:center; }
+body.nav-collapsed .nav-foot { display:none; }
+.nav-scrim { display:none; }
 
-/* mapping panel */
-.mapping { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); margin:6px 0 12px; }
-.mapping > summary { cursor:pointer; padding:10px 14px; list-style:none; display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; }
-.mapping > summary::-webkit-details-marker { display:none; }
-.mapping > summary::before { content:"▸"; color:var(--muted); display:inline-block; transition:transform .15s; }
-.mapping[open] > summary::before { transform:rotate(90deg); }
-.mapping .summary-text { color:var(--muted); font-size:.85rem; }
-.mapping-body { padding:4px 14px 14px; display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr)); }
-.map-grid { display:grid; grid-template-columns:minmax(120px,40%) 1fr; gap:6px 10px; align-items:center; }
-.map-grid label { font-size:.85rem; }
-.map-grid .req::after { content:" *"; color:var(--bad); }
-.map-grid select, .settings select, .settings input { width:100%; }
-.settings { display:grid; grid-template-columns:minmax(120px,40%) 1fr; gap:6px 10px; align-items:center; font-size:.85rem; }
-.preview { font-size:.75rem; color:var(--muted); grid-column:2; margin-top:-4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.months-found { grid-column:1 / -1; font-size:.8rem; color:var(--muted); }
-.mapping-actions { grid-column:1 / -1; display:flex; gap:8px; justify-content:flex-end; }
+.main { grid-row:2; overflow:auto; min-width:0; }
+.page { max-width:1480px; margin:0 auto; padding:16px 32px 48px; }
 
-/* filters */
-.filters { position:sticky; top:0; z-index:5; background:var(--bg); padding-top:8px; padding-bottom:8px; border-bottom:1px solid var(--border); }
-.filter-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; }
-.filter-grid label, .search { display:flex; flex-direction:column; font-size:.75rem; color:var(--muted); gap:2px; }
-.filter-grid select { width:100%; }
-.filter-actions { display:flex; gap:8px; align-items:flex-end; margin-top:8px; }
-.search { flex:1; } .search input { width:100%; }
-.chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; } .chips:empty { display:none; }
-.chip { background:var(--surface-2); border:1px solid var(--border); border-radius:999px; padding:2px 10px; font-size:.8rem; }
-
-/* KPIs */
-.kpis { display:flex; flex-wrap:wrap; gap:12px; margin:16px 0; }
-.kpi { flex:1 1 170px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; box-shadow:var(--shadow); min-width:0; }
-.kpi.wide { flex:2 1 340px; }
-.kpi .label { color:var(--muted); font-size:.8rem; }
-.kpi .value { font-size:1.7rem; font-weight:650; line-height:1.2; margin:2px 0; overflow-wrap:anywhere; }
-.kpi .detail { color:var(--muted); font-size:.8rem; }
-.kpi .up { color:var(--bad); } .kpi .down { color:var(--good); }
-.kpi.alert .value { color:var(--urg-passed); }
-.stack { display:flex; height:12px; border-radius:6px; overflow:hidden; margin:8px 0 6px; background:var(--surface-2); }
-.stack span { display:block; height:100%; }
-.stack-legend { display:flex; flex-wrap:wrap; gap:4px 14px; font-size:.8rem; }
-
-/* sections */
-.section { margin:0 0 16px; }
-.section > summary { list-style:none; cursor:pointer; display:flex; align-items:baseline; gap:10px; padding:10px 2px; }
-.section > summary::-webkit-details-marker { display:none; }
-.section > summary::before { content:"▸"; color:var(--muted); display:inline-block; transition:transform .15s; }
-.section[open] > summary::before { transform:rotate(90deg); }
-.hint { color:var(--muted); font-size:.8rem; margin-left:auto; }
-.grid-2 { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr)); }
-.card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; box-shadow:var(--shadow); margin-bottom:12px; min-width:0; }
-.grid-2 .card { margin-bottom:0; }
-.card-head { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; }
-.card-head h3 { margin:0; }
-.card-head select { max-width:60%; font-size:.8rem; padding:3px 6px; }
-
-/* bars */
-.hbars { display:grid; gap:3px; }
-.hbar { display:grid; grid-template-columns:minmax(90px,34%) 1fr auto; align-items:center; gap:8px; background:none; border:0; padding:3px 4px; border-radius:6px; text-align:left; width:100%; }
-button.hbar:hover { background:var(--surface-2); } button.hbar:hover .fill { filter:brightness(1.1); }
-.hbar.active { background:var(--surface-2); outline:1px solid var(--accent); }
-.hbar .name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.hbar .track { height:14px; background:var(--surface-2); border-radius:4px; overflow:hidden; }
-.hbar .fill { display:block; height:100%; background:var(--bar); border-radius:4px; }
-.hbar .val { min-width:120px; text-align:right; font-size:.85rem; }
-.hbar .val small { color:var(--muted); margin-left:4px; display:inline-block; min-width:2.6em; }
-.hbar.static { cursor:default; } .hbar.static .fill { background:var(--other); }
-.empty { color:var(--muted); font-style:italic; padding:8px 0; }
-
-/* svg */
-.svg-wrap { width:100%; overflow-x:auto; }
-.svg-wrap svg { display:block; width:100%; height:auto; min-width:560px; }
-svg text { fill:var(--muted); font-size:11px; }
-svg .gridline { stroke:var(--grid); } svg .axis { stroke:var(--border); }
-svg .today { stroke:var(--text); stroke-dasharray:3 3; } svg .today-label { fill:var(--text); font-weight:600; }
-svg .dot { stroke:var(--surface); stroke-width:1.5; cursor:pointer; opacity:.9; }
-svg .dot:hover, svg .dot:focus { opacity:1; stroke:var(--text); outline:none; }
-svg .bar-label { fill:var(--text); font-weight:600; }
-svg .connector { stroke:var(--muted); stroke-dasharray:2 2; }
-svg rect[tabindex]:focus { outline:none; stroke:var(--text); stroke-width:1.5; }
-.legend { display:flex; flex-wrap:wrap; gap:4px 16px; font-size:.8rem; margin-bottom:8px; }
-.swatch { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:5px; vertical-align:-1px; }
-.swatch.sq { border-radius:2px; }
-
-/* tables */
-.table-wrap { overflow:auto; max-height:380px; }
-.table-wrap.tall { max-height:600px; }
-table { border-collapse:collapse; width:100%; font-size:.85rem; }
-th, td { padding:6px 8px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
-th { position:sticky; top:0; background:var(--surface); font-weight:600; color:var(--muted); white-space:nowrap; z-index:1; }
-tfoot th { position:sticky; bottom:0; border-top:2px solid var(--border); color:var(--text); }
-th button { background:none; border:0; padding:0; font-weight:600; color:inherit; }
-th button[aria-sort]::after { content:" ↕"; opacity:.4; }
-th button[aria-sort="ascending"]::after { content:" ↑"; opacity:1; }
-th button[aria-sort="descending"]::after { content:" ↓"; opacity:1; }
-td.num, th.num { text-align:right; white-space:nowrap; }
-td.key { font-weight:600; }
-tbody tr:hover td { background:var(--surface-2); }
-.badge { display:inline-block; border-radius:999px; padding:0 8px; font-size:.75rem; border:1px solid var(--border); white-space:nowrap; }
-.badge.urg { color:#fff; border:0; }
-.table-toolbar { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
-.table-toolbar .sub { margin:0; }
-.more { text-align:center; padding:10px; }
-
-.tooltip { position:fixed; z-index:20; pointer-events:none; background:var(--text); color:var(--bg); padding:8px 10px; border-radius:8px; font-size:.8rem; max-width:320px; line-height:1.4; }
-.tooltip b { display:block; }
-.foot { color:var(--muted); font-size:.8rem; padding-top:8px; padding-bottom:32px; }
-
-@media (max-width:640px) {
-  .hint { display:none; }
-  .hbar { grid-template-columns:minmax(80px,40%) 1fr; }
-  .hbar .val { grid-column:1 / -1; text-align:left; min-width:0; }
-  .filters { position:static; }
-  .kpi.wide { flex-basis:100%; }
+@media (max-width:1055px) {
+  .shell, body.nav-collapsed .shell { grid-template-columns:minmax(0,1fr); }
+  .sidenav { position:fixed; top:48px; bottom:0; left:0; width:256px; z-index:40; transform:translateX(-100%); transition:transform .18s ease; }
+  body.nav-open .sidenav { transform:none; box-shadow:8px 0 24px rgba(0,0,0,.2); }
+  body.nav-open .nav-scrim { display:block; position:fixed; inset:48px 0 0 0; background:var(--scrim); z-index:39; }
+  body.nav-collapsed .nav-h, body.nav-collapsed .nav-l, body.nav-collapsed .nav-badge { display:revert; }
+  body.nav-collapsed .nav-foot { display:flex; }
+  body.nav-collapsed .nav-a { padding:0 16px; justify-content:flex-start; }
+  .page { padding:12px 16px 40px; }
+  .dataset { display:none; }
 }
-@media print { .filters, .top .actions, .mapping, #export-csv { display:none; } .table-wrap { max-height:none; overflow:visible; } }
+@media (max-width:560px) { .brand small, .tb-label { display:none; } }
+
+/* ---------- page header ---------- */
+.crumbs { font-size:12px; color:var(--text-3); display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin:4px 0 6px; }
+.crumbs a { color:var(--text-2); }
+.page-head { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-bottom:12px; }
+.page-t { font-size:24px; line-height:32px; font-weight:600; margin:0; }
+.page-s { color:var(--text-2); margin:4px 0 0; max-width:900px; }
+.page-a { display:flex; gap:8px; flex-wrap:wrap; }
+
+/* ---------- buttons, inputs, tags ---------- */
+.btn { display:inline-flex; align-items:center; gap:8px; height:32px; padding:0 14px; border-radius:var(--radius); border:1px solid transparent; font-size:14px; white-space:nowrap; text-decoration:none !important; }
+.btn.primary { background:var(--primary); color:var(--on-primary); }
+.btn.primary:hover { background:var(--primary-hover); }
+.btn.secondary { background:var(--layer); border-color:var(--border-strong); color:var(--text); }
+.btn.secondary:hover { background:var(--layer-hover); }
+.btn.ghost { background:none; color:var(--link); padding:0 10px; }
+.btn.ghost:hover { background:var(--layer-hover); }
+.btn.sm { height:26px; padding:0 10px; font-size:13px; }
+.btn:disabled { opacity:.45; cursor:not-allowed; }
+.icon-btn { width:32px; height:32px; display:inline-grid; place-items:center; border:0; background:none; border-radius:var(--radius); color:var(--text-2); }
+.icon-btn:hover:not(:disabled) { background:var(--layer-hover); color:var(--text); }
+.icon-btn:disabled { opacity:.35; cursor:not-allowed; }
+.select, .input { height:32px; border:1px solid var(--border); border-bottom-color:var(--border-strong); background:var(--layer-2); border-radius:2px; padding:0 8px; min-width:0; width:100%; color:var(--text); }
+.select:hover, .input:hover { background:var(--layer-hover); }
+.input-icon { position:relative; display:block; }
+.input-icon .icon { position:absolute; left:8px; top:8px; color:var(--text-3); pointer-events:none; }
+.input-icon .input { padding-left:30px; }
+.tag { display:inline-flex; align-items:center; gap:4px; height:20px; padding:0 8px; border-radius:10px; font-size:12px; font-weight:500; white-space:nowrap; background:var(--tag-gray-bg); color:var(--tag-gray); }
+.tag.red { background:var(--tag-red-bg); color:var(--tag-red); } .tag.orange { background:var(--tag-orange-bg); color:var(--tag-orange); }
+.tag.yellow { background:var(--tag-yellow-bg); color:var(--tag-yellow); } .tag.green { background:var(--tag-green-bg); color:var(--tag-green); }
+.tag.blue { background:var(--tag-blue-bg); color:var(--tag-blue); } .tag.purple { background:var(--tag-purple-bg); color:var(--tag-purple); }
+.seg { display:inline-flex; border:1px solid var(--border-strong); border-radius:var(--radius); overflow:hidden; flex-wrap:wrap; }
+.seg button { border:0; background:var(--layer); height:30px; padding:0 12px; font-size:13px; color:var(--text-2); border-right:1px solid var(--border); }
+.seg button:last-child { border-right:0; }
+.seg button:hover { background:var(--layer-hover); }
+.seg button[aria-pressed="true"] { background:var(--primary-weak); color:var(--link); font-weight:600; box-shadow:inset 0 -2px 0 var(--primary); }
+.seg .n { color:var(--text-3); font-weight:400; margin-left:6px; }
+.tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:16px; overflow-x:auto; }
+.tabs button { background:none; border:0; height:40px; padding:0 16px; color:var(--text-2); border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap; }
+.tabs button:hover { color:var(--text); background:var(--layer-hover); }
+.tabs button[aria-selected="true"] { color:var(--text); font-weight:600; border-bottom-color:var(--primary); }
+.swatch { display:inline-block; width:10px; height:10px; border-radius:2px; flex:none; }
+.dot-sw { display:inline-block; width:10px; height:10px; border-radius:50%; flex:none; }
+.sw-label { display:inline-flex; gap:6px; align-items:center; }
+
+/* ---------- filter bar (Fiori-style filter header) ---------- */
+.filterbar { position:sticky; top:0; z-index:10; background:var(--bg); padding:10px 0 12px; margin-bottom:16px; border-bottom:1px solid var(--border); }
+.fb-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:8px 12px; align-items:end; }
+.fb-field { display:flex; flex-direction:column; gap:4px; min-width:0; }
+.fb-l { font-size:12px; color:var(--text-2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.fb-search { grid-column:span 2; }
+.fb-actions { display:flex; gap:4px; align-items:center; }
+.fb-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; align-items:center; font-size:12px; color:var(--text-3); }
+.chip { display:inline-flex; align-items:center; gap:6px; height:24px; padding:0 4px 0 10px; border-radius:12px; background:var(--tag-blue-bg); color:var(--tag-blue); border:0; font-size:12px; }
+.chip .x { display:inline-grid; place-items:center; width:18px; height:18px; border-radius:50%; }
+.chip:hover .x { background:rgba(0,0,0,.12); }
+@media (max-width:640px) { .fb-search { grid-column:1 / -1; } .filterbar { position:static; } }
+
+/* ---------- cards, KPIs ---------- */
+.grid { display:grid; gap:16px; margin-bottom:16px; }
+.g2 { grid-template-columns:repeat(auto-fit, minmax(min(100%, 480px), 1fr)); }
+.card { background:var(--layer); border:1px solid var(--border); border-radius:var(--radius); min-width:0; display:flex; flex-direction:column; }
+.grid > .card, .grid > section { min-width:0; }
+.card + .card { margin-top:16px; }
+.grid > .card + .card { margin-top:0; }
+.card-h { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:14px 16px 0; }
+.card-t { font-size:16px; line-height:22px; font-weight:600; margin:0; }
+.card-s { font-size:12px; color:var(--text-3); margin:2px 0 0; }
+.card-a { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.card-b { padding:12px 16px 16px; flex:1; min-width:0; }
+.card-b.flush { padding:12px 0 0; }
+.card-f { border-top:1px solid var(--border); padding:10px 16px; font-size:13px; display:flex; justify-content:flex-end; gap:8px; align-items:center; }
+.link { display:inline-flex; align-items:center; gap:4px; }
+
+.kpis { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:16px; }
+.kpi { background:var(--layer); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px 12px; position:relative; min-width:0; display:flex; flex-direction:column; overflow:hidden; }
+.kpi::before { content:""; position:absolute; left:0; top:0; right:0; height:3px; background:var(--kpi-accent, transparent); }
+.kpi.alert { --kpi-accent:var(--urg-passed); }
+.kpi-l { font-size:12px; color:var(--text-2); display:flex; justify-content:space-between; gap:6px; }
+.kpi-v { font-size:28px; line-height:36px; font-weight:600; margin:4px 0 2px; overflow-wrap:anywhere; }
+.kpi-m { display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:12px; color:var(--text-3); min-height:20px; }
+.kpi .spark { margin-top:auto; padding-top:8px; }
+a.kpi { color:inherit; text-decoration:none; } a.kpi:hover { border-color:var(--border-strong); background:var(--layer-2); }
+
+/* ---------- bars ---------- */
+.hbars { display:grid; gap:2px; }
+.hb { display:grid; grid-template-columns:minmax(90px, 30%) minmax(40px,1fr) 92px 42px; align-items:center; gap:10px; background:none; border:0; padding:4px 6px; border-radius:2px; text-align:left; width:100%; min-height:28px; }
+button.hb:hover { background:var(--layer-hover); }
+.hb.active { background:var(--primary-weak); box-shadow:inset 3px 0 0 var(--primary); }
+.hb-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; }
+button.hb-name { background:none; border:0; padding:0; text-align:left; color:var(--link); }
+.hb-track { height:12px; background:var(--layer-2); overflow:hidden; display:flex; }
+.hb-fill { display:block; height:100%; background:var(--bar); flex:none; }
+.hb.static .hb-fill { background:var(--other); }
+.hb-val { text-align:right; font-size:13px; }
+.hb-pct { text-align:right; font-size:12px; color:var(--text-3); }
+.stack { display:flex; height:12px; overflow:hidden; background:var(--layer-2); width:100%; }
+.stack span { display:block; height:100%; min-width:0; }
+.stack.tall { height:20px; }
+.stack.mini { height:8px; width:96px; display:inline-flex; vertical-align:middle; }
+.stack-seg:hover, .stack-seg:focus { filter:brightness(1.15); outline:none; }
+.legend { display:flex; flex-wrap:wrap; gap:6px 16px; font-size:12px; color:var(--text-2); margin-bottom:10px; align-items:center; }
+.legend > span { display:inline-flex; align-items:center; gap:6px; }
+.empty-mini { color:var(--text-3); font-size:13px; padding:12px 0; }
+@media (max-width:640px) { .hb { grid-template-columns:minmax(80px, 38%) 1fr 84px; } .hb-pct { display:none; } }
+
+/* ---------- charts ---------- */
+.chart { width:100%; overflow-x:auto; }
+.chart svg { display:block; width:100%; height:auto; min-width:560px; }
+.chart.small svg { min-width:0; }
+svg text { fill:var(--text-3); font-size:11px; font-family:var(--font); }
+svg .gridline { stroke:var(--grid); }
+svg .axis { stroke:var(--border-strong); }
+svg .today { stroke:var(--text); stroke-dasharray:3 3; }
+svg .today-label { fill:var(--text); font-weight:600; }
+svg .bar-label { fill:var(--text-2); font-weight:600; }
+svg .connector { stroke:var(--text-3); stroke-dasharray:2 2; }
+svg .ref { stroke:var(--text-3); stroke-dasharray:4 3; }
+svg .line { fill:none; stroke:var(--text); stroke-width:2; }
+svg .line-pt { fill:var(--layer); stroke:var(--text); stroke-width:1.5; }
+svg .dot { stroke:var(--layer); stroke-width:1.5; cursor:pointer; }
+svg .dot:hover, svg .dot:focus { stroke:var(--text); outline:none; }
+svg [tabindex]:focus { outline:none; stroke:var(--text); stroke-width:1.5; }
+svg rect[tabindex] { cursor:pointer; }
+svg .band { fill:var(--layer-2); }
+.spark svg { width:100%; height:32px; display:block; }
+.spark .area { fill:var(--primary-weak); } .spark .ln { fill:none; stroke:var(--primary); stroke-width:1.5; }
+
+/* ---------- data table (Carbon-style) ---------- */
+.dt-wrap { overflow:auto; max-height:var(--dt-max, none); border-top:1px solid var(--border); }
+table.dt { border-collapse:separate; border-spacing:0; width:100%; font-size:13px; }
+.dt th { position:sticky; top:0; z-index:2; background:var(--layer-2); color:var(--text); font-weight:600; text-align:left; height:36px; padding:0 12px; border-bottom:1px solid var(--border); white-space:nowrap; }
+.dt td { padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top; }
+.dt.compact td { padding:6px 12px; }
+.dt tbody tr:hover td { background:var(--layer-hover); }
+.dt tr.clickable { cursor:pointer; }
+.dt tr.clickable:focus-visible { outline:2px solid var(--primary); outline-offset:-2px; }
+.dt tr.hl td { background:var(--tag-yellow-bg); }
+.dt tfoot td { position:sticky; bottom:0; background:var(--layer-2); font-weight:600; border-top:1px solid var(--border-strong); border-bottom:0; height:36px; padding:0 12px; white-space:nowrap; }
+.dt .num { text-align:right; white-space:nowrap; }
+.dt .strong { font-weight:600; }
+.dt .muted, .muted { color:var(--text-3); }
+.dt .wrap { min-width:180px; }
+.dt .sort { background:none; border:0; padding:0; font-weight:600; display:inline-flex; gap:4px; align-items:center; color:inherit; }
+.dt .sort::after { content:"⇅"; font-size:11px; color:var(--text-3); }
+.dt .sort[aria-sort="ascending"]::after { content:"↑"; color:var(--text); }
+.dt .sort[aria-sort="descending"]::after { content:"↓"; color:var(--text); }
+.dt .empty-cell { text-align:center; color:var(--text-3); padding:24px; }
+.heat { position:relative; display:block; }
+.heat > i { position:absolute; inset:-3px -6px; background:var(--primary); border-radius:2px; pointer-events:none; }
+.heat > span { position:relative; }
+.table-bar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; padding:0 16px 12px; font-size:13px; color:var(--text-2); }
+.pager { display:flex; align-items:center; gap:8px; justify-content:flex-end; padding:8px 16px; border-top:1px solid var(--border); font-size:13px; color:var(--text-2); flex-wrap:wrap; }
+.pager .select { width:auto; height:28px; }
+
+/* ---------- renewals calendar ---------- */
+.cal { display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:12px; }
+.cal-m { border:1px solid var(--border); border-radius:var(--radius); background:var(--layer); display:flex; flex-direction:column; min-width:0; }
+.cal-m.over { border-color:var(--urg-passed); box-shadow:inset 0 3px 0 var(--urg-passed); }
+.cal-h { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-bottom:1px solid var(--border); background:var(--layer-2); }
+.cal-v { font-size:20px; font-weight:600; padding:8px 12px 2px; }
+.cal-list { list-style:none; margin:0; padding:4px 0 8px; }
+.cal-list button { width:100%; display:flex; gap:8px; justify-content:space-between; align-items:center; border:0; background:none; padding:4px 12px; font-size:12px; text-align:left; }
+.cal-list button:hover { background:var(--layer-hover); }
+.cal-list .nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+.cal-more { font-size:12px; color:var(--text-3); padding:0 12px 10px; }
+.cal-empty { color:var(--text-3); font-size:12px; padding:8px 12px 12px; }
+
+/* ---------- drawer (Fluent 2 overlay drawer) ---------- */
+.scrim { position:fixed; inset:0; background:var(--scrim); z-index:60; }
+.drawer { position:fixed; top:0; right:0; bottom:0; width:min(560px, 100vw); background:var(--layer); z-index:61; display:flex; flex-direction:column; box-shadow:var(--shadow-drawer); animation:slidein .18s ease; }
+@keyframes slidein { from { transform:translateX(24px); opacity:.6; } to { transform:none; opacity:1; } }
+.drawer-h { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:16px 16px 12px 24px; border-bottom:1px solid var(--border); }
+.drawer-t { margin:0; font-size:20px; line-height:28px; font-weight:600; }
+.drawer-s { margin:2px 0 0; color:var(--text-2); font-size:13px; }
+.drawer-b { flex:1; overflow-y:auto; padding:16px 24px 24px; }
+.drawer-f { display:flex; gap:8px; justify-content:flex-end; padding:12px 24px; border-top:1px solid var(--border); background:var(--layer-2); flex-wrap:wrap; }
+.d-sec { margin-top:20px; }
+.d-sec h3 { font-size:14px; font-weight:600; margin:0 0 8px; }
+.stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:1px; background:var(--border); border:1px solid var(--border); }
+.stat { background:var(--layer); padding:10px 12px; }
+.stat-l { font-size:12px; color:var(--text-3); }
+.stat-v { font-size:18px; font-weight:600; margin-top:2px; }
+dl.kv { display:grid; grid-template-columns:minmax(120px, 40%) 1fr; margin:0; font-size:13px; }
+dl.kv dt, dl.kv dd { padding:6px 0; border-bottom:1px solid var(--border); margin:0; }
+dl.kv dt { color:var(--text-2); padding-right:12px; }
+dl.kv dd { overflow-wrap:anywhere; }
+
+/* ---------- landing / empty states ---------- */
+.landing { max-width:980px; margin:24px auto; }
+.hero { background:var(--layer); border:1px dashed var(--border-strong); border-radius:var(--radius); padding:40px 32px; text-align:center; }
+body.dragging .hero { border-color:var(--primary); background:var(--primary-weak); }
+.hero-icon { width:56px; height:56px; border-radius:50%; background:var(--primary-weak); color:var(--primary); display:grid; place-items:center; margin:0 auto 16px; }
+.hero .page-s { margin:8px auto 20px; }
+.btn-row { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+.privacy { color:var(--text-3); font-size:13px; margin:16px 0 0; display:inline-flex; gap:6px; align-items:center; }
+.features { display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:16px; margin-top:16px; }
+.feature { background:var(--layer); border:1px solid var(--border); border-radius:var(--radius); padding:16px; }
+.feature .icon { color:var(--primary); }
+.feature h3 { font-size:14px; margin:8px 0 4px; }
+.feature p { margin:0; font-size:13px; color:var(--text-2); }
+.feature .needs { margin-top:8px; font-size:12px; color:var(--text-3); }
+.empty-state { text-align:center; padding:56px 24px; }
+.empty-state .hero-icon { background:var(--layer-2); color:var(--text-3); }
+.empty-state h2 { font-size:20px; margin:0 0 6px; font-weight:600; }
+.empty-state p { color:var(--text-2); max-width:560px; margin:0 auto 16px; }
+.notice { display:flex; gap:10px; align-items:flex-start; padding:10px 14px; border-left:3px solid var(--primary); background:var(--primary-weak); font-size:13px; margin-bottom:16px; }
+.notice.warn { border-left-color:var(--urg-60); background:var(--tag-yellow-bg); color:var(--tag-yellow); }
+
+/* ---------- data source form ---------- */
+.form-grid { display:grid; grid-template-columns:minmax(140px, 34%) minmax(0,1fr); gap:10px 16px; align-items:start; }
+.form-grid > label { font-size:13px; padding-top:6px; }
+.form-grid .req::after { content:" *"; color:var(--urg-passed); }
+.helper { font-size:12px; color:var(--text-3); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.map-cols { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap:10px 32px; }
+.action-bar { position:sticky; bottom:0; display:flex; justify-content:flex-end; gap:8px; padding:12px 16px; background:var(--layer); border:1px solid var(--border); border-radius:var(--radius); margin-top:16px; z-index:5; }
+.ring text { font-size:22px; font-weight:600; fill:var(--text); }
+
+/* ---------- misc ---------- */
+.tooltip { position:fixed; z-index:80; pointer-events:none; background:var(--text); color:var(--bg); padding:8px 10px; border-radius:2px; font-size:12px; max-width:320px; line-height:1.45; box-shadow:0 2px 6px rgba(0,0,0,.2); }
+.tooltip b { display:block; font-size:13px; }
+.toast { position:fixed; right:16px; bottom:16px; z-index:90; background:var(--text); color:var(--bg); padding:12px 16px; border-left:3px solid var(--down); border-radius:2px; font-size:13px; box-shadow:0 2px 8px rgba(0,0,0,.25); max-width:420px; }
+body.dragging::after { content:"Drop CSV files to load"; position:fixed; inset:0; display:grid; place-items:center; font-size:22px; font-weight:600; color:var(--text); background:color-mix(in srgb, var(--bg) 82%, transparent); border:3px dashed var(--primary); z-index:100; pointer-events:none; }
+.foot { color:var(--text-3); font-size:12px; margin-top:24px; }
+@media print { .topbar, .sidenav, .filterbar, .page-a, .action-bar { display:none !important; } .shell { display:block; height:auto; } .main { overflow:visible; } }
 </style>
 </head>
 <body>
-<header class="wrap top">
-  <div>
-    <h1 id="title">IT budget explorer</h1>
-    <div class="meta" id="file-meta">Licences, services &amp; contracts. Load a CSV to start.</div>
-  </div>
-  <div class="actions">
-    <button class="btn" id="btn-open" type="button">Open CSV…</button>
-    <button class="btn" id="btn-sample" type="button">Sample data</button>
-    <button class="btn" id="btn-theme" type="button" aria-label="Toggle light or dark theme">◐ Theme</button>
-  </div>
-  <input type="file" id="file-input" accept=".csv,.txt,.tsv,text/csv" multiple hidden>
-</header>
-
-<main class="wrap">
-  <!-- landing -->
-  <section id="landing" class="drop">
-    <h2>Drop one or more budget CSV files here</h2>
-    <p>Any column layout works: the explorer detects the budget amount, vendor, dates and so on, and you can adjust the mapping.</p>
-    <div class="actions">
-      <button class="btn primary" type="button" id="landing-open">Choose CSV files</button>
-      <button class="btn" type="button" id="landing-sample">Try with sample data</button>
-    </div>
-    <p><b>Your files stay on this computer.</b> They are read by your browser and never uploaded.</p>
-    <ul>
-      <li>Comma, semicolon or tab separated; UTF-8; a title row above the header is fine.</li>
-      <li>Numbers like <code>1,234.50</code>, <code>1.234,50</code> or <code>$1,234</code>; dates like <code>2027-03-31</code>, <code>31/03/2027</code> or <code>31.03.2027</code>.</li>
-      <li>Optional columns light up extra views: prior-year amount, renewal/end date, notice period, owner, cost centre, monthly columns (Jan…Dec).</li>
-      <li>Excel files: use <i>File → Save As → CSV UTF-8</i> first.</li>
-    </ul>
-  </section>
-
-  <!-- column mapping -->
-  <details class="mapping" id="mapping" hidden>
-    <summary><h2>Columns &amp; settings</h2><span class="summary-text" id="mapping-summary"></span></summary>
-    <div class="mapping-body">
-      <div>
-        <h3>What each column means</h3>
-        <div class="map-grid" id="map-grid"></div>
-      </div>
-      <div>
-        <h3>Settings</h3>
-        <div class="settings" id="settings"></div>
-      </div>
-      <div class="mapping-actions">
-        <button class="btn" type="button" id="map-reset">Re-detect columns</button>
-        <button class="btn primary" type="button" id="map-apply">Apply</button>
-      </div>
-    </div>
-  </details>
-</main>
-
-<div id="dashboard" hidden>
-  <section class="filters" aria-label="Filters">
-    <div class="wrap">
-      <div class="filter-grid" id="filter-grid"></div>
-      <div class="filter-actions">
-        <label class="search"><span>Search all columns</span><input type="search" id="filter-q" placeholder="Vendor, product, ID, notes…" autocomplete="off"></label>
-        <button type="button" id="filter-reset" class="btn">Reset filters</button>
-      </div>
-      <div class="chips" id="chips" aria-live="polite"></div>
-    </div>
-  </section>
-
-  <main class="wrap">
-    <section class="kpis" id="kpis" aria-label="Headline figures"></section>
-
-    <details class="section" open>
-      <summary><h2>Where the money goes</h2><span class="hint">Pick any column per chart · click a bar to filter</span></summary>
-      <div class="grid-2" id="breakdowns"></div>
-    </details>
-
-    <details class="section" open id="sec-renewals">
-      <summary><h2>Renewals &amp; notice deadlines</h2><span class="hint" id="renewal-hint"></span></summary>
-      <article class="card">
-        <h3>Renewal timeline</h3>
-        <p class="sub" id="timeline-sub"></p>
-        <div class="legend" id="urgency-legend"></div>
-        <div id="chart-timeline" class="svg-wrap"></div>
-      </article>
-      <article class="card">
-        <h3>Act within 90 days</h3>
-        <div class="table-wrap"><table id="table-renewals"></table></div>
-      </article>
-    </details>
-
-    <details class="section" open id="sec-phasing">
-      <summary><h2>Monthly phasing</h2></summary>
-      <article class="card">
-        <p class="sub" id="phasing-note"></p>
-        <div class="legend" id="phasing-legend"></div>
-        <div id="chart-phasing" class="svg-wrap"></div>
-      </article>
-    </details>
-
-    <details class="section" open id="sec-bridge">
-      <summary><h2>Change from prior year</h2></summary>
-      <article class="card">
-        <p class="sub" id="bridge-note"></p>
-        <div id="chart-bridge" class="svg-wrap"></div>
-        <h3 style="margin-top:14px">Biggest movers</h3>
-        <div class="table-wrap"><table id="table-movers"></table></div>
-      </article>
-    </details>
-
-    <details class="section" open id="sec-lines">
-      <summary><h2>Line items</h2><span class="hint" id="line-count"></span></summary>
-      <article class="card">
-        <div class="table-toolbar">
-          <span class="sub">All columns from your file. Click a header to sort.</span>
-          <button type="button" id="export-csv" class="btn">Export filtered rows (CSV)</button>
-        </div>
-        <div class="table-wrap tall"><table id="table-lines"></table></div>
-        <div class="more" id="lines-more"></div>
-      </article>
-    </details>
-
-    <details class="section" id="sec-quality">
-      <summary><h2>Data quality</h2><span class="hint" id="quality-hint"></span></summary>
-      <article class="card">
-        <p class="sub">Checks run on the filtered rows. Click "Show" to filter to the affected rows.</p>
-        <div class="table-wrap"><table id="table-quality"></table></div>
-      </article>
-    </details>
-  </main>
-  <footer class="wrap foot" id="footer"></footer>
+<div class="shell">
+  <header class="topbar">
+    <button class="tb-btn" type="button" id="nav-toggle" aria-label="Collapse navigation" title="Collapse navigation"></button>
+    <div class="brand"><span class="brand-mark" aria-hidden="true">IT</span><span>IT Budget Explorer <small>· Licences, services &amp; contracts</small></span></div>
+    <div class="dataset" id="dataset" hidden></div>
+    <div class="tb-spacer"></div>
+    <button class="tb-btn" type="button" id="tb-load" title="Load CSV files"></button>
+    <button class="tb-btn" type="button" id="tb-theme" aria-label="Switch light or dark theme" title="Switch light or dark theme"></button>
+  </header>
+  <nav class="sidenav" id="sidenav" aria-label="Side navigation"></nav>
+  <div class="nav-scrim" id="nav-scrim"></div>
+  <main class="main" id="main" tabindex="-1"></main>
 </div>
-
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" hidden></aside>
 <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+<div class="toast" id="toast" role="status" hidden></div>
+<input type="file" id="file-input" accept=".csv,.txt,.tsv,text/csv" multiple hidden>
 
 <script type="text/plain" id="sample-csv">line_id,vendor,product_or_service,category,cost_pool,tower,cost_centre,owner,annual_budget,currency,capex_opex,contract_start,contract_end,renewal_date,auto_renew,notice_period_days,billing_frequency,licence_qty,unit_price,prior_year_budget,jan,feb,mar,apr,may,jun,jul,aug,sep,oct,nov,dec,notes
 IT-001,Northwind Software,Office productivity suite,Licence,Software,End user,IT-Workplace,Head of Workplace,486000,EUR,OPEX,2024-02-29,2027-02-28,2027-03-01,N,30,Annual,1800,270.0,532500,0,0,486000,0,0,0,0,0,0,0,0,0,
@@ -351,24 +404,36 @@ IT-041,Tailspin Networks,Legacy firewall support,Contract,Hardware maintenance,S
 
 /* =====================================================================
    IT Budget Explorer: single file, no dependencies, works from file://
-   1. helpers   2. CSV parsing   3. column profiling & role detection
-   4. records   5. filters       6. views   7. wiring
+   1 helpers · 2 CSV · 3 profiling & column detection · 4 records
+   5 shell (nav, header, filters, drawer) · 6 charts · 7 pages · 8 wiring
    ===================================================================== */
 
-// ------------------------------------------------------------------ 1. helpers
-const LOCALE = 'en-GB';
-const SVGNS = 'http://www.w3.org/2000/svg';
-const BLANK = '(blank)';
-const DAY = 864e5;
+// ================================================================ 1. helpers
+const LOCALE = 'en-GB', SVGNS = 'http://www.w3.org/2000/svg', BLANK = '(blank)', DAY = 864e5;
 const MONTHS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
 const PALETTE = ['--c1','--c2','--c3','--c4','--c5','--c6','--c7','--c8'];
 const URGENCY = [
-  { key:'passed', label:'Deadline passed', max:-1, color:'--urg-passed' },
-  { key:'d30', label:'≤ 30 days', max:30, color:'--urg-30' },
-  { key:'d60', label:'31–60 days', max:60, color:'--urg-60' },
-  { key:'d90', label:'61–90 days', max:90, color:'--urg-90' },
-  { key:'later', label:'> 90 days', max:Infinity, color:'--urg-later' },
+  { key:'passed', label:'Overdue', max:-1, color:'--urg-passed', tag:'red' },
+  { key:'d30', label:'≤ 30 days', max:30, color:'--urg-30', tag:'orange' },
+  { key:'d60', label:'31–60 days', max:60, color:'--urg-60', tag:'yellow' },
+  { key:'d90', label:'61–90 days', max:90, color:'--urg-90', tag:'gray' },
+  { key:'later', label:'> 90 days', max:Infinity, color:'--urg-later', tag:'blue' },
 ];
+const ICONS = {
+  menu:'M3 6h18M3 12h18M3 18h18', close:'M6 6l12 12M18 6L6 18', upload:'M12 16V4M7 9l5-5 5 5M4 20h16',
+  download:'M12 4v12M7 11l5 5 5-5M4 20h16', moon:'M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z',
+  search:'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-5-5', arrow:'M5 12h14M13 6l6 6-6 6',
+  overview:'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z', breakdown:'M3 20h18M6 20V10M11 20V4M16 20v-7M21 20v-4',
+  vendors:'M3 21h18M5 21V8l7-5 7 5v13M9 10h.01M15 10h.01M9 14h.01M15 14h.01M10 21v-4h4v4',
+  org:'M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+  calendar:'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4M7 14h3M7 17h3M14 14h3', cash:'M3 17l6-6 4 4 8-8M15 7h6v6',
+  compare:'M7 7h13M16 3l4 4-4 4M17 17H4M8 13l-4 4 4 4', table:'M3 4h18v16H3zM3 9h18M3 14h18M9 4v16',
+  quality:'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM8.5 12l2.5 2.5 4.5-5',
+  source:'M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3',
+  lock:'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4', info:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v6M12 7.5v.01',
+  flask:'M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3', chevl:'M15 6l-6 6 6 6', chevr:'M9 6l6 6-6 6',
+  warn:'M12 3l10 18H2zM12 10v5M12 18v.01',
+};
 const $ = (id) => document.getElementById(id);
 function make(ns, tag, attrs, kids) {
   const el = ns ? document.createElementNS(ns, tag) : document.createElement(tag);
@@ -382,29 +447,33 @@ function make(ns, tag, attrs, kids) {
 }
 const h = (t, a, ...k) => make(null, t, a, k);
 const s = (t, a, ...k) => make(SVGNS, t, a, k);
+const icon = (name, size = 16) => s('svg', { class:'icon', width:size, height:size, viewBox:'0 0 24 24', fill:'none', stroke:'currentColor',
+  'stroke-width':1.75, 'stroke-linecap':'round', 'stroke-linejoin':'round', 'aria-hidden':'true' }, s('path', { d:ICONS[name] }));
 const sum = (arr, fn) => arr.reduce((a, x) => a + (fn(x) || 0), 0);
-const v = (name) => `var(${name})`;
+const cv = (name) => `var(${name})`;
 const store = {
-  get(k) { try { return JSON.parse(localStorage.getItem('itbx:' + k)); } catch (e) { return null; } },
-  set(k, val) { try { localStorage.setItem('itbx:' + k, JSON.stringify(val)); } catch (e) { /* storage unavailable */ } },
+  get(k) { try { return JSON.parse(localStorage.getItem('itbx2:' + k)); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem('itbx2:' + k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } },
 };
 const todayDay = () => { const d = new Date(); return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / DAY; };
 const dayToISO = (d) => new Date(d * DAY).toISOString().slice(0, 10);
 const isoToDay = (iso) => Date.parse(iso + 'T00:00:00Z') / DAY;
-const fmtDay = (d) => (d == null || !isFinite(d) ? '–' : new Date(d * DAY).toLocaleDateString(LOCALE, { day:'numeric', month:'short', year:'numeric', timeZone:'UTC' }));
-const fmtPct = (x, d = 0) => (x == null || !isFinite(x) ? '–' : (x * 100).toFixed(d) + '%');
-const fmtSignedPct = (x) => (x == null || !isFinite(x) ? '–' : (x > 0 ? '+' : '') + (x * 100).toFixed(1) + '%');
-let money = new Intl.NumberFormat(LOCALE, { maximumFractionDigits:0 });
-let moneyC = new Intl.NumberFormat(LOCALE, { notation:'compact', maximumFractionDigits:1 });
+const fmtDay = (d) => (d == null || !isFinite(d) ? '—' : new Date(d * DAY).toLocaleDateString(LOCALE, { day:'numeric', month:'short', year:'numeric', timeZone:'UTC' }));
+const fmtPct = (x, d = 0) => (x == null || !isFinite(x) ? '—' : (x * 100).toFixed(d) + '%');
+const fmtSignedPct = (x) => (x == null || !isFinite(x) ? '—' : (x > 0 ? '+' : x < 0 ? '−' : '') + Math.abs(x * 100).toFixed(1) + '%');
+const fmtInt = (x) => new Intl.NumberFormat(LOCALE).format(x);
+let money, moneyC;
 function setCurrency(code) {
   try {
     money = new Intl.NumberFormat(LOCALE, code ? { style:'currency', currency:code, maximumFractionDigits:0 } : { maximumFractionDigits:0 });
     moneyC = new Intl.NumberFormat(LOCALE, code ? { style:'currency', currency:code, notation:'compact', maximumFractionDigits:1 } : { notation:'compact', maximumFractionDigits:1 });
   } catch (e) { setCurrency(''); }
 }
-const fmtMoney = (x) => (x == null || !isFinite(x) ? '–' : money.format(x));
-const fmtC = (x) => (x == null || !isFinite(x) ? '–' : moneyC.format(x));
+setCurrency('');
+const fmtMoney = (x) => (x == null || !isFinite(x) ? '—' : money.format(x));
+const fmtC = (x) => (x == null || !isFinite(x) ? '—' : moneyC.format(x));
 const fmtSigned = (x) => (x > 0 ? '+' : x < 0 ? '−' : '') + fmtC(Math.abs(x));
+const mname = (m) => new Date(Date.UTC(2000, m, 1)).toLocaleDateString(LOCALE, { month:'short', timeZone:'UTC' });
 function niceTicks(max, n = 4) {
   if (!(max > 0)) return { max:1, ticks:[0, 1] };
   const raw = max / n, mag = Math.pow(10, Math.floor(Math.log10(raw)));
@@ -413,6 +482,11 @@ function niceTicks(max, n = 4) {
   for (let t = 0; t <= top + step / 2; t += step) ticks.push(t);
   return { max:top, ticks };
 }
+const tag = (text, color = 'gray', title) => h('span', { class:'tag ' + color, title }, text);
+const btn = (label, kind, onclick, ic, extra = {}) => h('button', { type:'button', class:'btn ' + kind, onclick, ...extra }, ic ? icon(ic) : null, label);
+const linkTo = (page, text) => h('a', { href:'#/' + page, class:'link' }, text, icon('arrow', 14));
+
+// tooltip & toast
 const tip = $('tooltip');
 function showTip(el, parts) {
   tip.replaceChildren(...parts.filter(Boolean).map((p, i) => (i === 0 ? h('b', {}, p) : h('div', {}, p))));
@@ -429,10 +503,10 @@ function withTip(el, fn) {
   el.addEventListener('mouseleave', hideTip); el.addEventListener('blur', hideTip);
   return el;
 }
-addEventListener('scroll', hideTip, { passive:true });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideTip(); });
+let toastTimer;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 3500); }
 
-// ------------------------------------------------------------------ 2. CSV parsing
+// ================================================================ 2. CSV
 function detectDelimiter(text) {
   const lines = text.split(/\r?\n/).filter((l) => l.trim()).slice(0, 10);
   let best = ',', bestScore = -1;
@@ -458,19 +532,17 @@ function parseCSV(text) {
   if (f !== '' || row.length) { row.push(f); rows.push(row); }
   const data = rows.map((r) => r.map((x) => x.trim())).filter((r) => r.some((x) => x !== ''));
   if (!data.length) return { delimiter:d, headers:[], rows:[], skipped:0 };
-  // header = first row that fills at least half of the widest row (skips title rows above the table)
   const width = Math.max(...data.map((r) => r.filter((x) => x !== '').length));
   const hi = data.findIndex((r) => r.filter((x) => x !== '').length >= Math.max(2, width / 2));
   const seen = new Map();
   const headers = data[hi].map((x, i) => {
-    let name = x || `Column ${i + 1}`;
+    const name = x || `Column ${i + 1}`;
     const n = (seen.get(name.toLowerCase()) || 0) + 1; seen.set(name.toLowerCase(), n);
     return n > 1 ? `${name} (${n})` : name;
   });
   const body = data.slice(hi + 1).map((r) => headers.map((_, i) => r[i] ?? ''));
-  // drop trailing "total" rows that would double count
-  const filtered = body.filter((r) => !/^(grand\s+)?totals?:?$/i.test(r.find((x) => x !== '') || ''));
-  return { delimiter:d, headers, rows:filtered, skipped:hi + (body.length - filtered.length) };
+  const kept = body.filter((r) => !/^(grand\s+)?totals?:?$/i.test(r.find((x) => x !== '') || ''));
+  return { delimiter:d, headers, rows:kept, skipped:hi + (body.length - kept.length) };
 }
 function combine(parsed) {
   const headers = [], index = new Map(), key = (x) => x.trim().toLowerCase();
@@ -487,7 +559,7 @@ function combine(parsed) {
   return { headers, rows };
 }
 
-// ------------------------------------------------------------------ 3. profiling & role detection
+// ================================================================ 3. profiling & column detection
 function cleanNum(raw) {
   let t = String(raw).trim(); if (!t) return null;
   let neg = false;
@@ -519,19 +591,19 @@ const RE_NUM = /^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2}|\d{4})$/;
 const RE_DMON = /^(\d{1,2})[\s\-]+([a-z]{3,9})\.?[\s\-,]+(\d{2,4})$/i;
 const RE_MOND = /^([a-z]{3,9})\.?\s+(\d{1,2}),?\s+(\d{4})$/i;
 const y4 = (y) => (y.length === 2 ? 2000 + +y : +y);
-const mon = (name) => { const m = name.match(MONTH_RE); return m ? MONTHS.indexOf(m[1].toLowerCase()) : -1; };
+const monOf = (name) => { const m = name.match(MONTH_RE); return m ? MONTHS.indexOf(m[1].toLowerCase()) : -1; };
 function mkDay(y, m, d) {
   if (m < 0 || m > 11 || d < 1 || d > 31) return NaN;
-  const t = Date.UTC(y, m, d); const dt = new Date(t);
-  return dt.getUTCMonth() === m ? t / DAY : NaN;
+  const t = Date.UTC(y, m, d);
+  return new Date(t).getUTCMonth() === m ? t / DAY : NaN;
 }
 function parseDate(raw, order) {
   const t = String(raw).trim(); if (!t) return null;
   let m;
   if ((m = t.match(RE_ISO))) return mkDay(+m[1], +m[2] - 1, +m[3]);
   if ((m = t.match(RE_NUM))) return order === 'mdy' ? mkDay(y4(m[3]), +m[1] - 1, +m[2]) : mkDay(y4(m[3]), +m[2] - 1, +m[1]);
-  if ((m = t.match(RE_DMON))) return mkDay(y4(m[3]), mon(m[2]), +m[1]);
-  if ((m = t.match(RE_MOND))) return mkDay(+m[3], mon(m[1]), +m[2]);
+  if ((m = t.match(RE_DMON))) return mkDay(y4(m[3]), monOf(m[2]), +m[1]);
+  if ((m = t.match(RE_MOND))) return mkDay(+m[3], monOf(m[1]), +m[2]);
   return NaN;
 }
 function detectDateOrder(values) {
@@ -553,30 +625,28 @@ function monthIndex(header) {
 function profile(headers, rows) {
   return headers.map((header, ci) => {
     const vals = rows.map((r) => r[ci]).filter((x) => x !== '');
-    const dec = detectDecimal(vals);
-    const order = detectDateOrder(vals);
+    const dec = detectDecimal(vals), order = detectDateOrder(vals);
     const numOk = vals.filter((x) => Number.isFinite(parseNum(x, dec))).length;
     const dateOk = vals.filter((x) => /[\-\/.\s]/.test(x) && Number.isFinite(parseDate(x, order))).length;
     const n = vals.length || 1;
     const type = vals.length && dateOk / n >= 0.8 ? 'date' : vals.length && numOk / n >= 0.8 ? 'number' : 'text';
-    const total = type === 'number' ? sum(vals, (x) => parseNum(x, dec)) : 0;
-    return { header, ci, type, dec, order, filled:vals.length, uniq:new Set(vals).size, total,
+    return { header, ci, type, dec, order, filled:vals.length, uniq:new Set(vals).size,
+      total:type === 'number' ? sum(vals, (x) => parseNum(x, dec)) : 0,
       month:type === 'number' ? monthIndex(header) : -1, sample:vals.slice(0, 3) };
   });
 }
-
 const ROLES = [
-  { key:'amount', label:'Budget amount', type:'number', required:true, help:'The figure every chart adds up.' },
-  { key:'prior', label:'Prior-year amount', type:'number', help:'Enables the year-over-year view.' },
-  { key:'vendor', label:'Vendor / supplier', type:'text', re:/vendor|supplier|publisher|provider|manufacturer|partner|company|contractor/i },
-  { key:'item', label:'Product / service', type:'text', re:/product|service|description|item|application|software|title|name|detail/i },
-  { key:'category', label:'Category', type:'text', re:/categor|^type$|^line[\s_-]*type|class|kind|licen[cs]e[\s_-]*type/i },
+  { key:'amount', label:'Budget amount', type:'number', required:true, help:'The figure every view adds up.' },
+  { key:'prior', label:'Prior-year amount', type:'number', help:'Enables Year over year.' },
+  { key:'vendor', label:'Vendor / supplier', type:'text', help:'Enables Vendors.', re:/vendor|supplier|publisher|provider|manufacturer|partner|company|contractor/i },
+  { key:'item', label:'Product / service', type:'text', help:'Names each line.', re:/product|service|description|item|application|software|title|name|detail/i },
+  { key:'category', label:'Category', type:'text', help:'Colours used across charts.', re:/categor|^type$|^line[\s_-]*type|class|kind|licen[cs]e[\s_-]*type/i },
   { key:'pool', label:'Cost pool / spend type', type:'text', re:/cost[\s_-]*pool|pool|spend[\s_-]*type|cost[\s_-]*type|expense[\s_-]*type|account/i },
-  { key:'costcentre', label:'Cost centre / department', type:'text', re:/cost[\s_-]*cent|department|dept|business[\s_-]*unit|\bbu\b|division|team|function/i },
+  { key:'costcentre', label:'Cost centre / department', type:'text', help:'Enables Cost centres & owners.', re:/cost[\s_-]*cent|department|dept|business[\s_-]*unit|\bbu\b|division|team|function/i },
   { key:'owner', label:'Owner', type:'text', re:/owner|holder|manager|responsible|accountable|contact/i },
   { key:'capex', label:'CAPEX / OPEX', type:'text', re:/capex|opex/i },
-  { key:'renewal', label:'Renewal / end date', type:'date', re:[/renew/i, /expir/i, /end[\s_-]*date|contract[\s_-]*end|term[\s_-]*end|\bend\b|due/i] },
-  { key:'notice', label:'Notice period (days)', type:'number', re:/notice/i },
+  { key:'renewal', label:'Renewal / end date', type:'date', help:'Enables Renewals.', re:[/renew/i, /expir/i, /end[\s_-]*date|contract[\s_-]*end|term[\s_-]*end|\bend\b|due/i] },
+  { key:'notice', label:'Notice period (days)', type:'number', help:'Deadline = renewal − notice.', re:/notice/i },
   { key:'auto', label:'Auto-renews (Y/N)', type:'text', re:/auto/i },
   { key:'id', label:'Line ID', type:'any', re:/^(line[\s_-]*)?id$|^ref(erence)?\b|^#$|^no\.?$|^item[\s_-]*no/i },
 ];
@@ -584,11 +654,10 @@ const NOT_AMOUNT = /unit|qty|quantity|seats|count|notice|days|%|percent|rate|pri
 const AMOUNT_RE = /budget|amount|cost|spend|value|total|eur|usd|gbp|plan|forecast|\bfy\b|fy\d/i;
 const PRIOR_RE = /prior|previous|last[\s_-]*year|\bpy\b|\bly\b|actual|current[\s_-]*year/i;
 const yearOf = (hd) => { const m = hd.match(/(?:fy\s*)?(20\d{2})|fy\s*(\d{2})\b/i); return m ? +(m[1] || 2000 + +m[2]) : null; };
-
 function guessMapping(prof) {
   const map = {}, used = new Set();
   const take = (key, ci) => { if (ci != null && ci >= 0) { map[key] = ci; used.add(ci); } };
-  const nums = prof.filter((p) => p.type === 'number' && p.month < 0 && !NOT_AMOUNT.test(p.header) && !/notice/i.test(p.header));
+  const nums = prof.filter((p) => p.type === 'number' && p.month < 0 && !NOT_AMOUNT.test(p.header));
   const amountish = nums.filter((p) => AMOUNT_RE.test(p.header));
   const prior = amountish.find((p) => PRIOR_RE.test(p.header));
   const withYear = amountish.filter((p) => p !== prior && yearOf(p.header)).sort((a, b) => yearOf(b.header) - yearOf(a.header));
@@ -596,20 +665,17 @@ function guessMapping(prof) {
     take('amount', withYear[0].ci);
     if (prior) take('prior', prior.ci); else if (withYear[1]) take('prior', withYear[1].ci);
   } else {
-    const main = amountish.filter((p) => p !== prior).sort((a, b) => b.total - a.total)[0]
-      || nums.filter((p) => p !== prior).sort((a, b) => b.total - a.total)[0];
+    const main = amountish.filter((p) => p !== prior).sort((a, b) => b.total - a.total)[0] || nums.filter((p) => p !== prior).sort((a, b) => b.total - a.total)[0];
     if (main) take('amount', main.ci);
     if (prior) take('prior', prior.ci);
   }
-  const order = ['id', 'vendor', 'pool', 'category', 'costcentre', 'owner', 'capex', 'renewal', 'notice', 'auto', 'item'];
-  for (const key of order) {
+  for (const key of ['id', 'vendor', 'pool', 'category', 'costcentre', 'owner', 'capex', 'renewal', 'notice', 'auto', 'item']) {
     const role = ROLES.find((r) => r.key === key);
     const fits = (p) => !used.has(p.ci) && p.month < 0 && (role.type === 'any' || p.type === role.type);
     let hit = null;
     for (const re of [].concat(role.re)) { hit = prof.find((p) => fits(p) && re.test(p.header)); if (hit) break; }
     if (hit) take(key, hit.ci);
   }
-  // fall back: first free text column with many distinct values = product/service
   if (map.item == null) {
     const t = prof.filter((p) => !used.has(p.ci) && p.type === 'text').sort((a, b) => b.uniq - a.uniq)[0];
     if (t) take('item', t.ci);
@@ -620,144 +686,123 @@ function guessMapping(prof) {
 }
 function guessCurrency(prof, rows, ci) {
   if (ci == null) return '';
-  const text = prof[ci].header + ' ' + rows.slice(0, 50).map((r) => r[ci]).join(' ');
-  if (/€|\bEUR\b/i.test(text)) return 'EUR';
-  if (/£|\bGBP\b/i.test(text)) return 'GBP';
-  if (/\$|\bUSD\b/i.test(text)) return 'USD';
-  const m = text.match(/\b(CHF|SEK|NOK|DKK|INR|AUD|CAD|JPY)\b/i);
+  const t = prof[ci].header + ' ' + rows.slice(0, 50).map((r) => r[ci]).join(' ');
+  if (/€|\bEUR\b/i.test(t)) return 'EUR';
+  if (/£|\bGBP\b/i.test(t)) return 'GBP';
+  if (/\$|\bUSD\b/i.test(t)) return 'USD';
+  const m = t.match(/\b(CHF|SEK|NOK|DKK|INR|AUD|CAD|JPY)\b/i);
   return m ? m[1].toUpperCase() : '';
 }
 
-// ------------------------------------------------------------------ state
+// ================================================================ state
 const S = {
-  files:[], headers:[], rows:[], prof:[], map:{}, months:new Array(12).fill(null),
+  loaded:false, files:[], fileInfo:[], headers:[], rows:[], prof:[], map:{}, months:new Array(12).fill(null),
   opts:{ label:'', currency:'', asOf:dayToISO(todayDay()), fyStart:0, dateOrder:'auto', dec:'auto' },
   recs:[], dims:[], colorDim:null, colorMap:new Map(),
-  filters:{}, q:'', flag:null, sort:{ col:null, dir:-1 }, showAll:false, breakdown:[],
+  filters:{}, q:'', flag:null, page:'overview',
+  ui:{ groupBy:null, splitBy:null, bdView:'both', bSort:{ key:'value', dir:-1 }, vSort:{ key:'value', dir:-1 }, oSort:{ key:'value', dir:-1 },
+    cSort:{ key:'value', dir:-1 }, lSort:{ key:null, dir:-1 }, lPage:0, lSize:50, density:'compact', renTab:'timeline', renSeg:'all',
+    rSort:{ key:'deadline', dir:1 }, yoyTab:'increases', ySort:{ key:'d', dir:-1 }, qSort:{ key:'sev', dir:1 }, drawerReturn:null },
 };
 const sig = () => S.headers.join('␟');
+const ready = () => S.loaded && S.map.amount != null;
+const hasMonths = () => S.months.filter((c) => c != null).length >= 2;
+const asOfDay = () => isoToDay(S.opts.asOf);
+const label = () => S.opts.label || 'Budget';
+const colName = (key) => (S.map[key] == null ? null : S.headers[S.map[key]]);
+// display names: "cost_pool" -> "Cost pool"; headers that already have capitals are kept as written
+function pretty(hd) { return /^[a-z0-9]+([ _][a-z0-9]+)*$/.test(hd) ? (hd.charAt(0).toUpperCase() + hd.slice(1)).replace(/_/g, ' ') : hd; }
+const hdr = (ci) => pretty(S.headers[ci]);
+const low = (ci) => { const p = hdr(ci); return /^[A-Z][a-z]/.test(p) ? p.charAt(0).toLowerCase() + p.slice(1) : p; };
 
-// ------------------------------------------------------------------ 4. records
+// ================================================================ 4. records
+const CHECKS = [
+  ['amount_bad', 'Amount is not a number (counted as 0)', 'error'],
+  ['dup_id', 'Duplicate line ID', 'error'],
+  ['amount_blank', 'Amount is blank', 'warning'],
+  ['prior_bad', 'Prior-year amount is not a number', 'warning'],
+  ['date_bad', 'Renewal date not recognised', 'warning'],
+  ['no_owner', 'No owner', 'warning'],
+  ['no_cc', 'No cost centre', 'warning'],
+  ['renewal_passed', 'Renewal date already passed', 'warning'],
+  ['auto_no_notice', 'Auto-renews but no notice period', 'warning'],
+  ['phasing_mismatch', 'Monthly figures don’t add up to the amount', 'warning'],
+  ['amount_neg', 'Negative amount (credit?)', 'info'],
+  ['phasing_missing', 'No monthly figures (spread evenly)', 'info'],
+];
+const SEV = { error:{ label:'Error', tag:'red' }, warning:{ label:'Warning', tag:'yellow' }, info:{ label:'Info', tag:'blue' } };
 function buildRecords() {
   const { map, prof, opts } = S;
   const dec = (ci) => (opts.dec === 'auto' ? prof[ci].dec : opts.dec);
   const ord = (ci) => (opts.dateOrder === 'auto' ? prof[ci].order : opts.dateOrder);
   const num = (r, key) => (map[key] == null ? null : parseNum(r[map[key]], dec(map[key])));
   const txt = (r, key) => (map[key] == null ? '' : r[map[key]]);
-  const hasMonths = S.months.filter((c) => c != null).length >= 2;
-  const ids = new Map();
+  const months = hasMonths(), ids = new Map(), AS = asOfDay();
   S.recs = S.rows.map((row, i) => {
     const flags = new Set();
     let amount = num(row, 'amount');
-    if (amount == null) { flags.add('amount_blank'); amount = 0; }
-    else if (!isFinite(amount)) { flags.add('amount_bad'); amount = 0; }
+    if (amount == null) { flags.add('amount_blank'); amount = 0; } else if (!isFinite(amount)) { flags.add('amount_bad'); amount = 0; }
     if (amount < 0) flags.add('amount_neg');
     let prior = num(row, 'prior');
     if (prior != null && !isFinite(prior)) { flags.add('prior_bad'); prior = null; }
     let renewal = map.renewal == null ? null : parseDate(row[map.renewal], ord(map.renewal));
     if (renewal != null && !isFinite(renewal)) { flags.add('date_bad'); renewal = null; }
-    let notice = num(row, 'notice');
-    if (notice != null && !isFinite(notice)) notice = null;
-    const autoTxt = txt(row, 'auto').toLowerCase();
-    const auto = /^(y|yes|true|1|x|ja|oui|si|sí)$/.test(autoTxt) ? true : /^(n|no|false|0|nein|non)$/.test(autoTxt) ? false : null;
+    let notice = num(row, 'notice'); if (notice != null && !isFinite(notice)) notice = null;
+    const a = txt(row, 'auto').toLowerCase();
+    const auto = /^(y|yes|true|1|x|ja|oui|si|sí)$/.test(a) ? true : /^(n|no|false|0|nein|non)$/.test(a) ? false : null;
     let monthly = null;
-    if (hasMonths) {
+    if (months) {
       monthly = S.months.map((ci) => { if (ci == null) return 0; const x = parseNum(row[ci], dec(ci)); return isFinite(x) ? x || 0 : 0; });
-      const ms = monthly.reduce((a, b) => a + b, 0);
+      const ms = monthly.reduce((p, q) => p + q, 0);
       if (ms === 0 && amount) { monthly = null; flags.add('phasing_missing'); }
       else if (Math.abs(ms - amount) > Math.max(1, Math.abs(amount) * 0.005)) flags.add('phasing_mismatch');
     }
-    const deadline = renewal == null ? null : renewal - (notice || 0);
-    const rec = { i, row, amount, prior, renewal, notice, auto, deadline, monthly, flags,
-      vendor:txt(row, 'vendor'), item:txt(row, 'item'), owner:txt(row, 'owner'), costcentre:txt(row, 'costcentre'),
-      id:txt(row, 'id') };
+    const rec = { i, row, amount, prior, renewal, notice, auto, monthly, flags,
+      deadline:renewal == null ? null : renewal - (notice || 0),
+      vendor:txt(row, 'vendor'), item:txt(row, 'item'), owner:txt(row, 'owner'), costcentre:txt(row, 'costcentre'), id:txt(row, 'id') };
     if (map.owner != null && !rec.owner && amount) flags.add('no_owner');
     if (map.costcentre != null && !rec.costcentre && amount) flags.add('no_cc');
-    if (renewal != null && renewal < isoToDay(opts.asOf) && amount > 0) flags.add('renewal_passed');
+    if (renewal != null && renewal < AS && amount > 0) flags.add('renewal_passed');
     if (auto && renewal != null && notice == null && map.notice != null) flags.add('auto_no_notice');
     if (map.id != null && rec.id) ids.set(rec.id, (ids.get(rec.id) || 0) + 1);
     return rec;
   });
   for (const r of S.recs) if (r.id && ids.get(r.id) > 1) r.flags.add('dup_id');
 }
-const CHECKS = [
-  ['amount_bad', 'Amount is not a number (counted as 0)'],
-  ['amount_blank', 'Amount is blank'],
-  ['amount_neg', 'Negative amount (credit?)'],
-  ['prior_bad', 'Prior-year amount is not a number'],
-  ['dup_id', 'Duplicate line ID'],
-  ['no_owner', 'No owner'],
-  ['no_cc', 'No cost centre'],
-  ['date_bad', 'Renewal date not recognised'],
-  ['renewal_passed', 'Renewal date already passed'],
-  ['auto_no_notice', 'Auto-renews but no notice period'],
-  ['phasing_mismatch', 'Monthly figures ≠ amount (>0.5%)'],
-  ['phasing_missing', 'No monthly figures (spread evenly)'],
-];
-
-// dimensions = columns that make sense to group/filter by
 function computeDims() {
   const n = S.rows.length, roleOf = new Map(Object.entries(S.map).map(([k, ci]) => [ci, k]));
   const pref = ['category', 'pool', 'vendor', 'costcentre', 'owner', 'capex'];
-  const ok = (p) => p.type === 'text' && p.filled >= n * 0.3 && p.uniq >= 1 && p.uniq <= Math.max(60, n * 0.5) && (p.uniq < n * 0.9 || n < 10) && p.month < 0;
+  const ok = (p) => p.type === 'text' && p.filled >= n * 0.3 && p.uniq <= Math.max(60, n * 0.5) && (p.uniq < n * 0.9 || n < 10) && p.month < 0;
   const dims = S.prof.filter((p) => ok(p) || (pref.includes(roleOf.get(p.ci)) && p.type !== 'number'));
   dims.sort((a, b) => {
     const ra = pref.indexOf(roleOf.get(a.ci)), rb = pref.indexOf(roleOf.get(b.ci));
     return (ra < 0 ? 99 : ra) - (rb < 0 ? 99 : rb) || a.uniq - b.uniq;
   });
   S.dims = dims.map((p) => p.ci).filter((ci) => S.prof[ci].uniq > 1 || S.rows.some((r) => r[ci] === ''));
-  // colour dimension: category, else pool, else first small dimension
   const small = (ci) => ci != null && S.prof[ci].uniq >= 2 && S.prof[ci].uniq <= 8;
   S.colorDim = [S.map.category, S.map.pool, S.map.capex, ...S.dims].find(small) ?? null;
   S.colorMap = new Map();
-  if (S.colorDim != null) {
-    const groups = groupBy(S.recs, S.colorDim);
-    groups.forEach((g, i) => S.colorMap.set(g.key, PALETTE[i % PALETTE.length]));
-  }
-  // breakdown defaults
-  const saved = store.get('breakdown:' + sig());
-  const defaults = [S.map.pool ?? S.map.category, S.map.vendor, S.map.costcentre, S.map.owner ?? S.map.capex]
-    .filter((ci) => ci != null && S.dims.includes(ci));
-  for (const ci of S.dims) if (defaults.length < 4 && !defaults.includes(ci)) defaults.push(ci);
-  S.breakdown = (saved && saved.every((ci) => S.dims.includes(ci)) ? saved : defaults).slice(0, 4);
+  if (S.colorDim != null) groupBy(S.recs, S.colorDim).forEach((g, i) => S.colorMap.set(g.key, PALETTE[i % PALETTE.length]));
+  const saved = store.get('ui:' + sig()) || {};
+  const g = [S.map.pool, S.map.category, ...S.dims].find((ci) => ci != null && S.dims.includes(ci));
+  S.ui.groupBy = S.dims.includes(saved.groupBy) ? saved.groupBy : (g ?? null);
+  if ('splitBy' in saved && (saved.splitBy === null || (S.dims.includes(saved.splitBy) && saved.splitBy !== S.ui.groupBy))) S.ui.splitBy = saved.splitBy;
+  else S.ui.splitBy = S.colorDim !== S.ui.groupBy ? S.colorDim : null;
 }
 const cell = (rec, ci) => rec.row[ci] || BLANK;
-const colorOf = (val) => v(S.colorMap.get(val) || '--other');
+const colorOf = (val) => cv(S.colorMap.get(val) || '--other');
 function groupBy(recs, ci) {
   const m = new Map();
-  for (const r of recs) { const k = cell(r, ci); const g = m.get(k) || { key:k, value:0, count:0 }; g.value += r.amount; g.count++; m.set(k, g); }
+  for (const r of recs) { const k = cell(r, ci); const g = m.get(k) || { key:k, value:0, count:0, prior:0, recs:[] }; g.value += r.amount; g.prior += r.prior || 0; g.count++; g.recs.push(r); m.set(k, g); }
   return [...m.values()].sort((a, b) => b.value - a.value || a.key.localeCompare(b.key));
 }
-
-// ------------------------------------------------------------------ 5. filters
-function matches(r) {
-  for (const [ci, val] of Object.entries(S.filters)) if (cell(r, ci) !== val) return false;
-  if (S.flag && !r.flags.has(S.flag)) return false;
-  if (S.q && !r.row.join(' ').toLowerCase().includes(S.q)) return false;
-  return true;
+function urgencyOf(r) {
+  if (r.deadline == null || !(r.amount > 0)) return null;
+  const days = Math.round(r.deadline - asOfDay());
+  const u = days < 0 ? URGENCY[0] : URGENCY.slice(1).find((x) => days <= x.max);
+  return { ...u, days };
 }
-function setFilter(ci, val) {
-  if (val == null || S.filters[ci] === val) delete S.filters[ci]; else S.filters[ci] = val;
-  S.showAll = false; render();
-}
-function buildFilterBar() {
-  const grid = $('filter-grid'); grid.replaceChildren();
-  for (const ci of S.dims.slice(0, 8)) {
-    const vals = groupBy(S.recs, ci).map((g) => g.key).sort((a, b) => (a === BLANK) - (b === BLANK) || a.localeCompare(b, undefined, { numeric:true }));
-    grid.append(h('label', {}, h('span', {}, S.prof[ci].header),
-      h('select', { 'data-ci':ci, onchange:(e) => setFilter(ci, e.target.value || null) },
-        h('option', { value:'' }, 'All'), vals.map((x) => h('option', { value:x }, x)))));
-  }
-}
-function syncFilterBar() {
-  for (const sel of $('filter-grid').querySelectorAll('select')) sel.value = S.filters[sel.dataset.ci] || '';
-  const chips = $('chips'); chips.replaceChildren();
-  for (const [ci, val] of Object.entries(S.filters)) chips.append(h('button', { type:'button', class:'chip', onclick:() => setFilter(ci, null) }, `${S.prof[ci].header}: `, h('b', {}, val), ' ✕'));
-  if (S.flag) chips.append(h('button', { type:'button', class:'chip', onclick:() => { S.flag = null; render(); } }, 'Check: ', h('b', {}, CHECKS.find((c) => c[0] === S.flag)[1]), ' ✕'));
-  if (S.q) chips.append(h('button', { type:'button', class:'chip', onclick:() => { S.q = ''; $('filter-q').value = ''; render(); } }, 'Search: ', h('b', {}, S.q), ' ✕'));
-}
-
-// ------------------------------------------------------------------ 6. views
+const urgTag = (u) => tag(u.days < 0 ? `${-u.days} d overdue` : u.key === 'later' ? `in ${u.days} d` : `${u.days} d left`, u.tag, u.label);
 function computeBridge(recs) {
   const b = { prior:0, added:0, increases:0, decreases:0, removed:0, next:0, newCount:0, removedCount:0 };
   for (const r of recs) {
@@ -770,435 +815,975 @@ function computeBridge(recs) {
   }
   return b;
 }
-function urgencyOf(r) {
-  if (r.deadline == null || !(r.amount > 0)) return null;
-  const days = Math.round(r.deadline - isoToDay(S.opts.asOf));
-  const u = days < 0 ? URGENCY[0] : URGENCY.slice(1).find((x) => days <= x.max);
-  return { ...u, days };
+function qualityOf(recs) {
+  const total = sum(recs, (r) => Math.abs(r.amount));
+  const bad = new Set(CHECKS.filter((c) => c[2] !== 'info').map((c) => c[0]));
+  const clean = sum(recs.filter((r) => ![...r.flags].some((f) => bad.has(f))), (r) => Math.abs(r.amount));
+  const res = CHECKS.map(([k, lbl, sev]) => { const hit = recs.filter((r) => r.flags.has(k)); return { k, lbl, sev, n:hit.length, v:sum(hit, (r) => Math.abs(r.amount)) }; });
+  return { score:total ? clean / total : 1, res, errors:sum(res.filter((x) => x.sev === 'error'), (x) => x.n), warnings:sum(res.filter((x) => x.sev === 'warning'), (x) => x.n) };
 }
-const label = () => S.opts.label || 'Budget';
-
-function renderKpis(recs) {
-  const total = sum(recs, (r) => r.amount);
-  const tiles = [];
-  const vendors = S.map.vendor != null ? new Set(recs.filter((r) => r.amount).map((r) => r.vendor)).size : null;
-  tiles.push(h('div', { class:'kpi', 'data-kpi':'total' },
-    h('div', { class:'label' }, `Total ${label()}`),
-    h('div', { class:'value', 'data-value':total }, fmtC(total)),
-    h('div', { class:'detail' }, `${fmtMoney(total)} · ${recs.length} rows` + (vendors != null ? ` · ${vendors} vendors` : ''))));
-  if (S.map.prior != null) {
-    const b = computeBridge(recs), d = total - b.prior, p = b.prior ? d / b.prior : null;
-    tiles.push(h('div', { class:'kpi', 'data-kpi':'change' },
-      h('div', { class:'label' }, 'Change vs prior year'),
-      h('div', { class:'value' }, h('span', { class:d > 0 ? 'up' : d < 0 ? 'down' : '' }, (d > 0 ? '▲ ' : d < 0 ? '▼ ' : '') + fmtSignedPct(p))),
-      h('div', { class:'detail' }, b.prior ? `${fmtSigned(d)} vs ${fmtC(b.prior)}` : 'No prior-year figures')));
+function vendorAgg(recs) {
+  const m = new Map();
+  for (const r of recs) {
+    const k = cell(r, S.map.vendor);
+    let g = m.get(k);
+    if (!g) { g = { key:k, value:0, prior:0, priorN:0, count:0, owners:new Set(), next:null, nextU:null, parts:new Map(), recs:[] }; m.set(k, g); }
+    g.value += r.amount; g.count++; g.recs.push(r);
+    if (r.prior != null) { g.prior += r.prior; g.priorN++; }
+    if (r.owner) g.owners.add(r.owner);
+    const u = urgencyOf(r);
+    if (u && (!g.next || r.deadline < g.next.deadline)) { g.next = r; g.nextU = u; }
+    if (S.colorDim != null) { const ck = cell(r, S.colorDim); g.parts.set(ck, (g.parts.get(ck) || 0) + r.amount); }
   }
-  if (S.colorDim != null && total) {
-    const groups = groupBy(recs, S.colorDim);
-    tiles.push(h('div', { class:'kpi wide', 'data-kpi':'mix' },
-      h('div', { class:'label' }, `Split by ${S.prof[S.colorDim].header}`),
-      h('div', { class:'stack', role:'img', 'aria-label':groups.map((g) => `${g.key} ${fmtPct(g.value / total)}`).join(', ') },
-        groups.map((g) => h('span', { style:`width:${Math.max(0, g.value / total * 100)}%;background:${colorOf(g.key)}`, title:`${g.key}: ${fmtMoney(g.value)}` }))),
-      h('div', { class:'stack-legend' }, groups.map((g) => h('span', {}, h('span', { class:'swatch sq', style:`background:${colorOf(g.key)}` }),
-        `${g.key} `, h('b', {}, fmtC(g.value)), ` (${fmtPct(g.value / total)})`)))));
-  }
-  if (S.map.renewal != null) {
-    const due = recs.map((r) => ({ r, u:urgencyOf(r) })).filter((x) => x.u && x.u.max <= 90);
-    const passed = due.filter((x) => x.u.key === 'passed').length;
-    tiles.push(h('div', { class:'kpi' + (passed ? ' alert' : ''), 'data-kpi':'renewals' },
-      h('div', { class:'label' }, S.map.notice != null ? 'Notice deadlines ≤ 90 days' : 'Renewals ≤ 90 days'),
-      h('div', { class:'value' }, String(due.length)),
-      h('div', { class:'detail' }, `${fmtC(sum(due, (x) => x.r.amount))} of spend`, passed ? h('span', {}, ' · ', h('b', {}, `${passed} passed`)) : null)));
-  }
-  if (S.map.owner != null) {
-    const un = recs.filter((r) => !r.owner && r.amount), uv = sum(un, (r) => r.amount);
-    tiles.push(h('div', { class:'kpi', 'data-kpi':'unowned' },
-      h('div', { class:'label' }, 'Spend with no owner'),
-      h('div', { class:'value' }, fmtPct(total ? uv / total : 0, 1)),
-      h('div', { class:'detail' }, `${fmtC(uv)} · ${un.length} rows `,
-        un.length && S.flag !== 'no_owner' ? h('button', { type:'button', class:'btn small', onclick:() => { S.flag = 'no_owner'; render(); } }, 'Show') : null)));
-  } else if (recs.length) {
-    const top = recs.reduce((a, b) => (b.amount > a.amount ? b : a));
-    tiles.push(h('div', { class:'kpi', 'data-kpi':'largest' },
-      h('div', { class:'label' }, 'Largest line'),
-      h('div', { class:'value' }, fmtC(top.amount)),
-      h('div', { class:'detail' }, [top.vendor, top.item].filter(Boolean).join(': ') || `Row ${top.i + 1}`)));
-  }
-  if (S.map.vendor != null && total) {
-    const g = groupBy(recs.filter((r) => r.amount > 0), S.map.vendor);
-    const top5 = sum(g.slice(0, 5), (x) => x.value);
-    tiles.push(h('div', { class:'kpi', 'data-kpi':'concentration' },
-      h('div', { class:'label' }, 'Top 5 vendors share'),
-      h('div', { class:'value' }, fmtPct(top5 / total)),
-      h('div', { class:'detail' }, `of ${g.length} vendors · largest: ${g[0] ? g[0].key : '–'}`)));
-  }
-  $('kpis').replaceChildren(...tiles);
+  return [...m.values()].sort((a, b) => b.value - a.value);
 }
 
-function hbars(container, items, { ci, total, limit = 12, colored }) {
-  container.replaceChildren();
-  if (!items.length || !total) { container.append(h('div', { class:'empty' }, 'No matching spend')); return; }
-  const shown = items.slice(0, limit), rest = items.slice(limit), restV = sum(rest, (x) => x.value);
-  const max = Math.max(restV, ...shown.map((x) => Math.abs(x.value))) || 1;
-  const row = (it, clickable) => {
-    const active = clickable && S.filters[ci] === it.key;
-    const kids = [
-      h('span', { class:'name', title:it.key }, it.key),
-      h('span', { class:'track' }, h('span', { class:'fill', style:`width:${Math.max(0, it.value / max * 100)}%` + (colored && clickable ? `;background:${colorOf(it.key)}` : '') })),
-      h('span', { class:'val' }, fmtMoney(it.value), h('small', {}, fmtPct(it.value / total))),
-    ];
-    return clickable
-      ? h('button', { type:'button', class:'hbar' + (active ? ' active' : ''), 'aria-pressed':String(active), title:`${it.key}: ${it.count} rows. Click to filter.`, onclick:() => setFilter(ci, it.key) }, kids)
-      : h('div', { class:'hbar static' }, kids);
-  };
-  shown.forEach((it) => container.append(row(it, true)));
-  if (rest.length) container.append(row({ key:`All other (${rest.length})`, value:restV }, false));
+// ================================================================ 5. shell: pages, nav, header, filters, drawer
+const PAGES = [
+  { id:'overview', label:'Overview', icon:'overview', group:'Analyse', render:pageOverview, insight:insOverview },
+  { id:'breakdown', label:'Spend breakdown', icon:'breakdown', group:'Analyse', render:pageBreakdown, insight:insBreakdown },
+  { id:'vendors', label:'Vendors', icon:'vendors', group:'Analyse', render:pageVendors, insight:insVendors,
+    needs:() => S.map.vendor != null, needsText:'a vendor / supplier column' },
+  { id:'organisation', label:'Cost centres & owners', icon:'org', group:'Analyse', render:pageOrganisation, insight:insOrg,
+    needs:() => S.map.costcentre != null || S.map.owner != null, needsText:'a cost centre or owner column' },
+  { id:'renewals', label:'Renewals', icon:'calendar', group:'Plan', render:pageRenewals, insight:insRenewals,
+    needs:() => S.map.renewal != null, needsText:'a renewal or contract end date column' },
+  { id:'cashflow', label:'Cash flow', icon:'cash', group:'Plan', render:pageCashflow, insight:insCashflow,
+    needs:hasMonths, needsText:'monthly columns (Jan … Dec, or 2027-01 … 2027-12)' },
+  { id:'yoy', label:'Year over year', icon:'compare', group:'Plan', render:pageYoy, insight:insYoy,
+    needs:() => S.map.prior != null, needsText:'a prior-year amount column' },
+  { id:'lines', label:'Line items', icon:'table', group:'Data', render:pageLines, insight:insLines },
+  { id:'quality', label:'Data quality', icon:'quality', group:'Data', render:pageQuality, insight:insQuality },
+  { id:'source', label:'Data source & columns', icon:'source', group:'Data', render:pageSource, insight:insSource, noFilters:true },
+];
+const pageById = (id) => PAGES.find((p) => p.id === id);
+
+function renderNav() {
+  const recs = ready() ? S.recs.filter(matches) : [];
+  const badges = {};
+  if (ready()) {
+    if (S.map.renewal != null) {
+      const us = recs.map(urgencyOf).filter((u) => u && u.max <= 90);
+      if (us.length) badges.renewals = { n:us.length, red:us.some((u) => u.key === 'passed'), title:`${us.length} notice deadlines within 90 days` };
+    }
+    const q = qualityOf(recs);
+    if (q.errors + q.warnings) badges.quality = { n:q.errors + q.warnings, red:q.errors > 0, title:`${q.errors} errors, ${q.warnings} warnings` };
+  }
+  const groups = [...new Set(PAGES.map((p) => p.group))];
+  $('sidenav').replaceChildren(...groups.map((g) => h('div', { class:'nav-group' },
+    h('div', { class:'nav-h' }, g),
+    PAGES.filter((p) => p.group === g).map((p) => {
+      const avail = !p.needs || (ready() && p.needs());
+      const disabled = !ready() && p.id !== 'source';
+      const b = badges[p.id];
+      return h('a', { href:'#/' + p.id, id:'nav-' + p.id, class:'nav-a' + (avail ? '' : ' muted') + (disabled ? ' disabled' : ''), 'aria-current':S.page === p.id && ready() ? 'page' : null,
+        'aria-disabled':disabled ? 'true' : null, tabindex:disabled ? -1 : null,
+        title:avail ? p.label : `${p.label}: needs ${p.needsText}`, onclick:() => document.body.classList.remove('nav-open') },
+        icon(p.icon, 18), h('span', { class:'nav-l' }, p.label), b ? h('span', { class:'nav-badge' + (b.red ? ' red' : ''), title:b.title }, b.n) : null);
+    }))),
+  h('div', { class:'nav-foot' }, icon('lock', 14), 'Data stays in this browser'));
+}
+function renderTopbar() {
+  const ds = $('dataset');
+  ds.hidden = !S.loaded;
+  if (S.loaded) ds.replaceChildren(icon('source', 14), h('span', { title:S.files.join(', ') },
+    `${S.files.length > 1 ? S.files.length + ' files' : S.files[0]} · ${fmtInt(S.rows.length)} rows` + (S.opts.label ? ` · ${S.opts.label}` : '') + (S.opts.currency ? ` · ${S.opts.currency}` : '')));
+}
+function pageHeader(page, recs) {
+  const actions = [];
+  if (ready() && page.id !== 'source') actions.push(btn('Export CSV', 'secondary', () => exportCsv(recs), 'download', { title:'Export the filtered rows', id:'export-csv' }));
+  return h('div', {},
+    h('nav', { class:'crumbs', 'aria-label':'Breadcrumb' }, h('a', { href:'#/overview' }, 'IT budget'), '/', h('span', {}, page.group), '/', h('span', { 'aria-current':'page' }, page.label)),
+    h('div', { class:'page-head' },
+      h('div', {}, h('h1', { class:'page-t' }, page.label), h('p', { class:'page-s', id:'page-insight' }, ready() && page.insight ? page.insight(recs) : '')),
+      actions.length ? h('div', { class:'page-a' }, actions) : null));
 }
 
-function renderBreakdowns(recs) {
-  const wrap = $('breakdowns'); wrap.replaceChildren();
-  const total = sum(recs, (r) => r.amount);
-  if (!S.dims.length) { wrap.append(h('div', { class:'card empty' }, 'No text columns suitable for grouping were found.')); return; }
-  S.breakdown.forEach((ci, k) => {
-    const body = h('div', { class:'hbars' });
-    const sel = h('select', { 'aria-label':'Group by column', onchange:(e) => { S.breakdown[k] = +e.target.value; store.set('breakdown:' + sig(), S.breakdown); render(); } },
-      S.dims.map((d) => h('option', { value:d, selected:d === ci }, S.prof[d].header)));
-    const groups = groupBy(recs, ci);
-    const note = ci === S.map.vendor && total ? h('p', { class:'sub' }, `${groups.filter((g) => g.value > 0).length} vendors; top 10 = ${fmtPct(sum(groups.slice(0, 10), (g) => g.value) / total)} of spend`) : null;
-    wrap.append(h('article', { class:'card' }, h('div', { class:'card-head' }, h('h3', {}, 'By'), sel), note, body));
-    hbars(body, groups, { ci, total, colored:ci === S.colorDim });
+function matches(r) {
+  for (const k in S.filters) if (cell(r, k) !== S.filters[k]) return false;
+  if (S.flag && !r.flags.has(S.flag)) return false;
+  if (S.q && !r.row.join(' ').toLowerCase().includes(S.q.toLowerCase())) return false;
+  return true;
+}
+function setFilter(ci, val) {
+  if (val == null || val === '' || S.filters[ci] === val) delete S.filters[ci]; else S.filters[ci] = val;
+  S.ui.lPage = 0; render();
+}
+function clearFilters() { S.filters = {}; S.q = ''; S.flag = null; S.ui.lPage = 0; render(); }
+let qTimer;
+function filterBar() {
+  const fields = S.dims.slice(0, 6).map((ci) => {
+    const vals = groupBy(S.recs, ci).map((g) => g.key).sort((a, b) => (a === BLANK) - (b === BLANK) || a.localeCompare(b, undefined, { numeric:true }));
+    return h('label', { class:'fb-field' }, h('span', { class:'fb-l', title:hdr(ci) }, hdr(ci)),
+      h('select', { class:'select', id:'f-' + ci, onchange:(e) => setFilter(ci, e.target.value) },
+        h('option', { value:'' }, 'All'), vals.map((x) => h('option', { value:x, selected:S.filters[ci] === x }, x))));
+  });
+  const search = h('label', { class:'fb-field fb-search' }, h('span', { class:'fb-l' }, 'Search'),
+    h('span', { class:'input-icon' }, icon('search'), h('input', { class:'input', id:'f-q', type:'search', value:S.q, placeholder:'Search all columns', autocomplete:'off',
+      oninput:(e) => { S.q = e.target.value; clearTimeout(qTimer); qTimer = setTimeout(() => { S.ui.lPage = 0; render(); }, 200); } })));
+  const n = Object.keys(S.filters).length + (S.q ? 1 : 0) + (S.flag ? 1 : 0);
+  const chips = [];
+  for (const [ci, v] of Object.entries(S.filters)) chips.push(h('button', { type:'button', class:'chip', onclick:() => setFilter(ci, null), title:'Remove filter' }, `${hdr(ci)}: ${v}`, h('span', { class:'x' }, icon('close', 12))));
+  if (S.flag) chips.push(h('button', { type:'button', class:'chip', onclick:() => { S.flag = null; render(); }, title:'Remove filter' }, `Check: ${CHECKS.find((c) => c[0] === S.flag)[1]}`, h('span', { class:'x' }, icon('close', 12))));
+  if (S.q) chips.push(h('button', { type:'button', class:'chip', onclick:() => { S.q = ''; render(); }, title:'Remove filter' }, `Search: ${S.q}`, h('span', { class:'x' }, icon('close', 12))));
+  return h('div', { class:'filterbar', role:'search', 'aria-label':'Filters' },
+    h('div', { class:'fb-row' }, fields, search,
+      h('div', { class:'fb-actions' }, h('button', { type:'button', class:'btn ghost', id:'filter-reset', disabled:!n, onclick:clearFilters }, n ? `Clear filters (${n})` : 'Clear filters'))),
+    chips.length ? h('div', { class:'fb-chips', id:'chips' }, h('span', {}, `Showing ${fmtInt(S.recs.filter(matches).length)} of ${fmtInt(S.recs.length)} rows`), chips) : null);
+}
+
+function openDrawer({ title, sub, body, footer }) {
+  if (!S.ui.drawerReturn) S.ui.drawerReturn = document.activeElement;
+  hideTip();
+  $('drawer').replaceChildren(
+    h('header', { class:'drawer-h' }, h('div', {}, h('h2', { class:'drawer-t', id:'drawer-title' }, title), sub ? h('p', { class:'drawer-s' }, sub) : null),
+      h('button', { type:'button', class:'icon-btn', id:'drawer-close', 'aria-label':'Close details', title:'Close (Esc)', onclick:closeDrawer }, icon('close', 20))),
+    h('div', { class:'drawer-b' }, body),
+    footer ? h('footer', { class:'drawer-f' }, footer) : null);
+  $('drawer').hidden = false; $('scrim').hidden = false;
+  requestAnimationFrame(() => $('drawer-close').focus());
+}
+function closeDrawer() {
+  if ($('drawer').hidden) return;
+  $('drawer').hidden = true; $('scrim').hidden = true;
+  const r = S.ui.drawerReturn; S.ui.drawerReturn = null;
+  if (r && document.contains(r)) r.focus();
+}
+const stat = (l, v) => h('div', { class:'stat' }, h('div', { class:'stat-l' }, l), h('div', { class:'stat-v' }, v));
+const dsec = (title, ...kids) => h('section', { class:'d-sec' }, h('h3', {}, title), kids);
+const kv = (pairs) => h('dl', { class:'kv' }, pairs.filter(Boolean).map(([k, v]) => [h('dt', {}, k), h('dd', {}, v == null || v === '' ? '—' : v)]));
+
+function lineDrawer(r) {
+  const u = urgencyOf(r);
+  const flags = CHECKS.filter((c) => r.flags.has(c[0]));
+  openDrawer({
+    title:r.item || r.vendor || `Row ${r.i + 1}`,
+    sub:[r.vendor && r.item ? r.vendor : null, r.id ? 'ID ' + r.id : null, `Row ${r.i + 1}`].filter(Boolean).join(' · '),
+    body:[
+      h('div', { class:'stats' }, stat(label(), fmtMoney(r.amount)),
+        S.map.prior != null ? stat('Prior year', r.prior == null ? 'New' : fmtMoney(r.prior)) : null,
+        S.map.prior != null && r.prior ? stat('Change', fmtSignedPct((r.amount - r.prior) / r.prior)) : null),
+      S.map.renewal != null ? dsec('Renewal', kv([
+        ['Renewal / end date', fmtDay(r.renewal)],
+        S.map.notice != null ? ['Notice period', r.notice != null ? `${r.notice} days` : null] : null,
+        ['Notice deadline', r.deadline != null ? fmtDay(r.deadline) : null],
+        ['Status', u ? urgTag(u) : null],
+        S.map.auto != null ? ['Auto-renews', r.auto == null ? null : r.auto ? 'Yes' : 'No'] : null])) : null,
+      r.monthly ? dsec('Monthly phasing', h('div', { class:'chart small' }, columnChart({ labels:monthOrder().map(mname), series:[{ key:label(), color:'var(--bar)', values:monthOrder().map((m) => r.monthly[m]) }], height:170, compact:true, width:520 }))) : null,
+      flags.length ? dsec('Data quality', h('div', { style:'display:flex;flex-direction:column;gap:6px' }, flags.map(([, lbl, sev]) => h('div', {}, tag(SEV[sev].label, SEV[sev].tag), ' ', lbl)))) : null,
+      dsec('All fields from the file', kv(S.headers.map((hd, c) => [pretty(hd), r.row[c]]))),
+    ],
+    footer:[
+      S.map.vendor != null && r.vendor ? btn('Show only this vendor', 'secondary', () => { closeDrawer(); setFilter(S.map.vendor, cell(r, S.map.vendor)); }) : null,
+      btn('Close', 'primary', closeDrawer),
+    ],
+  });
+}
+function vendorDrawer(g) {
+  const total = sum(S.recs.filter(matches), (r) => r.amount);
+  const lines = [...g.recs].sort((a, b) => b.amount - a.amount);
+  const cols = [
+    { key:'item', label:'Line', render:(r) => r.item || `Row ${r.i + 1}` },
+    S.colorDim != null ? { key:'cat', label:hdr(S.colorDim), render:(r) => swatchLabel(cell(r, S.colorDim)) } : null,
+    { key:'amount', label:label(), num:true, render:(r) => fmtMoney(r.amount) },
+    S.map.renewal != null ? { key:'ren', label:'Renewal', render:(r) => fmtDay(r.renewal) } : null,
+  ].filter(Boolean);
+  openDrawer({
+    title:g.key,
+    sub:`${g.count} line${g.count === 1 ? '' : 's'} · ${fmtPct(total ? g.value / total : 0, 1)} of filtered spend`,
+    body:[
+      h('div', { class:'stats' }, stat(label(), fmtMoney(g.value)),
+        S.map.prior != null ? stat('Prior year', g.priorN ? fmtMoney(g.prior) : 'New') : null,
+        S.map.prior != null && g.priorN ? stat('Change', fmtSignedPct((g.value - g.prior) / g.prior)) : null),
+      S.colorDim != null && g.value ? dsec(`Mix by ${low(S.colorDim)}`, mixBar(g.parts, g.value, true)) : null,
+      g.next ? dsec('Next notice deadline', h('div', {}, urgTag(g.nextU), ' ', `${fmtDay(g.next.deadline)} · ${g.next.item || ''} · ${fmtMoney(g.next.amount)}`)) : null,
+      S.map.owner != null ? dsec('Owners', g.owners.size ? [...g.owners].join(', ') : tag('No owner', 'yellow')) : null,
+      dsec('Lines', dataTable({ cols, rows:lines, onRow:(r) => lineDrawer(r) })),
+    ],
+    footer:[btn('Show only this vendor', 'secondary', () => { closeDrawer(); setFilter(S.map.vendor, g.key); }), btn('Close', 'primary', closeDrawer)],
   });
 }
 
-function renderTimeline(recs) {
-  const sec = $('sec-renewals');
-  sec.hidden = S.map.renewal == null;
-  if (sec.hidden) return;
-  const AS = isoToDay(S.opts.asOf);
-  $('renewal-hint').textContent = S.map.notice != null ? 'Deadline = renewal date − notice period' : 'No notice-period column: deadline = renewal date';
-  $('timeline-sub').textContent = 'Each dot is one row with a renewal/end date; size = amount, colour = how soon action is needed. Hover for details, click to filter by vendor.';
-  const pts = recs.filter((r) => r.renewal != null && r.amount > 0).map((r) => ({ r, u:urgencyOf(r) }));
-  $('urgency-legend').replaceChildren(...URGENCY.map((u) => h('span', {}, h('span', { class:'swatch', style:`background:${v(u.color)}` }), `${u.label} (${pts.filter((p) => p.u.key === u.key).length})`)));
-  const wrap = $('chart-timeline'); wrap.replaceChildren();
-  if (!pts.length) { wrap.append(h('div', { class:'empty' }, 'No renewal dates in the filtered rows')); return; }
+// ================================================================ 6. charts & components
+function card({ title, sub, actions, body, foot, flush, id }) {
+  return h('section', { class:'card', id },
+    title || actions ? h('header', { class:'card-h' }, h('div', {}, title ? h('h2', { class:'card-t' }, title) : null, sub ? h('p', { class:'card-s' }, sub) : null), actions ? h('div', { class:'card-a' }, actions) : null) : null,
+    h('div', { class:'card-b' + (flush ? ' flush' : '') }, body),
+    foot ? h('footer', { class:'card-f' }, foot) : null);
+}
+function kpi({ id, label: l, value, raw, meta, spark, href, alert, hint }) {
+  return h(href ? 'a' : 'div', { class:'kpi' + (alert ? ' alert' : ''), 'data-kpi':id, href },
+    h('div', { class:'kpi-l' }, h('span', {}, l), hint ? h('span', { title:hint }, icon('info', 14)) : null),
+    h('div', { class:'kpi-v', 'data-value':raw }, value),
+    h('div', { class:'kpi-m' }, meta), spark ? h('div', { class:'spark' }, spark) : null);
+}
+const deltaTag = (d, p) => tag((d > 0 ? '▲ ' : d < 0 ? '▼ ' : '') + fmtSignedPct(p), d > 0 ? 'red' : d < 0 ? 'green' : 'gray', 'Change vs prior year (cost increase shown red)');
+function sparkline(values) {
+  const W = 200, H = 32, max = Math.max(...values, 1), step = W / (values.length - 1);
+  const pts = values.map((v, i) => [i * step, H - 2 - (v / max) * (H - 6)]);
+  const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+  return s('svg', { viewBox:`0 0 ${W} ${H}`, preserveAspectRatio:'none', 'aria-hidden':'true' },
+    s('path', { class:'area', d:d + ` L${W} ${H} L0 ${H} Z` }), s('path', { class:'ln', d, 'vector-effect':'non-scaling-stroke' }));
+}
+function mixBar(parts, total, withLegend) {
+  const items = [...parts.entries()].sort((a, b) => b[1] - a[1]);
+  const bar = h('div', { class:'stack tall', role:'img', 'aria-label':items.map(([k, v]) => `${k} ${fmtPct(v / total)}`).join(', ') },
+    items.map(([k, v]) => h('span', { style:`width:${Math.max(0, v / total * 100)}%;background:${colorOf(k)}`, title:`${k}: ${fmtMoney(v)} (${fmtPct(v / total)})` })));
+  if (!withLegend) return bar;
+  return h('div', {}, bar, h('div', { class:'legend', style:'margin-top:8px' }, items.map(([k, v]) => h('span', {}, h('span', { class:'swatch', style:`background:${colorOf(k)}` }), `${k} `, h('b', {}, fmtC(v)), ` ${fmtPct(v / total)}`))));
+}
+function hbarList(items, { total, limit = 10, onClick, activeKey, colorFn }) {
+  const box = h('div', { class:'hbars' });
+  if (!items.length || !total) { box.append(h('div', { class:'empty-mini' }, 'No matching spend')); return box; }
+  const shown = items.slice(0, limit), rest = items.slice(limit), restV = sum(rest, (x) => x.value);
+  const max = Math.max(restV, ...shown.map((x) => x.value)) || 1;
+  const row = (it, click) => {
+    const active = click && activeKey === it.key;
+    const kids = [h('span', { class:'hb-name', title:it.key }, it.key),
+      h('span', { class:'hb-track' }, h('span', { class:'hb-fill', style:`width:${Math.max(0, it.value / max * 100)}%` + (colorFn && click ? `;background:${colorFn(it.key)}` : '') })),
+      h('span', { class:'hb-val' }, fmtMoney(it.value)), h('span', { class:'hb-pct' }, fmtPct(it.value / total))];
+    return click ? h('button', { type:'button', class:'hb' + (active ? ' active' : ''), 'aria-pressed':String(active), title:`${it.key}: ${it.count} lines. Click to filter.`, onclick:() => onClick(it.key) }, kids)
+      : h('div', { class:'hb static' }, kids);
+  };
+  shown.forEach((it) => box.append(row(it, !!onClick)));
+  if (rest.length) box.append(row({ key:`All other (${rest.length})`, value:restV }, false));
+  return box;
+}
+function axisY(g, { ticks, y, x0, x1 }) {
+  ticks.forEach((t) => {
+    g.append(s('line', { class:'gridline', x1:x0, x2:x1, y1:y(t), y2:y(t) }));
+    g.append(s('text', { x:x0 - 8, y:y(t) + 4, 'text-anchor':'end' }, fmtC(t)));
+  });
+}
+function columnChart({ labels, series, cumulative, height = 280, compact, width }) {
+  const W = width || (compact ? 600 : 960), H = height, ml = compact ? 52 : 64, mr = cumulative ? 52 : 16, mt = 22, mb = 26;
+  const totals = labels.map((_, i) => sum(series, (sr) => Math.max(0, sr.values[i])));
+  const grand = totals.reduce((a, b) => a + b, 0);
+  const { max, ticks } = niceTicks(Math.max(...totals) * 1.12, compact ? 3 : 4);
+  const bw = (W - ml - mr) / labels.length, y = (v) => H - mb - v / max * (H - mt - mb);
+  const g = s('svg', { viewBox:`0 0 ${W} ${H}`, role:'img', 'aria-label':'Column chart' });
+  axisY(g, { ticks, y, x0:ml, x1:W - mr });
+  labels.forEach((lb, i) => {
+    let acc = 0; const x0 = ml + i * bw + bw * 0.18, w = bw * 0.64;
+    series.forEach((sr) => {
+      const v = Math.max(0, sr.values[i]); if (!v) return;
+      const rect = s('rect', { x:x0, y:y(acc + v), width:w, height:Math.max(0, y(acc) - y(acc + v)), style:`fill:${sr.color}`, tabindex:compact ? null : 0 });
+      if (!compact) withTip(rect, () => [`${lb}${series.length > 1 ? ' · ' + sr.key : ''}`, fmtMoney(v), `Month total ${fmtMoney(totals[i])}`]);
+      g.append(rect); acc += v;
+    });
+    g.append(s('text', { class:'bar-label', x:x0 + w / 2, y:y(totals[i]) - 5, 'text-anchor':'middle' }, fmtC(totals[i])));
+    g.append(s('text', { x:x0 + w / 2, y:H - 8, 'text-anchor':'middle' }, lb));
+  });
+  g.append(s('line', { class:'axis', x1:ml, x2:W - mr, y1:y(0), y2:y(0) }));
+  if (cumulative && grand) {
+    const y2 = (p) => H - mb - p * (H - mt - mb);
+    [0, .25, .5, .75, 1].forEach((p) => g.append(s('text', { x:W - mr + 6, y:y2(p) + 4 }, Math.round(p * 100) + '%')));
+    let acc = 0;
+    const pts = totals.map((t, i) => { acc += t; return [ml + i * bw + bw / 2, y2(acc / grand), acc]; });
+    g.append(s('path', { class:'line', d:pts.map((p, i) => (i ? 'L' : 'M') + p[0] + ' ' + p[1]).join(' ') }));
+    pts.forEach((p, i) => g.append(withTip(s('circle', { class:'line-pt', cx:p[0], cy:p[1], r:3.5, tabindex:0 }), () => [`Cumulative to end of ${labels[i]}`, fmtMoney(p[2]), fmtPct(p[2] / grand) + ' of the year'])));
+  }
+  return g;
+}
+function waterfall(steps, { height = 280, compact, width } = {}) {
+  let acc = 0;
+  steps.forEach((st) => { if (st.total) { st.from = 0; st.to = st.v; } else { st.from = acc; st.to = acc + st.v; } acc = st.to; });
+  const { max, ticks } = niceTicks(Math.max(...steps.map((st) => Math.max(st.from, st.to))) * 1.12, compact ? 3 : 4);
+  const W = width || (compact ? 600 : 960), H = height, ml = compact ? 52 : 64, mr = 12, mt = 22, mb = 26, bw = (W - ml - mr) / steps.length;
+  const y = (v) => H - mb - v / max * (H - mt - mb);
+  const g = s('svg', { viewBox:`0 0 ${W} ${H}`, role:'img', 'aria-label':'Bridge from prior year to budget' });
+  axisY(g, { ticks, y, x0:ml, x1:W - mr });
+  steps.forEach((st, i) => {
+    const x0 = ml + i * bw + bw * 0.22, w = bw * 0.56, top = y(Math.max(st.from, st.to)), bot = y(Math.min(st.from, st.to));
+    const rect = s('rect', { x:x0, y:top, width:w, height:Math.max(1, bot - top), style:`fill:${st.total ? 'var(--bar)' : st.v >= 0 ? 'var(--up)' : 'var(--down)'}`, tabindex:compact ? null : 0 });
+    if (!compact) withTip(rect, () => [st.label, st.total ? fmtMoney(st.v) : (st.v >= 0 ? '+' : '−') + fmtMoney(Math.abs(st.v)), st.note]);
+    g.append(rect);
+    g.append(s('text', { class:'bar-label', x:x0 + w / 2, y:top - 5, 'text-anchor':'middle' }, st.total ? fmtC(st.v) : fmtSigned(st.v)));
+    g.append(s('text', { x:x0 + w / 2, y:H - 8, 'text-anchor':'middle' }, st.label.length > 16 ? st.label.slice(0, 15) + '…' : st.label));
+    if (i < steps.length - 1) g.append(s('line', { class:'connector', x1:x0 + w, x2:x0 + bw, y1:y(st.to), y2:y(st.to) }));
+  });
+  g.append(s('line', { class:'axis', x1:ml, x2:W - mr, y1:y(0), y2:y(0) }));
+  return g;
+}
+function bridgeSteps(b) {
+  return [
+    { label:'Prior year', v:b.prior, total:true }, { label:'New lines', v:b.added, note:`${b.newCount} lines with no prior-year figure` },
+    { label:'Increases', v:b.increases }, { label:'Decreases', v:-b.decreases },
+    { label:'Removed', v:-b.removed, note:`${b.removedCount} lines budgeted at 0` }, { label:label(), v:b.next, total:true },
+  ];
+}
+function pareto(groups, total) {
+  const top = groups.slice(0, 30), W = 960, H = 290, ml = 64, mr = 52, mt = 30, mb = 26;
+  const { max, ticks } = niceTicks(Math.max(...top.map((g) => g.value)) * 1.1);
+  const bw = (W - ml - mr) / top.length, y = (v) => H - mb - v / max * (H - mt - mb), y2 = (p) => H - mb - p * (H - mt - mb);
+  const g = s('svg', { viewBox:`0 0 ${W} ${H}`, role:'img', 'aria-label':'Vendor Pareto chart' });
+  axisY(g, { ticks, y, x0:ml, x1:W - mr });
+  [0, .25, .5, .75, 1].forEach((p) => g.append(s('text', { x:W - mr + 6, y:y2(p) + 4 }, Math.round(p * 100) + '%')));
+  g.append(s('line', { class:'ref', x1:ml, x2:W - mr, y1:y2(0.8), y2:y2(0.8) }));
+  let acc = 0, k80 = null;
+  const pts = top.map((v, i) => {
+    acc += v.value; const cum = acc;
+    const inCore = k80 == null; if (k80 == null && acc / total >= 0.8) k80 = i;
+    const x0 = ml + i * bw + bw * 0.15, w = bw * 0.7;
+    const rect = s('rect', { x:x0, y:y(v.value), width:w, height:Math.max(0, y(0) - y(v.value)), style:`fill:${inCore ? 'var(--bar)' : 'var(--other)'}`, tabindex:0 });
+    withTip(rect, () => [`#${i + 1} ${v.key}`, fmtMoney(v.value), `${fmtPct(v.value / total, 1)} of spend · cumulative ${fmtPct(cum / total, 1)}`, 'Click for details']);
+    rect.addEventListener('click', () => vendorDrawer(v));
+    rect.addEventListener('keydown', (e) => { if (e.key === 'Enter') vendorDrawer(v); });
+    g.append(rect);
+    if (i < 10 || i % 5 === 4) g.append(s('text', { x:x0 + w / 2, y:H - 8, 'text-anchor':'middle' }, i + 1));
+    return [x0 + w / 2, y2(cum / total)];
+  });
+  g.append(s('path', { class:'line', d:pts.map((p, i) => (i ? 'L' : 'M') + p[0] + ' ' + p[1]).join(' ') }));
+  pts.forEach((p) => g.append(s('circle', { class:'line-pt', cx:p[0], cy:p[1], r:3 })));
+  if (k80 != null) g.append(s('text', { class:'today-label', x:Math.min(pts[k80][0] + 10, W - mr - 160), y:y2(0.8) + 16 }, `${k80 + 1} vendors = 80% of spend`));
+  g.append(s('text', { x:ml, y:14 }, 'Vendors ranked by spend (rank shown below) · line = cumulative share (right axis)'));
+  return { svg:g, k80:k80 == null ? null : k80 + 1 };
+}
+function ring(p) {
+  const r = 46, c = 2 * Math.PI * r, col = p >= 0.95 ? 'var(--down)' : p >= 0.8 ? 'var(--urg-60)' : 'var(--up)';
+  return s('svg', { class:'ring', viewBox:'0 0 120 120', width:140, height:140, role:'img', 'aria-label':`${fmtPct(p)} of spend passes all checks` },
+    s('circle', { cx:60, cy:60, r, fill:'none', stroke:'var(--layer-2)', 'stroke-width':12 }),
+    s('circle', { cx:60, cy:60, r, fill:'none', stroke:col, 'stroke-width':12, 'stroke-dasharray':`${c * p} ${c}`, transform:'rotate(-90 60 60)' }),
+    s('text', { x:60, y:68, 'text-anchor':'middle' }, fmtPct(p)));
+}
+function timeline(items) {
+  const AS = asOfDay();
+  const pts = items.filter((x) => x.r.renewal != null);
+  if (!pts.length) return h('div', { class:'empty-mini' }, 'No renewal dates in this selection.');
   const mStart = (d) => { const x = new Date(d * DAY); return Date.UTC(x.getUTCFullYear(), x.getUTCMonth(), 1) / DAY; };
   const mNext = (d) => { const x = new Date(d * DAY); return Date.UTC(x.getUTCFullYear(), x.getUTCMonth() + 1, 1) / DAY; };
   const ds = pts.map((p) => p.r.renewal).sort((a, b) => a - b);
-  // clip extreme outliers so one 2035 contract doesn't squash the chart
   const lo = Math.min(AS, ds[Math.floor(ds.length * 0.02)]), hi = Math.max(AS + 365, ds[Math.ceil(ds.length * 0.98) - 1]);
   const d0 = mStart(lo), d1 = mNext(hi);
-  const W = 960, ml = 110, mr = 16, mt = 26, mb = 26;
-  const lanes = S.colorDim != null ? groupBy(pts.map((p) => p.r), S.colorDim).map((g) => g.key) : ['All rows'];
-  const laneH = Math.max(46, Math.min(70, 200 / lanes.length)), H = mt + mb + laneH * lanes.length;
+  const lanes = S.colorDim != null ? groupBy(pts.map((p) => p.r), S.colorDim).map((g) => g.key) : ['All lines'];
+  const W = 960, ml = 120, mr = 16, mt = 30, mb = 26, laneH = Math.max(48, Math.min(72, 220 / lanes.length)), H = mt + mb + laneH * lanes.length;
   const x = (d) => ml + (Math.min(Math.max(d, d0), d1) - d0) / (d1 - d0) * (W - ml - mr);
   const laneY = (r) => mt + laneH * ((S.colorDim != null ? lanes.indexOf(cell(r, S.colorDim)) : 0) + 0.5);
   const maxV = Math.max(...pts.map((p) => p.r.amount));
   const rad = (a) => 3.5 + 12 * Math.sqrt(a / maxV);
-  const g = s('svg', { viewBox:`0 0 ${W} ${H}`, role:'img', 'aria-label':`Renewal timeline, ${pts.length} rows` });
+  const g = s('svg', { viewBox:`0 0 ${W} ${H}`, role:'img', 'aria-label':`Renewal timeline, ${pts.length} lines` });
   const months = []; for (let m = d0; m < d1; m = mNext(m)) months.push(m);
   const every = months.length > 30 ? 6 : months.length > 20 ? 3 : months.length > 14 ? 2 : 1;
+  lanes.forEach((ln, i) => { if (i % 2) g.append(s('rect', { class:'band', x:ml, y:mt + laneH * i, width:W - ml - mr, height:laneH })); });
   months.forEach((m, i) => {
     g.append(s('line', { class:'gridline', x1:x(m), x2:x(m), y1:mt, y2:H - mb }));
-    if (i % every === 0) { const dt = new Date(m * DAY); g.append(s('text', { x:x(m) + 3, y:H - 8 }, dt.toLocaleDateString(LOCALE, { month:'short', timeZone:'UTC' }) + (dt.getUTCMonth() === 0 || i === 0 ? ' ' + String(dt.getUTCFullYear()).slice(2) : ''))); }
+    if (i % every === 0) { const dt = new Date(m * DAY); g.append(s('text', { x:x(m) + 3, y:H - 8 }, mname(dt.getUTCMonth()) + (dt.getUTCMonth() === 0 || i === 0 ? ' ' + String(dt.getUTCFullYear()).slice(2) : ''))); }
   });
-  lanes.forEach((ln, i) => {
-    const y = mt + laneH * (i + 0.5);
-    g.append(s('line', { class:'axis', x1:ml, x2:W - mr, y1:y, y2:y }));
-    g.append(s('text', { x:4, y:y + 4 }, ln.length > 16 ? ln.slice(0, 15) + '…' : ln));
-  });
-  g.append(s('line', { class:'today', x1:x(AS), x2:x(AS), y1:mt - 16, y2:H - mb }));
-  g.append(s('text', { class:'today-label', x:x(AS) + 4, y:mt - 6 }, 'As of ' + new Date(AS * DAY).toLocaleDateString(LOCALE, { day:'numeric', month:'short', timeZone:'UTC' })));
+  lanes.forEach((ln, i) => g.append(s('text', { x:4, y:mt + laneH * (i + 0.5) + 4, style:'fill:var(--text-2)' }, ln.length > 17 ? ln.slice(0, 16) + '…' : ln)));
+  g.append(s('line', { class:'today', x1:x(AS), x2:x(AS), y1:mt - 18, y2:H - mb }));
+  g.append(s('text', { class:'today-label', x:x(AS) + 4, y:mt - 10 }, 'As of ' + new Date(AS * DAY).toLocaleDateString(LOCALE, { day:'numeric', month:'short', timeZone:'UTC' })));
   const placed = [], step = Math.min(12, laneH / 6), offs = [0, -1, 1, -2, 2, -3, 3].map((k) => k * step);
-  pts.sort((a, b) => b.r.amount - a.r.amount).forEach(({ r, u }) => {
+  [...pts].sort((a, b) => b.r.amount - a.r.amount).forEach(({ r, u }) => {
     const cx = x(r.renewal), rr = rad(r.amount), base = laneY(r);
     let cy = base;
     for (const o of offs) { cy = base + o; if (!placed.some((q) => Math.hypot(q.cx - cx, q.cy - cy) < q.r + rr - 3)) break; }
     placed.push({ cx, cy, r:rr });
-    const clipped = r.renewal < d0 || r.renewal > d1;
-    const dot = s('circle', { class:'dot', cx, cy, r:rr, tabindex:0, style:`fill:${v(u.color)}`, 'stroke-dasharray':clipped ? '2 2' : null,
-      'aria-label':`${r.vendor || r.item}: ${fmtDay(r.renewal)}, ${fmtMoney(r.amount)}`,
-      onclick:() => { if (S.map.vendor != null) setFilter(S.map.vendor, cell(r, S.map.vendor)); } });
-    withTip(dot, () => [
-      [r.vendor, r.item].filter(Boolean).join(': ') || `Row ${r.i + 1}`,
-      fmtMoney(r.amount),
-      `Renews/ends ${fmtDay(r.renewal)}` + (clipped ? ' (outside the axis range)' : '') + (r.auto ? ', auto-renews' : r.auto === false ? ', no auto-renew' : ''),
-      r.notice != null ? `Notice by ${fmtDay(r.deadline)} (${r.notice} d): ${u.days < 0 ? -u.days + ' days ago' : 'in ' + u.days + ' days'}` : `${u.days < 0 ? -u.days + ' days ago' : 'in ' + u.days + ' days'}`,
-      S.map.owner != null ? `Owner: ${r.owner || BLANK}` : null,
-    ]);
+    const dot = s('circle', { class:'dot', cx, cy, r:rr, tabindex:0, style:`fill:${cv(u.color)}`, 'aria-label':`${r.vendor || r.item}: renews ${fmtDay(r.renewal)}, ${fmtMoney(r.amount)}`,
+      onclick:() => lineDrawer(r), onkeydown:(e) => { if (e.key === 'Enter') lineDrawer(r); } });
+    withTip(dot, () => [[r.vendor, r.item].filter(Boolean).join(': ') || `Row ${r.i + 1}`, fmtMoney(r.amount),
+      `Renews ${fmtDay(r.renewal)}` + (r.auto ? ' · auto-renews' : r.auto === false ? ' · no auto-renew' : ''),
+      r.notice != null ? `Notice by ${fmtDay(r.deadline)} (${r.notice} days)` : null,
+      `${u.label}: ${u.days < 0 ? -u.days + ' days ago' : 'in ' + u.days + ' days'}`, 'Click for details']);
     g.append(dot);
   });
-  wrap.append(g);
-
-  const due = recs.map((r) => ({ r, u:urgencyOf(r) })).filter((x) => x.u && x.u.max <= 90).sort((a, b) => a.u.days - b.u.days || b.r.amount - a.r.amount);
-  const cols = [
-    ['Deadline', ({ r }) => fmtDay(r.deadline)],
-    ['Days', ({ u }) => h('span', { class:'badge urg', style:`background:${v(u.color)}` }, u.days < 0 ? `${-u.days} d overdue` : `${u.days} d`), true],
-    S.map.vendor != null && ['Vendor', ({ r }) => r.vendor],
-    ['Item', ({ r }) => r.item || `Row ${r.i + 1}`],
-    [label(), ({ r }) => fmtMoney(r.amount), true],
-    ['Renewal', ({ r }) => fmtDay(r.renewal)],
-    S.map.auto != null && ['Auto-renew', ({ r }) => (r.auto == null ? '–' : r.auto ? 'Yes' : 'No')],
-    S.map.owner != null && ['Owner', ({ r }) => r.owner || h('span', { class:'badge' }, BLANK)],
-  ].filter(Boolean);
-  $('table-renewals').replaceChildren(
-    h('thead', {}, h('tr', {}, cols.map(([c, , n]) => h('th', { class:n ? 'num' : null, scope:'col' }, c)))),
-    h('tbody', {}, due.length ? due.map((x) => h('tr', {}, cols.map(([, f, n]) => h('td', { class:n ? 'num' : null }, f(x)))))
-      : h('tr', {}, h('td', { colspan:cols.length, class:'empty' }, 'Nothing needs action in the next 90 days.'))));
+  return g;
 }
-
-function renderPhasing(recs) {
-  const sec = $('sec-phasing');
-  sec.hidden = S.months.filter((c) => c != null).length < 2;
-  if (sec.hidden) return;
-  const order = Array.from({ length:12 }, (_, k) => (S.opts.fyStart + k) % 12);
-  const total = sum(recs, (r) => r.amount);
-  const even = recs.filter((r) => !r.monthly);
-  $('phasing-note').textContent = total ? `${fmtPct(sum(even, (r) => r.amount) / total)} of the filtered spend has no monthly figures and is spread evenly over 12 months.` : '';
-  const keys = S.colorDim != null ? [...S.colorMap.keys()] : ['All'];
-  $('phasing-legend').replaceChildren(...(S.colorDim != null ? keys.map((k) => h('span', {}, h('span', { class:'swatch sq', style:`background:${colorOf(k)}` }), k)) : []));
-  const wrap = $('chart-phasing'); wrap.replaceChildren();
-  if (!total) { wrap.append(h('div', { class:'empty' }, 'No matching spend')); return; }
-  const data = order.map((m) => keys.map((k) => sum(recs.filter((r) => S.colorDim == null || cell(r, S.colorDim) === k), (r) => (r.monthly ? r.monthly[m] : r.amount / 12))));
-  const totals = data.map((d) => d.reduce((a, b) => a + b, 0));
-  const { max, ticks } = niceTicks(Math.max(...totals) * 1.1);
-  const W = 960, H = 270, ml = 70, mr = 12, mt = 20, mb = 26, bw = (W - ml - mr) / 12;
-  const y = (x) => H - mb - x / max * (H - mt - mb);
-  const g = s('svg', { viewBox:`0 0 ${W} ${H}`, role:'img', 'aria-label':'Monthly phasing' });
-  ticks.forEach((t) => { g.append(s('line', { class:'gridline', x1:ml, x2:W - mr, y1:y(t), y2:y(t) })); g.append(s('text', { x:ml - 6, y:y(t) + 4, 'text-anchor':'end' }, fmtC(t))); });
-  const mname = (m) => new Date(Date.UTC(2000, m, 1)).toLocaleDateString(LOCALE, { month:'short', timeZone:'UTC' });
-  order.forEach((m, k) => {
-    let acc = 0; const x0 = ml + k * bw + bw * 0.15, w = bw * 0.7;
-    data[k].forEach((val, ki) => {
-      if (val <= 0) return;
-      const rect = s('rect', { x:x0, y:y(acc + val), width:w, height:Math.max(0, y(acc) - y(acc + val)), style:`fill:${S.colorDim != null ? colorOf(keys[ki]) : 'var(--bar)'}`, tabindex:0 });
-      withTip(rect, () => [`${mname(m)}${S.colorDim != null ? ': ' + keys[ki] : ''}`, fmtMoney(val), `Month total ${fmtMoney(totals[k])}`]);
-      g.append(rect); acc += val;
-    });
-    g.append(s('text', { class:'bar-label', x:x0 + w / 2, y:y(totals[k]) - 5, 'text-anchor':'middle' }, fmtC(totals[k])));
-    g.append(s('text', { x:x0 + w / 2, y:H - 8, 'text-anchor':'middle' }, mname(m)));
-  });
-  g.append(s('line', { class:'axis', x1:ml, x2:W - mr, y1:y(0), y2:y(0) }));
-  wrap.append(g);
-}
-
-function renderBridge(recs) {
-  const sec = $('sec-bridge');
-  sec.hidden = S.map.prior == null;
-  if (sec.hidden) return;
-  const b = computeBridge(recs);
-  $('bridge-note').textContent = `How the prior-year figure (${S.prof[S.map.prior].header}) becomes ${label()} (${S.prof[S.map.amount].header}). `
-    + `Rows with no prior figure count as new (${b.newCount}); rows at 0 with a prior figure count as removed (${b.removedCount}).`;
-  const wrap = $('chart-bridge'); wrap.replaceChildren();
-  const steps = [
-    { label:'Prior year', v:b.prior, total:true }, { label:'New', v:b.added }, { label:'Increases', v:b.increases },
-    { label:'Decreases', v:-b.decreases }, { label:'Removed', v:-b.removed }, { label:label(), v:b.next, total:true },
-  ];
-  let acc = 0;
-  steps.forEach((st) => { if (st.total) { st.from = 0; st.to = st.v; } else { st.from = acc; st.to = acc + st.v; } acc = st.to; });
-  const { max, ticks } = niceTicks(Math.max(...steps.map((st) => Math.max(st.from, st.to))) * 1.1);
-  const W = 960, H = 260, ml = 70, mr = 12, mt = 20, mb = 26, bw = (W - ml - mr) / steps.length;
-  const y = (x) => H - mb - x / max * (H - mt - mb);
-  const g = s('svg', { viewBox:`0 0 ${W} ${H}`, role:'img', 'aria-label':'Prior year to budget bridge' });
-  ticks.forEach((t) => { g.append(s('line', { class:'gridline', x1:ml, x2:W - mr, y1:y(t), y2:y(t) })); g.append(s('text', { x:ml - 6, y:y(t) + 4, 'text-anchor':'end' }, fmtC(t))); });
-  steps.forEach((st, i) => {
-    const x0 = ml + i * bw + bw * 0.2, w = bw * 0.6, top = y(Math.max(st.from, st.to)), bot = y(Math.min(st.from, st.to));
-    const rect = s('rect', { x:x0, y:top, width:w, height:Math.max(1, bot - top), rx:2, tabindex:0, style:`fill:${st.total ? 'var(--bar)' : st.v >= 0 ? 'var(--bad)' : 'var(--good)'}` });
-    withTip(rect, () => [st.label, st.total ? fmtMoney(st.v) : (st.v >= 0 ? '+' : '−') + fmtMoney(Math.abs(st.v))]);
-    g.append(rect);
-    g.append(s('text', { class:'bar-label', x:x0 + w / 2, y:top - 5, 'text-anchor':'middle' }, st.total ? fmtC(st.v) : fmtSigned(st.v)));
-    g.append(s('text', { x:x0 + w / 2, y:H - 8, 'text-anchor':'middle' }, st.label.length > 18 ? st.label.slice(0, 17) + '…' : st.label));
-    if (i < steps.length - 1) g.append(s('line', { class:'connector', x1:x0 + w, x2:x0 + bw, y1:y(st.to), y2:y(st.to) }));
-  });
-  g.append(s('line', { class:'axis', x1:ml, x2:W - mr, y1:y(0), y2:y(0) }));
-  wrap.append(g);
-  const movers = recs.map((r) => ({ r, d:r.amount - (r.prior ?? 0) })).filter((x) => x.d !== 0).sort((a, b) => Math.abs(b.d) - Math.abs(a.d)).slice(0, 10);
-  $('table-movers').replaceChildren(
-    h('thead', {}, h('tr', {}, ['Item', S.map.vendor != null ? 'Vendor' : null, 'Prior', label(), 'Change', ''].filter((x) => x !== null)
-      .map((c, i, a) => h('th', { class:i >= a.length - 4 ? 'num' : null, scope:'col' }, c)))),
-    h('tbody', {}, movers.length ? movers.map(({ r, d }) => h('tr', {},
-      h('td', {}, r.item || `Row ${r.i + 1}`), S.map.vendor != null ? h('td', {}, r.vendor) : null,
-      h('td', { class:'num' }, r.prior == null ? h('span', { class:'badge' }, 'new') : fmtMoney(r.prior)),
-      h('td', { class:'num' }, fmtMoney(r.amount)),
-      h('td', { class:'num', style:`color:${d > 0 ? 'var(--bad)' : 'var(--good)'}` }, fmtSigned(d)),
-      h('td', { class:'num' }, r.prior ? fmtSignedPct(d / r.prior) : r.amount === 0 ? h('span', { class:'badge' }, 'removed') : '')))
-      : h('tr', {}, h('td', { colspan:6, class:'empty' }, 'No changes.'))));
-}
-
-function renderLines(recs) {
-  const { col, dir } = S.sort;
-  const ci = col ?? S.map.amount;
-  const type = S.prof[ci].type, dec = S.prof[ci].dec, ord = S.prof[ci].order;
-  const key = (r) => (ci === S.map.amount ? r.amount : type === 'number' ? parseNum(r.row[ci], dec) : type === 'date' ? parseDate(r.row[ci], ord) : r.row[ci].toLowerCase());
-  const rows = [...recs].sort((a, b) => {
-    const x = key(a), y = key(b);
+function sortRows(rows, cols, sort) {
+  const c = cols.find((x) => x.key === sort.key); if (!c) return rows;
+  const val = c.sortVal || ((r) => r[c.key]);
+  return [...rows].sort((a, b) => {
+    const x = val(a), y = val(b);
     const bx = x == null || x === '' || Number.isNaN(x), by = y == null || y === '' || Number.isNaN(y);
     if (bx || by) return bx - by;
-    return (typeof x === 'number' ? x - y : x.localeCompare(y, undefined, { numeric:true })) * dir;
+    return (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), undefined, { numeric:true })) * sort.dir;
   });
-  const limit = S.showAll ? rows.length : 200;
-  $('line-count').textContent = `${recs.length} of ${S.recs.length} rows`;
-  const numCol = (c) => S.prof[c].type === 'number';
-  $('table-lines').replaceChildren(
-    h('thead', {}, h('tr', {}, S.headers.map((hd, c) => h('th', { class:numCol(c) ? 'num' : null, scope:'col' },
-      h('button', { type:'button', 'aria-sort':c === ci ? (dir > 0 ? 'ascending' : 'descending') : 'none',
-        onclick:() => { S.sort = { col:c, dir:c === ci ? -dir : (numCol(c) ? -1 : 1) }; renderLines(recs); } }, hd))))),
-    h('tbody', {}, rows.slice(0, limit).map((r) => h('tr', {}, S.headers.map((_, c) => {
-      const val = r.row[c];
-      if (c === S.colorDim && val) return h('td', {}, h('span', { class:'swatch sq', style:`background:${colorOf(val)}` }), val);
-      return h('td', { class:(numCol(c) ? 'num' : '') + (c === S.map.amount ? ' key' : '') || null }, val);
-    })))),
-    h('tfoot', {}, h('tr', {}, S.headers.map((_, c) => h('th', { class:numCol(c) ? 'num' : null },
-      c === 0 ? `Total (${recs.length})` : c === S.map.amount ? fmtMoney(sum(recs, (r) => r.amount))
-        : c === S.map.prior ? fmtMoney(sum(recs, (r) => r.prior)) : '')))));
-  $('lines-more').replaceChildren(rows.length > limit
-    ? h('button', { type:'button', class:'btn', onclick:() => { S.showAll = true; renderLines(recs); } }, `Show all ${rows.length} rows`) : '');
+}
+function dataTable({ cols, rows, sort, onSort, onRow, foot, empty = 'No rows match the filters.', compact = true, maxHeight, rowClass, id }) {
+  const thead = h('thead', {}, h('tr', {}, cols.map((c) => h('th', { class:c.num ? 'num' : null, scope:'col' },
+    onSort && c.sortable !== false ? h('button', { type:'button', class:'sort', 'aria-sort':sort && sort.key === c.key ? (sort.dir > 0 ? 'ascending' : 'descending') : 'none',
+      onclick:() => onSort(c) }, c.label) : c.label))));
+  const tbody = h('tbody', {}, rows.length ? rows.map((r) => h('tr', { class:[onRow ? 'clickable' : '', rowClass ? rowClass(r) : ''].join(' ').trim() || null, tabindex:onRow ? 0 : null,
+    onclick:onRow ? (e) => { if (!e.target.closest('button,a')) onRow(r); } : null, onkeydown:onRow ? (e) => { if (e.key === 'Enter' && e.target === e.currentTarget) onRow(r); } : null },
+  cols.map((c) => h('td', { class:[c.num ? 'num' : '', c.cls || ''].join(' ').trim() || null }, c.render ? c.render(r) : r[c.key]))))
+    : h('tr', {}, h('td', { colspan:cols.length, class:'empty-cell' }, empty)));
+  const tfoot = foot ? h('tfoot', {}, h('tr', {}, cols.map((c, i) => h('td', { class:c.num ? 'num' : null }, foot[i] ?? '')))) : null;
+  return h('div', { class:'dt-wrap', style:maxHeight ? `--dt-max:${maxHeight}` : null }, h('table', { class:'dt' + (compact ? ' compact' : ''), id }, thead, tbody, tfoot));
+}
+const sorter = (stateKey) => (c) => { const st = S.ui[stateKey]; S.ui[stateKey] = { key:c.key, dir:st.key === c.key ? -st.dir : (c.num ? -1 : 1) }; render(); };
+function segmented(options, value, onChange, ariaLabel, id) {
+  return h('div', { class:'seg', role:'group', 'aria-label':ariaLabel, id }, options.map(([k, lbl, n]) => h('button', { type:'button', 'data-k':k, 'aria-pressed':String(k === value), onclick:() => onChange(k) }, lbl, n != null ? h('span', { class:'n' }, n) : null)));
+}
+function tabs(options, value, onChange, id) {
+  return h('div', { class:'tabs', role:'tablist', id }, options.map(([k, lbl]) => h('button', { type:'button', role:'tab', 'data-k':k, 'aria-selected':String(k === value), onclick:() => onChange(k) }, lbl)));
+}
+function emptyState(iconName, title, text, action) {
+  return h('div', { class:'card' }, h('div', { class:'empty-state' }, h('div', { class:'hero-icon' }, icon(iconName, 28)), h('h2', {}, title), h('p', {}, text), action || null));
+}
+function monthOrder() { return Array.from({ length:12 }, (_, k) => (S.opts.fyStart + k) % 12); }
+function monthVal(r, m) { return r.monthly ? r.monthly[m] : r.amount / 12; }
+function swatchLabel(k) { return h('span', { class:'sw-label' }, h('span', { class:'swatch', style:`background:${colorOf(k)}` }), k); }
+function heatCell(v, max) {
+  return v ? h('span', { class:'heat' }, h('i', { style:`opacity:${(0.06 + 0.36 * v / max).toFixed(3)}` }), h('span', {}, fmtMoney(v))) : h('span', { class:'muted' }, '—');
 }
 
-function renderQuality(recs) {
-  const total = sum(recs, (r) => Math.abs(r.amount));
-  const res = CHECKS.map(([k, lbl]) => { const hit = recs.filter((r) => r.flags.has(k)); return { k, lbl, n:hit.length, v:sum(hit, (r) => Math.abs(r.amount)) }; }).filter((x) => x.n);
-  $('quality-hint').textContent = res.length ? `${sum(res, (x) => x.n)} findings in ${res.length} checks` : 'No findings';
-  $('table-quality').replaceChildren(
-    h('thead', {}, h('tr', {}, ['Check', 'Rows', 'Spend affected', ''].map((c, i) => h('th', { class:i && i < 3 ? 'num' : null, scope:'col' }, c)))),
-    h('tbody', {}, res.length ? res.map((x) => h('tr', {},
-      h('td', {}, x.lbl), h('td', { class:'num' }, x.n), h('td', { class:'num' }, `${fmtMoney(x.v)} (${fmtPct(total ? x.v / total : 0)})`),
-      h('td', {}, h('button', { type:'button', class:'btn small', onclick:() => { S.flag = S.flag === x.k ? null : x.k; render(); } }, S.flag === x.k ? 'Clear' : 'Show'))))
-      : h('tr', {}, h('td', { colspan:4, class:'empty' }, 'All checks passed for the filtered rows.'))));
+// ================================================================ 7. pages
+// Page subtitles state the main finding (Carbon: "titles should state the insight").
+function insOverview(recs) {
+  const t = sum(recs, (r) => r.amount), b = S.map.prior != null ? computeBridge(recs) : null;
+  const v = S.map.vendor != null ? new Set(recs.filter((r) => r.amount).map((r) => r.vendor)).size : null;
+  return `${fmtMoney(t)} across ${fmtInt(recs.length)} lines` + (v != null ? ` and ${v} vendors` : '') + (b && b.prior ? `, ${fmtSignedPct((t - b.prior) / b.prior)} vs prior year.` : '.');
+}
+function insBreakdown(recs) {
+  const ci = S.ui.groupBy; if (ci == null) return 'Group spend by any column.';
+  const g = groupBy(recs, ci), t = sum(recs, (r) => r.amount);
+  return g.length && t ? `${g[0].key} is the largest ${low(ci)} at ${fmtPct(g[0].value / t)} of spend (${g.length} groups).` : 'No matching spend.';
+}
+function insVendors(recs) {
+  const g = vendorAgg(recs).filter((v) => v.value > 0), t = sum(g, (v) => v.value);
+  if (!t) return 'No matching spend.';
+  let acc = 0, k = 0; for (const v of g) { acc += v.value; k++; if (acc / t >= 0.8) break; }
+  return `${g.length} vendors. The top 5 account for ${fmtPct(sum(g.slice(0, 5), (v) => v.value) / t)} of spend; ${k} vendors make up 80%.`;
+}
+function insOrg(recs) {
+  const t = sum(recs, (r) => r.amount), parts = [];
+  if (S.map.costcentre != null) parts.push(`${new Set(recs.map((r) => cell(r, S.map.costcentre))).size} cost centres`);
+  if (S.map.owner != null) parts.push(`${fmtPct(t ? sum(recs.filter((r) => !r.owner), (r) => r.amount) / t : 0, 1)} of spend has no owner`);
+  return parts.join(' · ') + '.';
+}
+function insRenewals(recs) {
+  const us = recs.map((r) => ({ r, u:urgencyOf(r) })).filter((x) => x.u && x.u.max <= 90);
+  const od = us.filter((x) => x.u.key === 'passed');
+  return `${us.length} notice deadlines in the next 90 days worth ${fmtC(sum(us, (x) => x.r.amount))}` + (od.length ? `, including ${od.length} already overdue.` : '.');
+}
+function insCashflow(recs) {
+  const order = monthOrder(), tot = order.map((m) => sum(recs, (r) => monthVal(r, m))), t = tot.reduce((a, b) => a + b, 0);
+  const i = tot.indexOf(Math.max(...tot));
+  return t ? `Peak month is ${mname(order[i])} at ${fmtC(tot[i])} (${fmtPct(tot[i] / t)} of the year); the first half carries ${fmtPct(tot.slice(0, 6).reduce((a, b) => a + b, 0) / t)}.` : 'No matching spend.';
+}
+function insYoy(recs) {
+  const b = computeBridge(recs), d = b.next - b.prior;
+  return b.prior ? `${d >= 0 ? 'Up' : 'Down'} ${fmtC(Math.abs(d))} (${fmtSignedPct(d / b.prior)}) from the prior year: ${fmtSigned(b.added)} new, ${fmtSigned(b.increases)} increases, ${fmtSigned(-b.decreases)} decreases, ${fmtSigned(-b.removed)} removed.` : 'No prior-year figures in the selection.';
+}
+function insLines(recs) { return `${fmtInt(recs.length)} of ${fmtInt(S.recs.length)} rows with every column from your file. Click a row for details.`; }
+function insQuality(recs) { const q = qualityOf(recs); return `${fmtPct(q.score)} of spend passes all checks · ${q.errors} errors · ${q.warnings} warnings.`; }
+function insSource() { return S.loaded ? `${S.files.join(', ')} · ${fmtInt(S.rows.length)} rows · ${S.headers.length} columns. Check how each column is interpreted.` : ''; }
+
+// ---------- Overview ----------
+function pageOverview(recs) {
+  const total = sum(recs, (r) => r.amount);
+  const tiles = [];
+  const b = S.map.prior != null ? computeBridge(recs) : null;
+  const monthly = hasMonths() ? monthOrder().map((m) => sum(recs, (r) => monthVal(r, m))) : null;
+  tiles.push(kpi({ id:'total', label:`Total ${label()}`, value:fmtC(total), raw:total,
+    meta:[b && b.prior ? deltaTag(total - b.prior, (total - b.prior) / b.prior) : null, h('span', {}, fmtMoney(total))], spark:monthly ? sparkline(monthly) : null }));
+  if (S.map.vendor != null) {
+    const g = vendorAgg(recs).filter((v) => v.value > 0);
+    tiles.push(kpi({ id:'vendors', label:'Vendors', value:fmtInt(g.length), href:'#/vendors', meta:h('span', {}, `Top 5 = ${fmtPct(total ? sum(g.slice(0, 5), (v) => v.value) / total : 0)} of spend`) }));
+  } else tiles.push(kpi({ id:'lines', label:'Budget lines', value:fmtInt(recs.length), href:'#/lines', meta:h('span', {}, `${fmtC(recs.length ? total / recs.length : 0)} average per line`) }));
+  if (S.map.renewal != null) {
+    const us = recs.map((r) => ({ r, u:urgencyOf(r) })).filter((x) => x.u && x.u.max <= 90), od = us.filter((x) => x.u.key === 'passed').length;
+    tiles.push(kpi({ id:'renewals', label:'Notice deadlines ≤ 90 days', value:fmtInt(us.length), href:'#/renewals', alert:od > 0,
+      meta:[od ? tag(`${od} overdue`, 'red') : tag('None overdue', 'green'), h('span', {}, `${fmtC(sum(us, (x) => x.r.amount))} of spend`)], hint:'Deadline = renewal date minus notice period' }));
+  }
+  if (b) tiles.push(kpi({ id:'new', label:'New spend vs prior year', value:fmtC(b.added), href:'#/yoy', meta:h('span', {}, `${b.newCount} lines with no prior-year figure`) }));
+  const q = qualityOf(recs);
+  tiles.push(kpi({ id:'quality', label:'Data quality', value:fmtPct(q.score), href:'#/quality',
+    meta:[q.errors ? tag(`${q.errors} errors`, 'red') : tag('No errors', 'green'), h('span', {}, `${q.warnings} warnings`)], hint:'Share of spend in rows without errors or warnings' }));
+
+  const cards = [];
+  if (S.colorDim != null && total) {
+    const g = groupBy(recs, S.colorDim);
+    cards.push(card({ title:`${g[0].key} is the largest ${low(S.colorDim)} at ${fmtPct(g[0].value / total)}`, sub:`Spend by ${low(S.colorDim)} · click a bar to filter`,
+      body:[mixBar(new Map(g.map((x) => [x.key, x.value])), total, false), h('div', { style:'margin-top:12px' }, hbarList(g, { total, onClick:(k) => setFilter(S.colorDim, k), activeKey:S.filters[S.colorDim], colorFn:colorOf }))],
+      foot:linkTo('breakdown', 'Open spend breakdown') }));
+  }
+  if (S.map.vendor != null) {
+    const g = vendorAgg(recs).filter((v) => v.value > 0);
+    cards.push(card({ title:g.length && total ? `${g[0].key} is the largest vendor at ${fmtPct(g[0].value / total)}` : 'Top vendors', sub:'Top 8 vendors by spend · click a bar to filter',
+      body:hbarList(g, { total, limit:8, onClick:(k) => setFilter(S.map.vendor, k), activeKey:S.filters[S.map.vendor] }), foot:linkTo('vendors', 'All vendors') }));
+  } else if (S.dims.length) {
+    const ci = S.dims.find((d) => d !== S.colorDim) ?? S.dims[0];
+    cards.push(card({ title:`Spend by ${low(ci)}`, body:hbarList(groupBy(recs, ci), { total, limit:8, onClick:(k) => setFilter(ci, k), activeKey:S.filters[ci] }), foot:linkTo('breakdown', 'Open spend breakdown') }));
+  }
+  if (S.map.renewal != null) {
+    const due = recs.map((r) => ({ r, u:urgencyOf(r) })).filter((x) => x.u && x.u.max <= 90).sort((a, b) => a.u.days - b.u.days).slice(0, 6);
+    cards.push(card({ title:'Act on these notice deadlines first', sub:'Overdue or due within 90 days · click a row for details', flush:true,
+      body:dataTable({ cols:[
+        { key:'s', label:'Status', render:(x) => urgTag(x.u) },
+        { key:'n', label:'Line', render:(x) => h('div', {}, h('div', { class:'strong' }, x.r.item || `Row ${x.r.i + 1}`), x.r.vendor ? h('div', { class:'muted' }, x.r.vendor) : null) },
+        { key:'a', label:label(), num:true, render:(x) => fmtMoney(x.r.amount) },
+        { key:'d', label:'Deadline', num:true, render:(x) => fmtDay(x.r.deadline) }],
+      rows:due, onRow:(x) => lineDrawer(x.r), empty:'Nothing due in the next 90 days.' }),
+      foot:linkTo('renewals', 'Open renewals') }));
+  }
+  if (monthly) {
+    const keys = S.colorDim != null ? [...S.colorMap.keys()] : [null];
+    const series = keys.map((k) => ({ key:k || label(), color:k ? colorOf(k) : 'var(--bar)', values:monthOrder().map((m) => sum(recs.filter((r) => k == null || cell(r, S.colorDim) === k), (r) => monthVal(r, m))) }));
+    cards.push(card({ title:'Monthly cash flow', sub:`${label()} by month${S.colorDim != null ? ' and ' + low(S.colorDim) : ''}`,
+      body:h('div', { class:'chart small' }, columnChart({ labels:monthOrder().map(mname), series, height:330, compact:true })), foot:linkTo('cashflow', 'Open cash flow') }));
+  }
+  if (b && b.prior) {
+    cards.push(card({ title:`${fmtSignedPct((b.next - b.prior) / b.prior)} vs prior year`, sub:'Bridge from prior year to this budget',
+      body:h('div', { class:'chart small' }, waterfall(bridgeSteps(b), { height:300, compact:true })), foot:linkTo('yoy', 'Open year over year') }));
+  }
+  const top = q.res.filter((x) => x.n && x.sev !== 'info').slice(0, 5);
+  cards.push(card({ title:top.length ? `${top.length} data checks need attention` : 'All data checks passed', sub:'Errors and warnings · click a row to see the lines', flush:true,
+    body:dataTable({ cols:[{ key:'sev', label:'Severity', render:(x) => tag(SEV[x.sev].label, SEV[x.sev].tag) }, { key:'lbl', label:'Check' }, { key:'n', label:'Rows', num:true }],
+      rows:top, onRow:(x) => { S.flag = x.k; go('lines'); }, empty:'No errors or warnings.' }),
+    foot:linkTo('quality', 'Open data quality') }));
+  return [h('div', { class:'kpis' }, tiles), h('div', { class:'grid g2' }, cards), footer()];
 }
 
-function exportCsv() {
-  const recs = S.recs.filter(matches);
-  const esc = (x) => (/[",\n;]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x);
-  const out = [S.headers.map(esc).join(',')].concat(recs.map((r) => r.row.map((x) => esc(x ?? '')).join(',')));
-  const a = h('a', { href:URL.createObjectURL(new Blob(['﻿' + out.join('\r\n')], { type:'text/csv;charset=utf-8' })), download:'budget-filtered.csv' });
-  document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+// ---------- Spend breakdown (analytical list page: chart + table, switchable) ----------
+function pageBreakdown(recs) {
+  const total = sum(recs, (r) => r.amount);
+  const gci = S.ui.groupBy, sci = S.ui.splitBy;
+  const saveUi = () => store.set('ui:' + sig(), { groupBy:S.ui.groupBy, splitBy:S.ui.splitBy });
+  const controls = h('div', { class:'card', style:'margin-bottom:16px' }, h('div', { class:'card-b', style:'display:flex;gap:16px;flex-wrap:wrap;align-items:end' },
+    h('label', { class:'fb-field', style:'min-width:200px' }, h('span', { class:'fb-l' }, 'Group by'),
+      h('select', { class:'select', id:'bd-group', onchange:(e) => { S.ui.groupBy = +e.target.value; if (S.ui.splitBy === S.ui.groupBy) S.ui.splitBy = null; saveUi(); render(); } },
+        S.dims.map((d) => h('option', { value:d, selected:d === gci }, hdr(d))))),
+    h('label', { class:'fb-field', style:'min-width:200px' }, h('span', { class:'fb-l' }, 'Split by'),
+      h('select', { class:'select', id:'bd-split', onchange:(e) => { S.ui.splitBy = e.target.value === '' ? null : +e.target.value; saveUi(); render(); } },
+        h('option', { value:'', selected:sci == null }, 'None'), S.dims.filter((d) => d !== gci).map((d) => h('option', { value:d, selected:d === sci }, hdr(d))))),
+    h('div', { class:'fb-field' }, h('span', { class:'fb-l' }, 'View'), segmented([['chart', 'Chart'], ['table', 'Table'], ['both', 'Chart + table']], S.ui.bdView, (k) => { S.ui.bdView = k; render(); }, 'View', 'bd-view'))));
+  if (gci == null) return [controls, emptyState('breakdown', 'No columns to group by', 'Your file has no text columns with repeating values (like category or department).')];
+  const groups = groupBy(recs, gci);
+  let splitKeys = [];
+  const splitColor = new Map();
+  if (sci != null) {
+    const sg = groupBy(recs, sci);
+    splitKeys = sg.slice(0, 7).map((x) => x.key);
+    if (sg.length > 7) splitKeys.push('Other');
+    splitKeys.forEach((k, i) => splitColor.set(k, sci === S.colorDim && S.colorMap.has(k) ? colorOf(k) : k === 'Other' ? 'var(--other)' : cv(PALETTE[i % PALETTE.length])));
+  }
+  const splitOf = (r) => { const k = cell(r, sci); return splitKeys.includes(k) ? k : 'Other'; };
+  groups.forEach((g) => { g.parts = new Map(); if (sci != null) for (const r of g.recs) g.parts.set(splitOf(r), (g.parts.get(splitOf(r)) || 0) + r.amount); });
+  const out = [controls];
+  if (S.ui.bdView !== 'table') {
+    const shown = groups.slice(0, 15), max = Math.max(...shown.map((g) => g.value), 1);
+    const rows = shown.map((g) => h('div', { class:'hb' + (S.filters[gci] === g.key ? ' active' : '') },
+      h('button', { type:'button', class:'hb-name', title:`Filter on ${g.key}`, onclick:() => setFilter(gci, g.key) }, g.key),
+      h('span', { class:'hb-track' }, sci == null
+        ? h('span', { class:'hb-fill', style:`width:${Math.max(0, g.value / max * 100)}%` + (gci === S.colorDim ? `;background:${colorOf(g.key)}` : '') })
+        : splitKeys.filter((k) => g.parts.get(k) > 0).map((k) => withTip(h('span', { class:'hb-fill stack-seg', tabindex:0, style:`width:${g.parts.get(k) / max * 100}%;background:${splitColor.get(k)}` }), () => [`${g.key} · ${k}`, fmtMoney(g.parts.get(k)), `${fmtPct(g.parts.get(k) / g.value)} of ${g.key}`]))),
+      h('span', { class:'hb-val' }, fmtMoney(g.value)), h('span', { class:'hb-pct' }, fmtPct(total ? g.value / total : 0))));
+    const legend = sci != null ? h('div', { class:'legend' }, splitKeys.map((k) => h('span', {}, h('span', { class:'swatch', style:`background:${splitColor.get(k)}` }), k))) : null;
+    out.push(h('div', { class:'grid' }, card({ title:`${label()} by ${low(gci)}${sci != null ? ' and ' + low(sci) : ''}`,
+      sub:groups.length > 15 ? `Top 15 of ${groups.length} groups · click a name to filter` : 'Click a name to filter · hover a segment for details', body:[legend, h('div', { class:'hbars' }, rows)] })));
+  }
+  if (S.ui.bdView !== 'chart') {
+    const maxCell = Math.max(...groups.flatMap((x) => [...x.parts.values()]), 1);
+    const cols = [{ key:'key', label:hdr(gci), render:(g) => (gci === S.colorDim ? swatchLabel(g.key) : g.key), cls:'strong' }];
+    splitKeys.forEach((k) => cols.push({ key:'p:' + k, label:k, num:true, sortVal:(g) => g.parts.get(k) || 0, render:(g) => heatCell(g.parts.get(k) || 0, maxCell) }));
+    cols.push({ key:'value', label:'Total', num:true, cls:'strong', render:(g) => fmtMoney(g.value) },
+      { key:'share', label:'Share', num:true, sortVal:(g) => g.value, render:(g) => fmtPct(total ? g.value / total : 0, 1) },
+      { key:'count', label:'Lines', num:true });
+    if (S.map.prior != null) cols.push({ key:'chg', label:'vs prior', num:true, sortVal:(g) => (g.prior ? (g.value - g.prior) / g.prior : null), render:(g) => (g.prior ? h('span', { style:`color:${g.value > g.prior ? 'var(--up)' : 'var(--down)'}` }, fmtSignedPct((g.value - g.prior) / g.prior)) : '—') });
+    const foot = cols.map((c, i) => (i === 0 ? 'Total' : c.key === 'value' ? fmtMoney(total) : c.key.startsWith('p:') ? fmtMoney(sum(groups, (g) => g.parts.get(c.key.slice(2)) || 0)) : c.key === 'count' ? fmtInt(recs.length) : c.key === 'share' ? '100%' : ''));
+    out.push(card({ title:`Table · ${hdr(gci)}${sci != null ? ' × ' + hdr(sci) : ''}`, sub:'Click a row to filter · shading shows relative size', flush:true,
+      body:dataTable({ cols, rows:sortRows(groups, cols, S.ui.bSort), sort:S.ui.bSort, onSort:sorter('bSort'), onRow:(g) => setFilter(gci, g.key), foot, maxHeight:'560px', id:'bd-table' }) }));
+  }
+  return out;
 }
 
+// ---------- Vendors ----------
+function pageVendors(recs) {
+  const all = vendorAgg(recs), total = sum(all, (v) => v.value);
+  const pos = all.filter((v) => v.value > 0);
+  const out = [];
+  if (pos.length) {
+    const p = pareto(pos, total);
+    out.push(h('div', { class:'grid' }, card({ title:p.k80 ? `${p.k80} of ${pos.length} vendors make up 80% of spend` : 'Vendor concentration',
+      sub:'Pareto view: bars = vendor spend ranked (blue = the vendors that make up 80%), line = cumulative share · click a bar for details', body:h('div', { class:'chart' }, p.svg) })));
+  }
+  const cols = [
+    { key:'rank', label:'#', num:true, sortVal:(v) => -v.value, render:(v) => all.indexOf(v) + 1 },
+    { key:'key', label:'Vendor', cls:'strong wrap' },
+    { key:'count', label:'Lines', num:true },
+    { key:'value', label:label(), num:true, cls:'strong', render:(v) => fmtMoney(v.value) },
+    { key:'share', label:'Share', num:true, sortVal:(v) => v.value, render:(v) => fmtPct(total ? v.value / total : 0, 1) },
+  ];
+  if (S.map.prior != null) cols.push({ key:'chg', label:'vs prior', num:true, sortVal:(v) => (v.priorN && v.prior ? (v.value - v.prior) / v.prior : null),
+    render:(v) => (!v.priorN ? tag('New', 'purple') : h('span', { style:`color:${v.value > v.prior ? 'var(--up)' : v.value < v.prior ? 'var(--down)' : 'inherit'}` }, fmtSignedPct(v.prior ? (v.value - v.prior) / v.prior : null))) });
+  if (S.colorDim != null) cols.push({ key:'mix', label:`Mix by ${low(S.colorDim)}`, sortable:false, render:(v) => (v.value ? h('span', { class:'stack mini' }, [...v.parts.entries()].map(([k, x]) => h('span', { style:`width:${Math.max(0, x / v.value * 100)}%;background:${colorOf(k)}`, title:`${k}: ${fmtMoney(x)}` }))) : '') });
+  if (S.map.renewal != null) cols.push({ key:'next', label:'Next deadline', sortVal:(v) => (v.next ? v.next.deadline : null), render:(v) => (v.next ? h('div', {}, urgTag(v.nextU), h('div', { class:'muted', style:'font-size:12px;margin-top:2px' }, fmtDay(v.next.deadline))) : h('span', { class:'muted' }, '—')) });
+  if (S.map.owner != null) cols.push({ key:'owners', label:'Owner', sortVal:(v) => [...v.owners].join(), render:(v) => (v.owners.size === 0 ? tag('No owner', 'yellow') : v.owners.size === 1 ? [...v.owners][0] : `${[...v.owners][0]} +${v.owners.size - 1}`) });
+  out.push(card({ title:'All vendors', sub:'Click a vendor to open its lines, renewals and owners', flush:true,
+    body:dataTable({ cols, rows:sortRows(all, cols, S.ui.vSort), sort:S.ui.vSort, onSort:sorter('vSort'), onRow:(v) => vendorDrawer(v), maxHeight:'620px', id:'vendor-table',
+      foot:cols.map((c, i) => (i === 1 ? `Total (${all.length})` : c.key === 'value' ? fmtMoney(total) : c.key === 'count' ? fmtInt(recs.length) : '')) }) }));
+  return out;
+}
+
+// ---------- Cost centres & owners ----------
+function pageOrganisation(recs) {
+  const total = sum(recs, (r) => r.amount), out = [];
+  const cc = S.map.costcentre;
+  if (cc != null) {
+    const groups = groupBy(recs, cc);
+    if (S.colorDim != null && S.colorDim !== cc) {
+      const keys = [...S.colorMap.keys()];
+      const cellV = (g, k) => sum(g.recs.filter((r) => cell(r, S.colorDim) === k), (r) => r.amount);
+      const maxCell = Math.max(...groups.flatMap((g) => keys.map((k) => cellV(g, k))), 1);
+      const cols = [{ key:'key', label:hdr(cc), cls:'strong' },
+        ...keys.map((k) => ({ key:'k:' + k, label:k, num:true, sortVal:(g) => cellV(g, k), render:(g) => heatCell(cellV(g, k), maxCell) })),
+        { key:'value', label:'Total', num:true, cls:'strong', render:(g) => fmtMoney(g.value) },
+        { key:'share', label:'Share', num:true, sortVal:(g) => g.value, render:(g) => fmtPct(total ? g.value / total : 0, 1) }];
+      out.push(h('div', { class:'grid' }, card({ title:groups[0] && total ? `${groups[0].key} holds the largest share at ${fmtPct(groups[0].value / total)}` : `Spend by ${low(cc)}`,
+        sub:`Heat map: ${hdr(cc)} × ${hdr(S.colorDim)} · darker = more spend · click a row to filter`, flush:true,
+        body:dataTable({ cols, rows:sortRows(groups, cols, S.ui.cSort), sort:S.ui.cSort, onSort:sorter('cSort'), onRow:(g) => setFilter(cc, g.key),
+          foot:cols.map((c, i) => (i === 0 ? 'Total' : c.key === 'value' ? fmtMoney(total) : c.key.startsWith('k:') ? fmtMoney(sum(recs.filter((r) => cell(r, S.colorDim) === c.key.slice(2)), (r) => r.amount)) : c.key === 'share' ? '100%' : '')) }) })));
+    } else {
+      out.push(h('div', { class:'grid' }, card({ title:`Spend by ${low(cc)}`, body:hbarList(groups, { total, limit:20, onClick:(k) => setFilter(cc, k), activeKey:S.filters[cc] }) })));
+    }
+  }
+  if (S.map.owner != null) {
+    const groups = groupBy(recs, S.map.owner).map((g) => {
+      const next = g.recs.map((r) => ({ r, u:urgencyOf(r) })).filter((x) => x.u).sort((a, b) => a.u.days - b.u.days)[0];
+      return { ...g, vendors:new Set(g.recs.map((r) => r.vendor).filter(Boolean)).size, next };
+    });
+    const cols = [
+      { key:'key', label:'Owner', cls:'strong', render:(g) => (g.key === BLANK ? tag('No owner', 'yellow') : g.key) },
+      { key:'count', label:'Lines', num:true },
+      S.map.vendor != null ? { key:'vendors', label:'Vendors', num:true } : null,
+      { key:'value', label:label(), num:true, cls:'strong', render:(g) => fmtMoney(g.value) },
+      { key:'share', label:'Share', num:true, sortVal:(g) => g.value, render:(g) => fmtPct(total ? g.value / total : 0, 1) },
+      S.map.renewal != null ? { key:'next', label:'Next deadline', sortVal:(g) => (g.next ? g.next.u.days : null), render:(g) => (g.next ? urgTag(g.next.u) : h('span', { class:'muted' }, '—')) } : null,
+    ].filter(Boolean);
+    out.push(card({ title:'Budget owners', sub:'Who is accountable for each part of the budget · rows without an owner are highlighted · click to filter', flush:true,
+      body:dataTable({ cols, rows:sortRows(groups, cols, S.ui.oSort), sort:S.ui.oSort, onSort:sorter('oSort'), onRow:(g) => setFilter(S.map.owner, g.key), rowClass:(g) => (g.key === BLANK ? 'hl' : '') }) }));
+  }
+  return out;
+}
+
+// ---------- Renewals ----------
+function pageRenewals(recs) {
+  const items = recs.map((r) => ({ r, u:urgencyOf(r) })).filter((x) => x.u);
+  const count = (k) => items.filter((x) => x.u.key === k).length;
+  const segs = [['all', 'All', items.length], ...URGENCY.map((u) => [u.key, u.label, count(u.key)])];
+  const sel = S.ui.renSeg === 'all' ? items : items.filter((x) => x.u.key === S.ui.renSeg);
+  const toolbar = h('div', { style:'display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px' },
+    segmented(segs, S.ui.renSeg, (k) => { S.ui.renSeg = k; render(); }, 'Urgency', 'ren-seg'),
+    h('span', { class:'card-s' }, `${S.map.notice != null ? 'Deadline = renewal date − notice period' : 'No notice-period column: deadline = renewal date'} · as of ${fmtDay(asOfDay())}`));
+  const t = tabs([['timeline', 'Timeline'], ['calendar', 'Calendar'], ['list', 'List']], S.ui.renTab, (k) => { S.ui.renTab = k; render(); }, 'ren-tabs');
+  let body;
+  if (S.ui.renTab === 'timeline') {
+    body = card({ title:'Renewal timeline', sub:`${sel.length} lines · dot size = ${label()}, colour = notice urgency · click a dot for details`,
+      body:[h('div', { class:'legend' }, URGENCY.map((u) => h('span', {}, h('span', { class:'dot-sw', style:`background:${cv(u.color)}` }), u.label))), h('div', { class:'chart', id:'ren-timeline' }, timeline(sel))] });
+  } else if (S.ui.renTab === 'calendar') {
+    const start = new Date(asOfDay() * DAY);
+    const months = Array.from({ length:12 }, (_, k) => Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + k, 1) / DAY);
+    const end = Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 12, 1) / DAY;
+    const overdue = sel.filter((x) => x.u.key === 'passed');
+    const later = sel.filter((x) => x.u.key !== 'passed' && x.r.deadline >= end);
+    const box = (title, list, over) => {
+      list = [...list].sort((a, b) => a.r.deadline - b.r.deadline);
+      return h('div', { class:'cal-m' + (over && list.length ? ' over' : '') },
+        h('div', { class:'cal-h' }, h('b', {}, title), list.length ? tag(`${list.length} line${list.length > 1 ? 's' : ''}`, over ? 'red' : 'gray') : null),
+        list.length ? [h('div', { class:'cal-v' }, fmtC(sum(list, (x) => x.r.amount))),
+          h('ul', { class:'cal-list' }, list.slice(0, 5).map((x) => h('li', {}, h('button', { type:'button', onclick:() => lineDrawer(x.r), title:[x.r.vendor, x.r.item].filter(Boolean).join(' · ') },
+            h('span', { class:'dot-sw', style:`background:${cv(x.u.color)}` }), h('span', { class:'nm' }, x.r.vendor || x.r.item || `Row ${x.r.i + 1}`), h('span', {}, fmtC(x.r.amount)))))),
+          list.length > 5 ? h('div', { class:'cal-more' }, `+${list.length - 5} more`) : null] : h('div', { class:'cal-empty' }, 'No deadlines'));
+    };
+    const inMonth = (m, i) => sel.filter((x) => x.u.key !== 'passed' && x.r.deadline >= m && x.r.deadline < (months[i + 1] ?? end));
+    body = card({ title:'Notice deadlines by month', sub:'Grouped by the month in which notice must be given · click a line for details', body:h('div', { class:'cal', id:'ren-cal' },
+      overdue.length ? box('Overdue', overdue, true) : null,
+      months.map((m, i) => box(new Date(m * DAY).toLocaleDateString(LOCALE, { month:'long', year:'numeric', timeZone:'UTC' }), inMonth(m, i), false)),
+      later.length ? box('Later', later, false) : null) });
+  } else {
+    const cols = [
+      { key:'deadline', label:'Notice deadline', sortVal:(x) => x.r.deadline, render:(x) => fmtDay(x.r.deadline) },
+      { key:'status', label:'Status', sortVal:(x) => x.u.days, render:(x) => urgTag(x.u) },
+      S.map.vendor != null ? { key:'vendor', label:'Vendor', sortVal:(x) => x.r.vendor, render:(x) => x.r.vendor } : null,
+      { key:'item', label:'Line', cls:'wrap', sortVal:(x) => x.r.item, render:(x) => x.r.item || `Row ${x.r.i + 1}` },
+      { key:'amount', label:label(), num:true, cls:'strong', sortVal:(x) => x.r.amount, render:(x) => fmtMoney(x.r.amount) },
+      { key:'renewal', label:'Renewal', sortVal:(x) => x.r.renewal, render:(x) => fmtDay(x.r.renewal) },
+      S.map.notice != null ? { key:'notice', label:'Notice', num:true, sortVal:(x) => x.r.notice, render:(x) => (x.r.notice != null ? `${x.r.notice} d` : '—') } : null,
+      S.map.auto != null ? { key:'auto', label:'Auto-renews', sortVal:(x) => String(x.r.auto), render:(x) => (x.r.auto == null ? '—' : x.r.auto ? tag('Yes', 'purple') : 'No') } : null,
+      S.map.owner != null ? { key:'owner', label:'Owner', sortVal:(x) => x.r.owner, render:(x) => x.r.owner || tag('No owner', 'yellow') } : null,
+    ].filter(Boolean);
+    body = card({ title:`${sel.length} renewals`, sub:'Click a row for details', flush:true,
+      body:dataTable({ cols, rows:sortRows(sel, cols, S.ui.rSort), sort:S.ui.rSort, onSort:sorter('rSort'), onRow:(x) => lineDrawer(x.r), maxHeight:'620px', id:'ren-list',
+        foot:cols.map((c, i) => (i === 0 ? `Total (${sel.length})` : c.key === 'amount' ? fmtMoney(sum(sel, (x) => x.r.amount)) : '')) }) });
+  }
+  return [toolbar, t, body];
+}
+
+// ---------- Cash flow ----------
+function pageCashflow(recs) {
+  const order = monthOrder(), keys = S.colorDim != null ? [...S.colorMap.keys()] : [null];
+  const series = keys.map((k) => ({ key:k || label(), color:k ? colorOf(k) : 'var(--bar)', values:order.map((m) => sum(recs.filter((r) => k == null || cell(r, S.colorDim) === k), (r) => monthVal(r, m))) }));
+  const total = sum(recs, (r) => r.amount), even = sum(recs.filter((r) => !r.monthly), (r) => r.amount);
+  const out = [];
+  if (even && total) out.push(h('div', { class:'notice' }, icon('info'), h('span', {}, `${fmtPct(even / total)} of this spend has no monthly figures in the file and is spread evenly across 12 months.`)));
+  out.push(h('div', { class:'grid' }, card({ title:'Monthly cash flow', sub:`Stacked by ${S.colorDim != null ? low(S.colorDim) : 'total'} · line = cumulative share of the year (right axis) · hover for values`,
+    body:[h('div', { class:'legend' }, S.colorDim != null ? keys.map((k) => h('span', {}, h('span', { class:'swatch', style:`background:${colorOf(k)}` }), k)) : null, h('span', {}, h('span', { style:'display:inline-block;width:16px;border-top:2px solid var(--text)' }), 'Cumulative %')),
+      h('div', { class:'chart' }, columnChart({ labels:order.map(mname), series, cumulative:true, height:320 }))] })));
+  const q = [0, 1, 2, 3].map((k) => order.slice(k * 3, k * 3 + 3));
+  const rows = series.map((sr) => ({ key:sr.key, q:q.map((ms) => ms.reduce((a, m) => a + sr.values[order.indexOf(m)], 0)), total:sr.values.reduce((a, b) => a + b, 0) }));
+  const cols = [{ key:'key', label:S.colorDim != null ? hdr(S.colorDim) : '', cls:'strong', render:(r) => (S.colorDim != null ? swatchLabel(r.key) : r.key) },
+    ...q.map((ms, k) => ({ key:'q' + k, label:`Q${k + 1} (${mname(ms[0])}–${mname(ms[2])})`, num:true, render:(r) => fmtMoney(r.q[k]) })),
+    { key:'total', label:'Year', num:true, cls:'strong', render:(r) => fmtMoney(r.total) }];
+  out.push(card({ title:'Quarterly summary', sub:`Quarters follow a fiscal year starting in ${mname(S.opts.fyStart)} (change it on Data source & columns)`, flush:true,
+    body:dataTable({ cols, rows, foot:['Total', ...q.map((_, k) => fmtMoney(sum(rows, (r) => r.q[k]))), fmtMoney(sum(rows, (r) => r.total))] }) }));
+  return out;
+}
+
+// ---------- Year over year ----------
+function pageYoy(recs) {
+  const b = computeBridge(recs);
+  const out = [h('div', { class:'grid' }, card({ title:'Bridge from prior year', sub:'Lines with no prior-year figure count as new; lines budgeted at 0 with a prior figure count as removed · hover for values',
+    body:h('div', { class:'chart' }, waterfall(bridgeSteps(b), { height:300 })) }))];
+  const groups = {
+    increases:recs.filter((r) => r.prior != null && r.amount > r.prior),
+    decreases:recs.filter((r) => r.prior != null && r.amount < r.prior && r.amount !== 0),
+    new:recs.filter((r) => r.prior == null && r.amount),
+    removed:recs.filter((r) => r.prior > 0 && r.amount === 0),
+  };
+  const t = tabs([['increases', `Increases (${groups.increases.length})`], ['decreases', `Decreases (${groups.decreases.length})`], ['new', `New (${groups.new.length})`], ['removed', `Removed (${groups.removed.length})`]], S.ui.yoyTab, (k) => { S.ui.yoyTab = k; render(); }, 'yoy-tabs');
+  const rows = groups[S.ui.yoyTab].map((r) => ({ r, d:r.amount - (r.prior || 0) }));
+  const cols = [
+    { key:'item', label:'Line', cls:'wrap strong', sortVal:(x) => x.r.item, render:(x) => x.r.item || `Row ${x.r.i + 1}` },
+    S.map.vendor != null ? { key:'vendor', label:'Vendor', sortVal:(x) => x.r.vendor, render:(x) => x.r.vendor } : null,
+    S.colorDim != null ? { key:'cat', label:hdr(S.colorDim), sortVal:(x) => cell(x.r, S.colorDim), render:(x) => swatchLabel(cell(x.r, S.colorDim)) } : null,
+    { key:'prior', label:'Prior year', num:true, sortVal:(x) => x.r.prior, render:(x) => (x.r.prior == null ? tag('New', 'purple') : fmtMoney(x.r.prior)) },
+    { key:'amount', label:label(), num:true, sortVal:(x) => x.r.amount, render:(x) => fmtMoney(x.r.amount) },
+    { key:'d', label:'Change', num:true, cls:'strong', sortVal:(x) => Math.abs(x.d), render:(x) => h('span', { style:`color:${x.d > 0 ? 'var(--up)' : 'var(--down)'}` }, fmtSigned(x.d)) },
+    { key:'p', label:'Change %', num:true, sortVal:(x) => (x.r.prior ? x.d / x.r.prior : null), render:(x) => (x.r.prior ? fmtSignedPct(x.d / x.r.prior) : '—') },
+  ].filter(Boolean);
+  out.push(t, card({ title:{ increases:'Lines that cost more', decreases:'Lines that cost less', new:'New spend', removed:'Cancelled lines' }[S.ui.yoyTab], sub:'Sorted by size of change · click a row for details', flush:true,
+    body:dataTable({ cols, rows:sortRows(rows, cols, S.ui.ySort), sort:S.ui.ySort, onSort:sorter('ySort'), onRow:(x) => lineDrawer(x.r), maxHeight:'560px', empty:'No lines in this group.', id:'yoy-table',
+      foot:cols.map((c, i) => (i === 0 ? `Total (${rows.length})` : c.key === 'd' ? fmtSigned(sum(rows, (x) => x.d)) : c.key === 'amount' ? fmtMoney(sum(rows, (x) => x.r.amount)) : c.key === 'prior' ? fmtMoney(sum(rows, (x) => x.r.prior)) : '')) }) }));
+  return out;
+}
+
+// ---------- Line items ----------
+function pageLines(recs) {
+  const typeOf = (c) => S.prof[c].type;
+  const cols = S.headers.map((hd, c) => ({ key:'c' + c, label:pretty(hd), num:typeOf(c) === 'number', cls:c === S.map.amount ? 'strong' : c === S.map.item ? 'wrap' : '',
+    sortVal:(r) => (c === S.map.amount ? r.amount : typeOf(c) === 'number' ? parseNum(r.row[c], S.prof[c].dec) : typeOf(c) === 'date' ? parseDate(r.row[c], S.prof[c].order) : r.row[c].toLowerCase()),
+    render:(r) => (c === S.colorDim && r.row[c] ? swatchLabel(r.row[c]) : r.row[c]) }));
+  if (S.ui.lSort.key == null) S.ui.lSort = { key:'c' + S.map.amount, dir:-1 };
+  const sorted = sortRows(recs, cols, S.ui.lSort);
+  const pages = Math.max(1, Math.ceil(sorted.length / S.ui.lSize));
+  S.ui.lPage = Math.min(S.ui.lPage, pages - 1);
+  const from = S.ui.lPage * S.ui.lSize, slice = sorted.slice(from, from + S.ui.lSize);
+  const bar = h('div', { class:'table-bar' }, h('span', {}, `${fmtInt(recs.length)} rows · total ${fmtMoney(sum(recs, (r) => r.amount))}`),
+    h('div', { style:'display:flex;gap:8px;align-items:center' }, h('span', {}, 'Density'), segmented([['compact', 'Compact'], ['comfortable', 'Comfortable']], S.ui.density, (k) => { S.ui.density = k; render(); }, 'Row density')));
+  const pager = h('div', { class:'pager' },
+    h('label', {}, 'Rows per page ', h('select', { class:'select', id:'l-size', onchange:(e) => { S.ui.lSize = +e.target.value; S.ui.lPage = 0; render(); } }, [25, 50, 100, 250].map((n) => h('option', { value:n, selected:n === S.ui.lSize }, n)))),
+    h('span', {}, `${sorted.length ? from + 1 : 0}–${Math.min(from + S.ui.lSize, sorted.length)} of ${fmtInt(sorted.length)}`),
+    h('button', { type:'button', class:'icon-btn', id:'l-prev', 'aria-label':'Previous page', disabled:S.ui.lPage === 0, onclick:() => { S.ui.lPage--; render(); } }, icon('chevl')),
+    h('span', {}, `Page ${S.ui.lPage + 1} of ${pages}`),
+    h('button', { type:'button', class:'icon-btn', id:'l-next', 'aria-label':'Next page', disabled:S.ui.lPage >= pages - 1, onclick:() => { S.ui.lPage++; render(); } }, icon('chevr')));
+  return [card({ flush:true, body:[bar, dataTable({ cols, rows:slice, sort:S.ui.lSort, onSort:sorter('lSort'), onRow:(r) => lineDrawer(r), compact:S.ui.density === 'compact', maxHeight:'calc(100vh - 340px)', id:'table-lines',
+    foot:cols.map((c, i) => (i === 0 ? `Total (${fmtInt(recs.length)})` : c.key === 'c' + S.map.amount ? fmtMoney(sum(recs, (r) => r.amount)) : c.key === 'c' + S.map.prior ? fmtMoney(sum(recs, (r) => r.prior)) : '')) }), pager] })];
+}
+
+// ---------- Data quality ----------
+function pageQuality(recs) {
+  const q = qualityOf(recs), total = sum(recs, (r) => Math.abs(r.amount));
+  const res = q.res.filter((x) => x.n);
+  const summary = card({ title:'Quality score', sub:'Share of spend in rows with no errors or warnings',
+    body:h('div', { style:'display:flex;gap:24px;align-items:center;flex-wrap:wrap' }, ring(q.score),
+      h('div', { class:'stats', style:'flex:1;min-width:220px' }, stat('Errors', String(q.errors)), stat('Warnings', String(q.warnings)), stat('Rows checked', fmtInt(recs.length)))) });
+  const cols = [
+    { key:'sev', label:'Severity', sortVal:(x) => ['error', 'warning', 'info'].indexOf(x.sev), render:(x) => tag(SEV[x.sev].label, SEV[x.sev].tag) },
+    { key:'lbl', label:'Check', cls:'wrap' },
+    { key:'n', label:'Rows', num:true },
+    { key:'v', label:'Spend affected', num:true, render:(x) => fmtMoney(x.v) },
+    { key:'p', label:'Share', num:true, sortVal:(x) => x.v, render:(x) => fmtPct(total ? x.v / total : 0, 1) },
+    { key:'go', label:'', sortable:false, render:(x) => btn('View rows', 'ghost sm', () => { S.flag = x.k; S.ui.lPage = 0; go('lines'); }) },
+  ];
+  return [h('div', { class:'grid g2' }, summary,
+    card({ title:'What is checked', sub:'Checks run only for the columns you mapped', body:h('div', { style:'display:flex;flex-direction:column;gap:6px;font-size:13px' },
+      CHECKS.map(([, lbl, sev]) => h('div', {}, tag(SEV[sev].label, SEV[sev].tag), ' ', lbl))) })),
+  card({ title:res.length ? `${res.length} checks found issues` : 'No issues found', sub:'Select "View rows" to see the affected lines', flush:true,
+    body:dataTable({ cols, rows:sortRows(res, cols, S.ui.qSort), sort:S.ui.qSort, onSort:sorter('qSort'), empty:'All checks passed for the filtered rows.', id:'quality-table' }) })];
+}
+
+// ---------- Data source & columns ----------
+function pageSource() {
+  const out = [];
+  if (S.map.amount == null) out.push(h('div', { class:'notice warn' }, icon('warn'), h('span', {}, 'Choose which column holds the budget amount, then select Apply.')));
+  out.push(h('div', { class:'grid g2' },
+    card({ title:'Loaded data', sub:'Read in this browser only. Nothing is uploaded.', flush:true,
+      actions:[btn('Replace…', 'secondary sm', openPicker, 'upload'), btn('Sample data', 'ghost sm', loadSample)],
+      body:dataTable({ cols:[{ key:'name', label:'File' }, { key:'rows', label:'Rows', num:true }, { key:'cols', label:'Columns', num:true }, { key:'delim', label:'Delimiter' }, { key:'skipped', label:'Skipped rows', num:true }], rows:S.fileInfo }) }),
+    card({ title:'Settings', body:settingsForm() })));
+  out.push(card({ title:'Column mapping', sub:'What each column means. Detected automatically; change anything that looks wrong, then select Apply.', body:mappingForm() }));
+  out.push(h('div', { class:'action-bar' }, btn('Re-detect columns', 'ghost', () => { const g = guessMapping(S.prof); S.map = g.map; S.months = g.months; render(); toast('Columns re-detected. Select Apply to use them.'); }, null, { id:'map-reset' }),
+    btn('Apply', 'primary', () => { readForms(); apply(); toast('Settings applied.'); }, null, { id:'map-apply' })));
+  return out;
+}
+function mappingForm() {
+  const cols = ROLES.map((role) => {
+    const sel = h('select', { class:'select', id:'map-' + role.key }, h('option', { value:'' }, '— Not used —'),
+      S.prof.map((p) => h('option', { value:p.ci, selected:S.map[role.key] === p.ci }, `${p.header} (${p.type})`)));
+    const help = h('div', { class:'helper' });
+    const upd = () => { const ci = sel.value; help.textContent = ci === '' ? role.help || '' : 'e.g. ' + (S.prof[ci].sample.join(' · ') || '(empty)'); };
+    sel.addEventListener('change', upd); upd();
+    return h('div', { class:'form-grid' }, h('label', { for:'map-' + role.key, class:role.required ? 'req' : null }, role.label), h('div', { style:'min-width:0' }, sel, help));
+  });
+  const found = S.months.map((ci, m) => (ci == null ? null : `${mname(m)} ← ${S.headers[ci]}`)).filter(Boolean);
+  return h('div', {}, h('div', { class:'map-cols' }, cols),
+    h('p', { class:'helper', style:'white-space:normal;margin-top:16px' }, h('b', {}, 'Monthly columns: '), found.length >= 2 ? `${found.length} detected (${found.join(', ')}).` : 'none detected. Headers like Jan, Feb … or 2027-01 enable Cash flow.'));
+}
+function settingsForm() {
+  const f = (lbl, el) => [h('label', { for:el.id }, lbl), el];
+  return h('div', { class:'form-grid' },
+    f('Budget label', h('input', { class:'input', id:'opt-label', value:S.opts.label, placeholder:'e.g. FY2027' })),
+    f('Currency', h('select', { class:'select', id:'opt-currency' }, ['', 'EUR', 'USD', 'GBP', 'CHF', 'SEK', 'NOK', 'DKK', 'INR', 'AUD', 'CAD', 'JPY'].map((c) => h('option', { value:c, selected:c === S.opts.currency }, c || 'None (plain numbers)')))),
+    f('Number format', h('select', { class:'select', id:'opt-dec' }, [['auto', 'Detect per column'], ['.', '1,234.56'], [',', '1.234,56']].map(([k, t]) => h('option', { value:k, selected:k === S.opts.dec }, t)))),
+    f('Date format', h('select', { class:'select', id:'opt-date' }, [['auto', 'Detect per column'], ['dmy', 'Day / Month / Year'], ['mdy', 'Month / Day / Year']].map(([k, t]) => h('option', { value:k, selected:k === S.opts.dateOrder }, t)))),
+    f('Urgency as of', h('input', { class:'input', id:'opt-asof', type:'date', value:S.opts.asOf })),
+    f('Fiscal year starts', h('select', { class:'select', id:'opt-fy' }, MONTHS.map((m, i) => h('option', { value:i, selected:i === S.opts.fyStart }, mname(i))))));
+}
+function readForms() {
+  for (const role of ROLES) { const el = $('map-' + role.key); if (!el) continue; if (el.value === '') delete S.map[role.key]; else S.map[role.key] = +el.value; }
+  if ($('opt-label')) {
+    S.opts.label = $('opt-label').value.trim(); S.opts.currency = $('opt-currency').value; S.opts.dec = $('opt-dec').value;
+    S.opts.dateOrder = $('opt-date').value; S.opts.asOf = $('opt-asof').value || dayToISO(todayDay()); S.opts.fyStart = +$('opt-fy').value;
+  }
+}
+
+// ---------- landing, unavailable, footer ----------
+function landing() {
+  const feats = [
+    ['overview', 'Overview & breakdowns', 'Headline figures and spend by any column, as chart, table or both.', 'Needs: an amount column'],
+    ['vendors', 'Vendors', 'Concentration (Pareto) and a detail panel per vendor with lines and owners.', 'Needs: a vendor column'],
+    ['calendar', 'Renewals', 'Timeline, monthly calendar and a list of notice deadlines.', 'Needs: a renewal date (+ notice period)'],
+    ['cash', 'Cash flow & year over year', 'Monthly phasing, quarterly view and a prior-year bridge.', 'Needs: monthly / prior-year columns'],
+  ];
+  return h('div', { class:'landing' },
+    h('div', { class:'hero' }, h('div', { class:'hero-icon' }, icon('upload', 28)),
+      h('h1', { class:'page-t' }, 'Load your IT budget'),
+      h('p', { class:'page-s' }, 'Drop one or more CSV exports anywhere on this page, or choose files. Any column layout works: columns are detected automatically and you can adjust them.'),
+      h('div', { class:'btn-row' }, btn('Choose CSV files', 'primary', openPicker, 'upload', { id:'landing-open' }), btn('Use sample data', 'secondary', loadSample, 'flask', { id:'landing-sample' })),
+      h('p', { class:'privacy' }, icon('lock', 14), 'Files are read by your browser only. Nothing is uploaded.'),
+      h('p', { class:'card-s', style:'margin-top:12px' }, 'Comma, semicolon or tab separated · 1,234.50 or 1.234,50 · 2027-03-31, 31/03/2027 or 31.03.2027 · Excel: save as “CSV UTF-8” first')),
+    h('div', { class:'features' }, feats.map(([ic, t, d, n]) => h('div', { class:'feature' }, icon(ic, 20), h('h3', {}, t), h('p', {}, d), h('div', { class:'needs' }, n)))));
+}
+function unavailable(page) {
+  return emptyState(page.icon, `${page.label} needs ${page.needsText}`, 'Your file doesn’t have this column, or it isn’t mapped yet. If the column exists under a different name, map it on Data source & columns.',
+    h('a', { class:'btn primary', href:'#/source', id:'goto-source' }, icon('source'), 'Map columns'));
+}
+function footer() {
+  return h('p', { class:'foot' }, `Source: ${S.files.join(', ')} · amounts from “${colName('amount')}”${S.opts.currency ? ' in ' + S.opts.currency : ''}, as entered in the file (no VAT/FX adjustments) · urgency as of ${fmtDay(asOfDay())}.`);
+}
+
+// ================================================================ 8. rendering, routing, loading
 function render() {
   hideTip();
-  const recs = S.recs.filter(matches);
-  syncFilterBar();
-  renderKpis(recs); renderBreakdowns(recs); renderTimeline(recs); renderPhasing(recs); renderBridge(recs); renderLines(recs); renderQuality(recs);
-}
-
-// ------------------------------------------------------------------ mapping UI
-function renderMapping() {
-  const grid = $('map-grid'); grid.replaceChildren();
-  const opt = (p) => h('option', { value:p.ci }, `${p.header}  ·  ${p.type}`);
-  for (const role of ROLES) {
-    const sel = h('select', { id:'map-' + role.key }, h('option', { value:'' }, '- not used -'), S.prof.map(opt));
-    sel.value = S.map[role.key] ?? '';
-    const prev = h('div', { class:'preview' });
-    const upd = () => { const ci = sel.value; prev.textContent = ci === '' ? (role.help || '') : 'e.g. ' + (S.prof[ci].sample.join(' · ') || '(empty)'); };
-    sel.addEventListener('change', upd); upd();
-    grid.append(h('label', { for:'map-' + role.key, class:role.required ? 'req' : null }, role.label), sel, prev);
+  const ae = document.activeElement, aeId = ae && ae.id, caret = ae && typeof ae.selectionStart === 'number' ? ae.selectionStart : null;
+  renderNav(); renderTopbar();
+  let page = pageById(S.page) || PAGES[0];
+  if (S.loaded && !ready()) page = pageById('source');
+  const recs = ready() ? S.recs.filter(matches) : [];
+  const content = h('div', { class:'page' });
+  if (!S.loaded) content.append(landing());
+  else {
+    const avail = !page.needs || page.needs();
+    content.append(pageHeader(page, recs));
+    if (ready() && !page.noFilters) content.append(filterBar());
+    content.append(...[].concat(avail ? page.render(recs) : unavailable(page)));
   }
-  const found = S.months.map((ci, m) => (ci == null ? null : `${MONTHS[m]} ← ${S.prof[ci].header}`)).filter(Boolean);
-  grid.append(h('div', { class:'months-found' }, found.length >= 2
-    ? `Monthly columns detected (${found.length}): ${found.join(', ')}`
-    : 'No monthly columns detected (headers like Jan, Feb… or 2027-01 enable the phasing chart).'));
-
-  const st = $('settings'); st.replaceChildren();
-  const row = (lbl, el) => st.append(h('label', { for:el.id }, lbl), el);
-  row('Budget label', h('input', { id:'opt-label', value:S.opts.label, placeholder:'e.g. FY2027' }));
-  row('Currency', h('select', { id:'opt-currency' }, ['', 'EUR', 'USD', 'GBP', 'CHF', 'SEK', 'NOK', 'DKK', 'INR', 'AUD', 'CAD', 'JPY'].map((c) => h('option', { value:c, selected:c === S.opts.currency }, c || 'None (plain numbers)'))));
-  row('Number format', h('select', { id:'opt-dec' }, [['auto', 'Detect per column'], ['.', '1,234.56'], [',', '1.234,56']].map(([k, t]) => h('option', { value:k, selected:k === S.opts.dec }, t))));
-  row('Date format', h('select', { id:'opt-date' }, [['auto', 'Detect per column'], ['dmy', 'Day/Month/Year'], ['mdy', 'Month/Day/Year']].map(([k, t]) => h('option', { value:k, selected:k === S.opts.dateOrder }, t))));
-  row('Renewal urgency as of', h('input', { id:'opt-asof', type:'date', value:S.opts.asOf }));
-  row('Fiscal year starts in', h('select', { id:'opt-fy' }, MONTHS.map((m, i) => h('option', { value:i, selected:i === S.opts.fyStart }, m[0].toUpperCase() + m.slice(1)))));
-
-  const used = ROLES.filter((r) => S.map[r.key] != null).map((r) => `${r.label} → ${S.prof[S.map[r.key]].header}`);
-  $('mapping-summary').textContent = S.map.amount == null ? '⚠ Choose the budget amount column to continue.' : used.join(' · ');
-  $('mapping').open = S.map.amount == null;
+  $('main').replaceChildren(content);
+  document.title = S.loaded ? `${page.label} · IT Budget Explorer` : 'IT Budget Explorer';
+  if (aeId) {
+    const el = $(aeId);
+    if (el && el !== document.activeElement) { el.focus({ preventScroll:true }); if (caret != null && el.setSelectionRange) try { el.setSelectionRange(caret, caret); } catch (e) { /* not a text input */ } }
+  }
 }
-function readMapping() {
-  for (const role of ROLES) { const val = $('map-' + role.key).value; if (val === '') delete S.map[role.key]; else S.map[role.key] = +val; }
-  S.opts.label = $('opt-label').value.trim();
-  S.opts.currency = $('opt-currency').value;
-  S.opts.dec = $('opt-dec').value;
-  S.opts.dateOrder = $('opt-date').value;
-  S.opts.asOf = $('opt-asof').value || dayToISO(todayDay());
-  S.opts.fyStart = +$('opt-fy').value;
+function go(id) { if (location.hash !== '#/' + id) location.hash = '#/' + id; else { S.page = id; render(); } }
+function route() {
+  const id = (location.hash.match(/^#\/([\w-]+)/) || [])[1];
+  const prev = S.page;
+  S.page = pageById(id) ? id : 'overview';
+  closeDrawer();
+  render();
+  if (prev !== S.page) $('main').scrollTop = 0;
 }
-
-// ------------------------------------------------------------------ 7. wiring
 function apply() {
   setCurrency(S.opts.currency);
-  renderMapping();
-  if (S.map.amount == null) { $('dashboard').hidden = true; return; }
-  store.set('map:' + sig(), { map:S.map, months:S.months, opts:{ ...S.opts, asOf:undefined } });
-  buildRecords(); computeDims();
-  S.filters = {}; S.flag = null; S.q = ''; $('filter-q').value = ''; S.sort = { col:null, dir:-1 }; S.showAll = false;
-  buildFilterBar();
-  $('dashboard').hidden = false;
-  $('title').textContent = `IT budget explorer${S.opts.label ? ': ' + S.opts.label : ''}`;
-  $('footer').textContent = `Source: ${S.files.join(', ')} · ${S.rows.length} rows · ${S.headers.length} columns · `
-    + `amounts from "${S.prof[S.map.amount].header}"${S.opts.currency ? ' in ' + S.opts.currency : ''}, as entered in the file (no VAT/FX adjustments) · `
-    + `renewal urgency as of ${fmtDay(isoToDay(S.opts.asOf))} · read in your browser, nothing uploaded.`;
+  if (S.map.amount != null) {
+    buildRecords(); computeDims();
+    store.set('map:' + sig(), { map:S.map, months:S.months, opts:{ ...S.opts, asOf:undefined } });
+  }
+  S.filters = {}; S.flag = null; S.q = ''; S.ui.lPage = 0; S.ui.lSort = { key:null, dir:-1 };
   render();
 }
-function load(parsedFiles) {
-  const ok = parsedFiles.filter((p) => p.headers.length && p.rows.length);
-  if (!ok.length) { alert('No table found in the file(s). Is it a CSV with a header row?'); return; }
+function load(parsed) {
+  const ok = parsed.filter((p) => p.headers.length && p.rows.length);
+  if (!ok.length) { toast('No table found. Is it a CSV with a header row?'); return; }
   const { headers, rows } = combine(ok);
   S.files = ok.map((p) => p.name); S.headers = headers; S.rows = rows; S.prof = profile(headers, rows);
-  const saved = store.get('map:' + sig());
-  const guess = guessMapping(S.prof);
-  S.map = saved ? saved.map : guess.map;
-  S.months = saved ? saved.months : guess.months;
-  const yr = S.map.amount != null ? yearOf(S.prof[S.map.amount].header) : null;
+  S.fileInfo = ok.map((p) => ({ name:p.name, rows:fmtInt(p.rows.length), cols:p.headers.length, delim:{ ',':'Comma', ';':'Semicolon', '\t':'Tab', '|':'Pipe' }[p.delimiter], skipped:p.skipped }));
+  const saved = store.get('map:' + sig()), guess = guessMapping(S.prof);
+  S.map = saved ? saved.map : guess.map; S.months = saved ? saved.months : guess.months;
+  const yr = S.map.amount != null ? yearOf(headers[S.map.amount]) : null;
   S.opts = { label:yr ? `FY${yr}` : '', currency:guessCurrency(S.prof, rows, S.map.amount), asOf:dayToISO(todayDay()), fyStart:0, dateOrder:'auto', dec:'auto',
-    ...(saved ? Object.fromEntries(Object.entries(saved.opts).filter(([, x]) => x !== undefined)) : {}) };
-  $('landing').hidden = true; $('mapping').hidden = false;
-  const skipped = sum(ok, (p) => p.skipped);
-  $('file-meta').textContent = `${S.files.join(', ')} · ${rows.length} rows · ${headers.length} columns`
-    + (ok.some((p) => p.delimiter !== ',') ? ` · delimiter "${ok[0].delimiter === '\t' ? 'tab' : ok[0].delimiter}"` : '')
-    + (skipped ? ` · ${skipped} title/total row(s) skipped` : '');
+    ...(saved ? Object.fromEntries(Object.entries(saved.opts || {}).filter(([, x]) => x !== undefined)) : {}) };
+  S.loaded = true;
   apply();
+  toast(`Loaded ${fmtInt(rows.length)} rows from ${S.files.join(', ')}.`);
+  go(S.map.amount == null ? 'source' : 'overview');
 }
 async function readFiles(fileList) {
   const files = [...fileList].filter((f) => /\.(csv|txt|tsv)$/i.test(f.name) || f.type === 'text/csv');
-  if (!files.length) { alert('Please choose .csv files. For Excel, use File → Save As → CSV UTF-8 first.'); return; }
+  if (!files.length) { toast('Please choose .csv files. For Excel, use File → Save As → CSV UTF-8 first.'); return; }
   const parsed = [];
   for (const f of files) {
     const buf = await f.arrayBuffer();
     let text = new TextDecoder('utf-8').decode(buf);
-    if (text.includes('�')) text = new TextDecoder('windows-1252').decode(buf); // Excel "CSV" without UTF-8
+    if (text.includes('�')) text = new TextDecoder('windows-1252').decode(buf);
     parsed.push({ name:f.name, ...parseCSV(text) });
   }
   load(parsed);
 }
-function loadSample() {
-  load([{ name:'sample-budget.csv (fictional)', ...parseCSV($('sample-csv').textContent.trim()) }]);
+function loadSample() { load([{ name:'sample-budget.csv (fictional)', ...parseCSV($('sample-csv').textContent.trim()) }]); }
+function openPicker() { $('file-input').click(); }
+function exportCsv(recs) {
+  const esc = (x) => (/[",\n;]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x);
+  const out = [S.headers.map(esc).join(',')].concat(recs.map((r) => r.row.map((x) => esc(x ?? '')).join(',')));
+  const a = h('a', { href:URL.createObjectURL(new Blob(['﻿' + out.join('\r\n')], { type:'text/csv;charset=utf-8' })), download:'budget-filtered.csv' });
+  document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  toast(`Exported ${fmtInt(recs.length)} rows.`);
 }
 
-$('btn-open').addEventListener('click', () => $('file-input').click());
-$('landing-open').addEventListener('click', () => $('file-input').click());
-$('btn-sample').addEventListener('click', loadSample);
-$('landing-sample').addEventListener('click', loadSample);
+// ---------- wiring ----------
+$('nav-toggle').append(icon('menu', 20));
+$('tb-load').append(icon('upload', 18), h('span', { class:'tb-label' }, 'Load CSV'));
+$('tb-theme').append(icon('moon', 18));
+$('nav-toggle').addEventListener('click', () => {
+  if (matchMedia('(max-width:1055px)').matches) document.body.classList.toggle('nav-open');
+  else { document.body.classList.toggle('nav-collapsed'); store.set('navCollapsed', document.body.classList.contains('nav-collapsed')); }
+  const lbl = document.body.classList.contains('nav-collapsed') ? 'Expand navigation' : 'Collapse navigation';
+  $('nav-toggle').setAttribute('aria-label', lbl); $('nav-toggle').title = lbl;
+});
+$('nav-scrim').addEventListener('click', () => document.body.classList.remove('nav-open'));
+if (store.get('navCollapsed')) document.body.classList.add('nav-collapsed');
+$('tb-load').addEventListener('click', openPicker);
+$('tb-theme').addEventListener('click', () => {
+  const root = document.documentElement;
+  const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark'; store.set('theme', root.dataset.theme);
+});
+if (store.get('theme')) document.documentElement.dataset.theme = store.get('theme');
 $('file-input').addEventListener('change', (e) => { if (e.target.files.length) readFiles(e.target.files); e.target.value = ''; });
+$('scrim').addEventListener('click', closeDrawer);
+$('main').addEventListener('scroll', hideTip, { passive:true });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { hideTip(); closeDrawer(); document.body.classList.remove('nav-open'); } });
 let dragDepth = 0;
 addEventListener('dragenter', (e) => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { dragDepth++; document.body.classList.add('dragging'); } });
 addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging'); } });
 addEventListener('dragover', (e) => e.preventDefault());
 addEventListener('drop', (e) => { e.preventDefault(); dragDepth = 0; document.body.classList.remove('dragging'); if (e.dataTransfer.files.length) readFiles(e.dataTransfer.files); });
-$('map-apply').addEventListener('click', () => { readMapping(); apply(); });
-$('map-reset').addEventListener('click', () => { const g = guessMapping(S.prof); S.map = g.map; S.months = g.months; renderMapping(); $('mapping').open = true; });
-let qt;
-$('filter-q').addEventListener('input', (e) => { clearTimeout(qt); qt = setTimeout(() => { S.q = e.target.value.trim().toLowerCase(); S.showAll = false; render(); }, 150); });
-$('filter-reset').addEventListener('click', () => { S.filters = {}; S.flag = null; S.q = ''; $('filter-q').value = ''; render(); });
-$('export-csv').addEventListener('click', exportCsv);
-(() => {
-  const root = document.documentElement;
-  const saved = store.get('theme'); if (saved) root.dataset.theme = saved;
-  $('btn-theme').addEventListener('click', () => {
-    const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
-    root.dataset.theme = dark ? 'light' : 'dark'; store.set('theme', root.dataset.theme);
-  });
-})();
+addEventListener('hashchange', route);
+route();
 
 // for automated tests and DevTools
-window.BudgetExplorer = { S, parseCSV, parseNum, parseDate, guessMapping, profile, computeBridge, loadSample };
+window.BudgetExplorer = { S, parseCSV, parseNum, parseDate, guessMapping, computeBridge, loadSample, go };
 })();
 </script>
 </body>
