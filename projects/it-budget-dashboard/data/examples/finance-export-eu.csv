@@ -1,0 +1,43 @@
+﻿IT budget export - generated 01.11.2026
+Ref;Supplier;Description;Type;Spend type;Department;Budget holder;Budget FY2026;Budget FY2027;Contract end;Notice (days);Auto renewal;Jan 2027;Feb 2027;Mar 2027;Apr 2027;May 2027;Jun 2027;Jul 2027;Aug 2027;Sep 2027;Oct 2027;Nov 2027;Dec 2027
+IT-001;Northwind Software;Office productivity suite;Licence;Software;IT-Workplace;Head of Workplace;532.500,00;486.000,00;01.03.2027;30;No;0,00;0,00;486.000,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00
+IT-002;Northwind Software;Server & database licences;Licence;Software;IT-Infra;Head of Infrastructure;197.000,00;212.000,00;15.06.2027;90;Yes;0,00;0,00;0,00;0,00;0,00;212.000,00;0,00;0,00;0,00;0,00;0,00;0,00
+IT-003;Northwind Software;Enterprise support agreement;Contract;Outside services;IT-Infra;Head of Infrastructure;96.500,00;95.000,00;19.02.2027;60;Yes;0,00;95.000,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00
+IT-004;Contoso Cloud;IaaS compute & storage commitment;Contract;Cloud services;IT-Infra;Head of Infrastructure;709.000,00;640.000,00;24.10.2027;60;No;;;;;;;;;;;;
+IT-005;Contoso Cloud;Managed Kubernetes platform;Service;Cloud services;IT-Apps;Head of Applications;;118.000,00;09.12.2027;60;Yes;;;;;;;;;;;;
+IT-006;Fabrikam Security;Endpoint detection & response;Licence;Software;IT-Security;CISO;168.500,00;156.000,00;31.01.2027;60;Yes;156.000,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00
+IT-007;Fabrikam Security;Managed SOC service;Service;Outside services;IT-Security;CISO;206.500,00;240.000,00;31.12.2026;90;Yes;60.000,00;0,00;0,00;60.000,00;0,00;0,00;60.000,00;0,00;0,00;60.000,00;0,00;0,00
+IT-008;Fabrikam Security;Annual penetration testing;Service;Outside services;IT-Security;CISO;48.500,00;45.000,00;;;;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;45.000,00;0,00;0,00;0,00
+IT-009;Tailspin Networks;SD-WAN service (32 sites);Service;Telecom;IT-Infra;Network Manager;211.500,00;210.000,00;02.12.2027;60;Yes;;;;;;;;;;;;
+IT-010;Tailspin Networks;Core switch maintenance;Contract;Hardware maintenance;IT-Infra;Network Manager;33.000,00;38.000,00;21.12.2026;60;Yes;;;;;;;;;;;;
+IT-011;Tailspin Networks;Campus Wi-Fi refresh;Contract;Hardware;IT-Infra;Network Manager;;180.000,00;;;;0,00;0,00;180.000,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00
+IT-012;Wingtip Telecom;Mobile voice & data plans;Service;Telecom;IT-Workplace;Head of Workplace;137.000,00;132.000,00;15.12.2027;60;Yes;;;;;;;;;;;;
+IT-013;Wingtip Telecom;Internet transit & MPLS;Contract;Telecom;IT-Infra;Network Manager;79.500,00;88.000,00;08.04.2027;90;No;;;;;;;;;;;;
+IT-014;Adatum Analytics;BI platform licences;Licence;Software;IT-Data;Head of Data;69.000,00;74.000,00;03.09.2027;90;No;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;74.000,00;0,00;0,00;0,00
+IT-015;Adatum Analytics;Data warehouse consumption;Service;Cloud services;IT-Data;Head of Data;174.000,00;165.000,00;08.12.2026;30;Yes;;;;;;;;;;;;
+IT-016;Litware Collaboration;Video conferencing rooms;Licence;Software;IT-Workplace;Head of Workplace;38.000,00;42.000,00;25.10.2027;30;Yes;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;42.000,00;0,00;0,00
+IT-017;Litware Collaboration;Team chat enterprise plan;Licence;Software;IT-Workplace;;63.500,00;58.000,00;25.01.2027;60;No;58.000,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00
+IT-018;Proseware HR;HR & payroll SaaS;Licence;Software;IT-Apps;Head of Applications;144.000,00;128.000,00;07.10.2027;60;Yes;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;128.000,00;0,00;0,00
+IT-019;Woodgrove Finance Apps;ERP subscription;Licence;Software;IT-Apps;Head of Applications;383.500,00;395.000,00;31.03.2027;90;Yes;0,00;0,00;395.000,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00
+IT-020;Woodgrove Finance Apps;ERP implementation partner;Service;Outside services;IT-Apps;Head of Applications;195.000,00;220.000,00;02.06.2027;60;Yes;;;;;;;;;;;;
+IT-021;Woodgrove Finance Apps;ERP premium support;Contract;Outside services;IT-Apps;Head of Applications;63.500,00;61.000,00;26.09.2027;30;Yes;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;61.000,00;0,00;0,00;0,00
+IT-022;Coho Hardware Services;Laptop fleet maintenance;Contract;Hardware maintenance;IT-Workplace;Head of Workplace;79.500,00;76.000,00;13.10.2027;90;No;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;76.000,00;0,00;0,00
+IT-023;Coho Hardware Services;Laptop refresh (25% of fleet);Contract;Hardware;IT-Workplace;Head of Workplace;281.000,00;310.000,00;;;;0,00;0,00;0,00;0,00;310.000,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00
+IT-024;Coho Hardware Services;Printer managed service;Service;Outside services;;;26.500,00;24.000,00;05.01.2027;60;Yes;6.000,00;0,00;0,00;6.000,00;0,00;0,00;6.000,00;0,00;0,00;6.000,00;0,00;0,00
+IT-025;Fourth Coffee Consulting;IT service desk (outsourced);Service;Outside services;IT-Workplace;Head of Workplace;333.000,00;360.000,00;05.07.2027;30;Yes;;;;;;;;;;;;
+IT-026;Fourth Coffee Consulting;Architecture advisory retainer;Service;Outside services;IT-Apps;CIO Office;47.500,00;48.000,00;21.05.2027;30;Yes;12.000,00;0,00;0,00;12.000,00;0,00;0,00;12.000,00;0,00;0,00;12.000,00;0,00;0,00
+IT-027;Relecloud Hosting;Colocation (2 racks);Contract;Outside services;IT-Infra;Head of Infrastructure;69.500,00;72.000,00;03.12.2026;90;Yes;;;;;;;;;;;;
+IT-028;Relecloud Hosting;Disaster recovery site;Service;Cloud services;IT-Infra;Head of Infrastructure;89.000,00;96.000,00;17.04.2027;30;Yes;;;;;;;;;;;;
+IT-029;VanArsdel Monitoring;APM & observability platform;Licence;Software;IT-Infra;Head of Infrastructure;142.000,00;138.000,00;31.03.2027;60;Yes;0,00;0,00;138.000,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00
+IT-030;VanArsdel Monitoring;Log management ingestion;Service;Cloud services;IT-Infra;Head of Infrastructure;56.500,00;54.000,00;18.04.2027;60;Yes;;;;;;;;;;;;
+IT-031;Lamna Backup;Backup & recovery licences;Licence;Software;IT-Infra;Head of Infrastructure;73.500,00;67.000,00;30.09.2026;60;Yes;;;;;;;;;;;;
+IT-032;Trey Research;Analyst research subscription;Licence;Outside services;IT-Apps;CIO Office;44.000,00;39.000,00;10.12.2026;90;No;;;;;;;;;;;;
+IT-033;Graphic Design Institute;Design software seats;Licence;Software;IT-Workplace;;24.000,00;26.000,00;08.03.2027;60;Yes;0,00;0,00;26.000,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00
+IT-034;Alpine Identity;Identity & access management;Licence;Software;IT-Security;CISO;122.000,00;112.000,00;01.01.2027;90;Yes;112.000,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00
+IT-035;Alpine Identity;Privileged access management;Licence;Software;IT-Security;CISO;;48.000,00;24.12.2026;30;Yes;;;;;;;;;;;;
+IT-036;Humongous Code;Developer tooling & CI seats;Licence;Software;IT-Apps;Head of Applications;53.500,00;52.000,00;27.02.2027;30;Yes;0,00;52.000,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00
+IT-037;Humongous Code;Source code security scanning;Licence;Software;IT-Security;CISO;;34.000,00;21.10.2027;60;Yes;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;34.000,00;0,00;0,00
+IT-038;Datum Contact Centre;Contact centre platform;Licence;Software;IT-Apps;Head of Applications;124.500,00;142.000,00;13.11.2027;30;No;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;142.000,00;0,00
+IT-039;Lucerne Legal Tech;Contract management system;Licence;Software;IT-Apps;Head of Applications;35.500,00;36.000,00;19.11.2027;90;No;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;0,00;36.000,00;0,00
+IT-040;Litware Collaboration;Legacy phone system maintenance;Contract;Hardware maintenance;IT-Infra;Network Manager;41.000,00;0,00;;;;;;;;;;;;;;;
+IT-041;Tailspin Networks;Legacy firewall support;Contract;Hardware maintenance;IT-Security;CISO;22.000,00;0,00;;;;;;;;;;;;;;;

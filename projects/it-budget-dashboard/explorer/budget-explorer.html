@@ -1,0 +1,1205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IT Budget Explorer</title>
+<meta name="description" content="Drop any budget CSV to explore IT licences, services and contracts spend. Runs entirely in the browser.">
+<style>
+:root {
+  --bg:#f5f6f8; --surface:#fff; --surface-2:#eef0f3; --text:#1b1f24; --muted:#5b6470; --border:#d9dde3;
+  --accent:#2459a8; --bar:#4a74b5; --bar-hover:#2459a8; --grid:#e3e6ea; --other:#9aa0aa;
+  --c1:#3a6fc4; --c2:#d9822b; --c3:#2f9e7a; --c4:#8e5bbf; --c5:#c4466b; --c6:#3f9fb5; --c7:#a68a22; --c8:#6b7a8f;
+  --urg-passed:#c62f2f; --urg-30:#e2662b; --urg-60:#e3a21a; --urg-90:#c9b928; --urg-later:#7f98b8;
+  --good:#23855f; --bad:#c62f2f; --shadow:0 1px 2px rgba(16,24,40,.06); --radius:10px; color-scheme:light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg:#111418; --surface:#1a1e24; --surface-2:#232830; --text:#e6e9ee; --muted:#9aa3ae; --border:#2e343d;
+  --accent:#7aa7ec; --bar:#5d8fd9; --bar-hover:#8fb5ef; --grid:#2a3038; --other:#6f7680;
+  --c1:#6c9bea; --c2:#f0a05a; --c3:#4cc39b; --c4:#b38be0; --c5:#e7799a; --c6:#62c3d8; --c7:#d2b44a; --c8:#9aa8bb;
+  --urg-later:#6f8cb3; --good:#4cc39b; --bad:#f07272; --shadow:none; color-scheme:dark; } }
+:root[data-theme="dark"] {
+  --bg:#111418; --surface:#1a1e24; --surface-2:#232830; --text:#e6e9ee; --muted:#9aa3ae; --border:#2e343d;
+  --accent:#7aa7ec; --bar:#5d8fd9; --bar-hover:#8fb5ef; --grid:#2a3038; --other:#6f7680;
+  --c1:#6c9bea; --c2:#f0a05a; --c3:#4cc39b; --c4:#b38be0; --c5:#e7799a; --c6:#62c3d8; --c7:#d2b44a; --c8:#9aa8bb;
+  --urg-later:#6f8cb3; --good:#4cc39b; --bad:#f07272; --shadow:none; color-scheme:dark; }
+
+* { box-sizing:border-box; }
+html { -webkit-text-size-adjust:100%; }
+body { margin:0; background:var(--bg); color:var(--text);
+  font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; font-variant-numeric:tabular-nums; }
+h1 { font-size:1.3rem; margin:0; font-weight:650; }
+h2 { font-size:1.05rem; margin:0; font-weight:650; display:inline; }
+h3 { font-size:.8rem; margin:0 0 .5rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+.sub { color:var(--muted); margin:-.25rem 0 .75rem; font-size:.85rem; }
+.wrap { max-width:1320px; margin:0 auto; padding:0 16px; }
+button { font:inherit; color:inherit; cursor:pointer; }
+.btn { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:6px 12px; white-space:nowrap; }
+.btn:hover { border-color:var(--accent); }
+.btn.primary { background:var(--accent); border-color:var(--accent); color:var(--bg); font-weight:600; }
+.btn.small { padding:1px 8px; font-size:.75rem; }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+select, input { font:inherit; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:6px 8px; min-width:0; }
+[hidden] { display:none !important; }
+
+/* header */
+.top { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding-top:18px; padding-bottom:10px; flex-wrap:wrap; }
+.top .meta { color:var(--muted); font-size:.85rem; margin-top:.2rem; }
+.top .actions { display:flex; gap:8px; flex-wrap:wrap; }
+
+/* landing */
+.drop { margin:40px auto; max-width:720px; border:2px dashed var(--border); border-radius:16px; padding:48px 24px; text-align:center; background:var(--surface); }
+.drop.over, body.dragging .drop { border-color:var(--accent); background:var(--surface-2); }
+.drop h2 { display:block; font-size:1.3rem; margin-bottom:8px; }
+.drop p { color:var(--muted); margin:6px 0; }
+.drop .actions { display:flex; gap:10px; justify-content:center; margin:20px 0 12px; flex-wrap:wrap; }
+.drop ul { text-align:left; color:var(--muted); max-width:520px; margin:16px auto 0; font-size:.85rem; }
+body.dragging::after { content:"Drop CSV files to load"; position:fixed; inset:0; display:grid; place-items:center; font-size:1.4rem; font-weight:600;
+  background:color-mix(in srgb, var(--bg) 85%, transparent); border:3px dashed var(--accent); z-index:50; pointer-events:none; }
+
+/* mapping panel */
+.mapping { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); margin:6px 0 12px; }
+.mapping > summary { cursor:pointer; padding:10px 14px; list-style:none; display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; }
+.mapping > summary::-webkit-details-marker { display:none; }
+.mapping > summary::before { content:"▸"; color:var(--muted); display:inline-block; transition:transform .15s; }
+.mapping[open] > summary::before { transform:rotate(90deg); }
+.mapping .summary-text { color:var(--muted); font-size:.85rem; }
+.mapping-body { padding:4px 14px 14px; display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr)); }
+.map-grid { display:grid; grid-template-columns:minmax(120px,40%) 1fr; gap:6px 10px; align-items:center; }
+.map-grid label { font-size:.85rem; }
+.map-grid .req::after { content:" *"; color:var(--bad); }
+.map-grid select, .settings select, .settings input { width:100%; }
+.settings { display:grid; grid-template-columns:minmax(120px,40%) 1fr; gap:6px 10px; align-items:center; font-size:.85rem; }
+.preview { font-size:.75rem; color:var(--muted); grid-column:2; margin-top:-4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.months-found { grid-column:1 / -1; font-size:.8rem; color:var(--muted); }
+.mapping-actions { grid-column:1 / -1; display:flex; gap:8px; justify-content:flex-end; }
+
+/* filters */
+.filters { position:sticky; top:0; z-index:5; background:var(--bg); padding-top:8px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+.filter-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; }
+.filter-grid label, .search { display:flex; flex-direction:column; font-size:.75rem; color:var(--muted); gap:2px; }
+.filter-grid select { width:100%; }
+.filter-actions { display:flex; gap:8px; align-items:flex-end; margin-top:8px; }
+.search { flex:1; } .search input { width:100%; }
+.chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; } .chips:empty { display:none; }
+.chip { background:var(--surface-2); border:1px solid var(--border); border-radius:999px; padding:2px 10px; font-size:.8rem; }
+
+/* KPIs */
+.kpis { display:flex; flex-wrap:wrap; gap:12px; margin:16px 0; }
+.kpi { flex:1 1 170px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; box-shadow:var(--shadow); min-width:0; }
+.kpi.wide { flex:2 1 340px; }
+.kpi .label { color:var(--muted); font-size:.8rem; }
+.kpi .value { font-size:1.7rem; font-weight:650; line-height:1.2; margin:2px 0; overflow-wrap:anywhere; }
+.kpi .detail { color:var(--muted); font-size:.8rem; }
+.kpi .up { color:var(--bad); } .kpi .down { color:var(--good); }
+.kpi.alert .value { color:var(--urg-passed); }
+.stack { display:flex; height:12px; border-radius:6px; overflow:hidden; margin:8px 0 6px; background:var(--surface-2); }
+.stack span { display:block; height:100%; }
+.stack-legend { display:flex; flex-wrap:wrap; gap:4px 14px; font-size:.8rem; }
+
+/* sections */
+.section { margin:0 0 16px; }
+.section > summary { list-style:none; cursor:pointer; display:flex; align-items:baseline; gap:10px; padding:10px 2px; }
+.section > summary::-webkit-details-marker { display:none; }
+.section > summary::before { content:"▸"; color:var(--muted); display:inline-block; transition:transform .15s; }
+.section[open] > summary::before { transform:rotate(90deg); }
+.hint { color:var(--muted); font-size:.8rem; margin-left:auto; }
+.grid-2 { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr)); }
+.card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; box-shadow:var(--shadow); margin-bottom:12px; min-width:0; }
+.grid-2 .card { margin-bottom:0; }
+.card-head { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; }
+.card-head h3 { margin:0; }
+.card-head select { max-width:60%; font-size:.8rem; padding:3px 6px; }
+
+/* bars */
+.hbars { display:grid; gap:3px; }
+.hbar { display:grid; grid-template-columns:minmax(90px,34%) 1fr auto; align-items:center; gap:8px; background:none; border:0; padding:3px 4px; border-radius:6px; text-align:left; width:100%; }
+button.hbar:hover { background:var(--surface-2); } button.hbar:hover .fill { filter:brightness(1.1); }
+.hbar.active { background:var(--surface-2); outline:1px solid var(--accent); }
+.hbar .name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.hbar .track { height:14px; background:var(--surface-2); border-radius:4px; overflow:hidden; }
+.hbar .fill { display:block; height:100%; background:var(--bar); border-radius:4px; }
+.hbar .val { min-width:120px; text-align:right; font-size:.85rem; }
+.hbar .val small { color:var(--muted); margin-left:4px; display:inline-block; min-width:2.6em; }
+.hbar.static { cursor:default; } .hbar.static .fill { background:var(--other); }
+.empty { color:var(--muted); font-style:italic; padding:8px 0; }
+
+/* svg */
+.svg-wrap { width:100%; overflow-x:auto; }
+.svg-wrap svg { display:block; width:100%; height:auto; min-width:560px; }
+svg text { fill:var(--muted); font-size:11px; }
+svg .gridline { stroke:var(--grid); } svg .axis { stroke:var(--border); }
+svg .today { stroke:var(--text); stroke-dasharray:3 3; } svg .today-label { fill:var(--text); font-weight:600; }
+svg .dot { stroke:var(--surface); stroke-width:1.5; cursor:pointer; opacity:.9; }
+svg .dot:hover, svg .dot:focus { opacity:1; stroke:var(--text); outline:none; }
+svg .bar-label { fill:var(--text); font-weight:600; }
+svg .connector { stroke:var(--muted); stroke-dasharray:2 2; }
+svg rect[tabindex]:focus { outline:none; stroke:var(--text); stroke-width:1.5; }
+.legend { display:flex; flex-wrap:wrap; gap:4px 16px; font-size:.8rem; margin-bottom:8px; }
+.swatch { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:5px; vertical-align:-1px; }
+.swatch.sq { border-radius:2px; }
+
+/* tables */
+.table-wrap { overflow:auto; max-height:380px; }
+.table-wrap.tall { max-height:600px; }
+table { border-collapse:collapse; width:100%; font-size:.85rem; }
+th, td { padding:6px 8px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
+th { position:sticky; top:0; background:var(--surface); font-weight:600; color:var(--muted); white-space:nowrap; z-index:1; }
+tfoot th { position:sticky; bottom:0; border-top:2px solid var(--border); color:var(--text); }
+th button { background:none; border:0; padding:0; font-weight:600; color:inherit; }
+th button[aria-sort]::after { content:" ↕"; opacity:.4; }
+th button[aria-sort="ascending"]::after { content:" ↑"; opacity:1; }
+th button[aria-sort="descending"]::after { content:" ↓"; opacity:1; }
+td.num, th.num { text-align:right; white-space:nowrap; }
+td.key { font-weight:600; }
+tbody tr:hover td { background:var(--surface-2); }
+.badge { display:inline-block; border-radius:999px; padding:0 8px; font-size:.75rem; border:1px solid var(--border); white-space:nowrap; }
+.badge.urg { color:#fff; border:0; }
+.table-toolbar { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+.table-toolbar .sub { margin:0; }
+.more { text-align:center; padding:10px; }
+
+.tooltip { position:fixed; z-index:20; pointer-events:none; background:var(--text); color:var(--bg); padding:8px 10px; border-radius:8px; font-size:.8rem; max-width:320px; line-height:1.4; }
+.tooltip b { display:block; }
+.foot { color:var(--muted); font-size:.8rem; padding-top:8px; padding-bottom:32px; }
+
+@media (max-width:640px) {
+  .hint { display:none; }
+  .hbar { grid-template-columns:minmax(80px,40%) 1fr; }
+  .hbar .val { grid-column:1 / -1; text-align:left; min-width:0; }
+  .filters { position:static; }
+  .kpi.wide { flex-basis:100%; }
+}
+@media print { .filters, .top .actions, .mapping, #export-csv { display:none; } .table-wrap { max-height:none; overflow:visible; } }
+</style>
+</head>
+<body>
+<header class="wrap top">
+  <div>
+    <h1 id="title">IT budget explorer</h1>
+    <div class="meta" id="file-meta">Licences, services &amp; contracts. Load a CSV to start.</div>
+  </div>
+  <div class="actions">
+    <button class="btn" id="btn-open" type="button">Open CSV…</button>
+    <button class="btn" id="btn-sample" type="button">Sample data</button>
+    <button class="btn" id="btn-theme" type="button" aria-label="Toggle light or dark theme">◐ Theme</button>
+  </div>
+  <input type="file" id="file-input" accept=".csv,.txt,.tsv,text/csv" multiple hidden>
+</header>
+
+<main class="wrap">
+  <!-- landing -->
+  <section id="landing" class="drop">
+    <h2>Drop one or more budget CSV files here</h2>
+    <p>Any column layout works: the explorer detects the budget amount, vendor, dates and so on, and you can adjust the mapping.</p>
+    <div class="actions">
+      <button class="btn primary" type="button" id="landing-open">Choose CSV files</button>
+      <button class="btn" type="button" id="landing-sample">Try with sample data</button>
+    </div>
+    <p><b>Your files stay on this computer.</b> They are read by your browser and never uploaded.</p>
+    <ul>
+      <li>Comma, semicolon or tab separated; UTF-8; a title row above the header is fine.</li>
+      <li>Numbers like <code>1,234.50</code>, <code>1.234,50</code> or <code>$1,234</code>; dates like <code>2027-03-31</code>, <code>31/03/2027</code> or <code>31.03.2027</code>.</li>
+      <li>Optional columns light up extra views: prior-year amount, renewal/end date, notice period, owner, cost centre, monthly columns (Jan…Dec).</li>
+      <li>Excel files: use <i>File → Save As → CSV UTF-8</i> first.</li>
+    </ul>
+  </section>
+
+  <!-- column mapping -->
+  <details class="mapping" id="mapping" hidden>
+    <summary><h2>Columns &amp; settings</h2><span class="summary-text" id="mapping-summary"></span></summary>
+    <div class="mapping-body">
+      <div>
+        <h3>What each column means</h3>
+        <div class="map-grid" id="map-grid"></div>
+      </div>
+      <div>
+        <h3>Settings</h3>
+        <div class="settings" id="settings"></div>
+      </div>
+      <div class="mapping-actions">
+        <button class="btn" type="button" id="map-reset">Re-detect columns</button>
+        <button class="btn primary" type="button" id="map-apply">Apply</button>
+      </div>
+    </div>
+  </details>
+</main>
+
+<div id="dashboard" hidden>
+  <section class="filters" aria-label="Filters">
+    <div class="wrap">
+      <div class="filter-grid" id="filter-grid"></div>
+      <div class="filter-actions">
+        <label class="search"><span>Search all columns</span><input type="search" id="filter-q" placeholder="Vendor, product, ID, notes…" autocomplete="off"></label>
+        <button type="button" id="filter-reset" class="btn">Reset filters</button>
+      </div>
+      <div class="chips" id="chips" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <main class="wrap">
+    <section class="kpis" id="kpis" aria-label="Headline figures"></section>
+
+    <details class="section" open>
+      <summary><h2>Where the money goes</h2><span class="hint">Pick any column per chart · click a bar to filter</span></summary>
+      <div class="grid-2" id="breakdowns"></div>
+    </details>
+
+    <details class="section" open id="sec-renewals">
+      <summary><h2>Renewals &amp; notice deadlines</h2><span class="hint" id="renewal-hint"></span></summary>
+      <article class="card">
+        <h3>Renewal timeline</h3>
+        <p class="sub" id="timeline-sub"></p>
+        <div class="legend" id="urgency-legend"></div>
+        <div id="chart-timeline" class="svg-wrap"></div>
+      </article>
+      <article class="card">
+        <h3>Act within 90 days</h3>
+        <div class="table-wrap"><table id="table-renewals"></table></div>
+      </article>
+    </details>
+
+    <details class="section" open id="sec-phasing">
+      <summary><h2>Monthly phasing</h2></summary>
+      <article class="card">
+        <p class="sub" id="phasing-note"></p>
+        <div class="legend" id="phasing-legend"></div>
+        <div id="chart-phasing" class="svg-wrap"></div>
+      </article>
+    </details>
+
+    <details class="section" open id="sec-bridge">
+      <summary><h2>Change from prior year</h2></summary>
+      <article class="card">
+        <p class="sub" id="bridge-note"></p>
+        <div id="chart-bridge" class="svg-wrap"></div>
+        <h3 style="margin-top:14px">Biggest movers</h3>
+        <div class="table-wrap"><table id="table-movers"></table></div>
+      </article>
+    </details>
+
+    <details class="section" open id="sec-lines">
+      <summary><h2>Line items</h2><span class="hint" id="line-count"></span></summary>
+      <article class="card">
+        <div class="table-toolbar">
+          <span class="sub">All columns from your file. Click a header to sort.</span>
+          <button type="button" id="export-csv" class="btn">Export filtered rows (CSV)</button>
+        </div>
+        <div class="table-wrap tall"><table id="table-lines"></table></div>
+        <div class="more" id="lines-more"></div>
+      </article>
+    </details>
+
+    <details class="section" id="sec-quality">
+      <summary><h2>Data quality</h2><span class="hint" id="quality-hint"></span></summary>
+      <article class="card">
+        <p class="sub">Checks run on the filtered rows. Click "Show" to filter to the affected rows.</p>
+        <div class="table-wrap"><table id="table-quality"></table></div>
+      </article>
+    </details>
+  </main>
+  <footer class="wrap foot" id="footer"></footer>
+</div>
+
+<div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+
+<script type="text/plain" id="sample-csv">line_id,vendor,product_or_service,category,cost_pool,tower,cost_centre,owner,annual_budget,currency,capex_opex,contract_start,contract_end,renewal_date,auto_renew,notice_period_days,billing_frequency,licence_qty,unit_price,prior_year_budget,jan,feb,mar,apr,may,jun,jul,aug,sep,oct,nov,dec,notes
+IT-001,Northwind Software,Office productivity suite,Licence,Software,End user,IT-Workplace,Head of Workplace,486000,EUR,OPEX,2024-02-29,2027-02-28,2027-03-01,N,30,Annual,1800,270.0,532500,0,0,486000,0,0,0,0,0,0,0,0,0,
+IT-002,Northwind Software,Server & database licences,Licence,Software,Infrastructure,IT-Infra,Head of Infrastructure,212000,EUR,OPEX,2026-06-15,2027-06-14,2027-06-15,Y,90,Annual,64,3312.5,197000,0,0,0,0,0,212000,0,0,0,0,0,0,
+IT-003,Northwind Software,Enterprise support agreement,Contract,Outside services,Infrastructure,IT-Infra,Head of Infrastructure,95000,EUR,OPEX,2025-02-19,2027-02-18,2027-02-19,Y,60,Annual,,,96500,0,95000,0,0,0,0,0,0,0,0,0,0,
+IT-004,Contoso Cloud,IaaS compute & storage commitment,Contract,Cloud services,Infrastructure,IT-Infra,Head of Infrastructure,640000,EUR,OPEX,2025-10-24,2027-10-23,2027-10-24,N,60,Monthly,,,709000,,,,,,,,,,,,,3-year commit; true-up in Q4.
+IT-005,Contoso Cloud,Managed Kubernetes platform,Service,Cloud services,Application,IT-Apps,Head of Applications,118000,EUR,OPEX,2024-12-09,2027-12-08,2027-12-09,Y,60,Monthly,,,,,,,,,,,,,,,,
+IT-006,Fabrikam Security,Endpoint detection & response,Licence,Software,Security,IT-Security,CISO,156000,EUR,OPEX,2025-01-31,2027-01-30,2027-01-31,Y,60,Annual,2100,74.29,168500,156000,0,0,0,0,0,0,0,0,0,0,0,
+IT-007,Fabrikam Security,Managed SOC service,Service,Outside services,Security,IT-Security,CISO,240000,EUR,OPEX,2023-12-31,2026-12-30,2026-12-31,Y,90,Quarterly,,,206500,60000.0,0,0,60000.0,0,0,60000.0,0,0,60000.0,0,0,
+IT-008,Fabrikam Security,Annual penetration testing,Service,Outside services,Security,IT-Security,CISO,45000,EUR,OPEX,,,,,,One-off,,,48500,0,0,0,0,0,0,0,0,45000,0,0,0,
+IT-009,Tailspin Networks,SD-WAN service (32 sites),Service,Telecom,Network,IT-Infra,Network Manager,210000,EUR,OPEX,2026-12-02,2027-12-01,2027-12-02,Y,60,Monthly,,,211500,,,,,,,,,,,,,
+IT-010,Tailspin Networks,Core switch maintenance,Contract,Hardware maintenance,Network,IT-Infra,Network Manager,38000,EUR,OPEX,2023-12-21,2026-12-20,2026-12-21,Y,60,Annual,,,33000,,,,,,,,,,,,,
+IT-011,Tailspin Networks,Campus Wi-Fi refresh,Contract,Hardware,Network,IT-Infra,Network Manager,180000,EUR,CAPEX,,,,,,One-off,,,,0,0,180000,0,0,0,0,0,0,0,0,0,
+IT-012,Wingtip Telecom,Mobile voice & data plans,Service,Telecom,End user,IT-Workplace,Head of Workplace,132000,EUR,OPEX,2024-12-15,2027-12-14,2027-12-15,Y,60,Monthly,950,138.95,137000,,,,,,,,,,,,,
+IT-013,Wingtip Telecom,Internet transit & MPLS,Contract,Telecom,Network,IT-Infra,Network Manager,88000,EUR,OPEX,2026-04-08,2027-04-07,2027-04-08,N,90,Monthly,,,79500,,,,,,,,,,,,,
+IT-014,Adatum Analytics,BI platform licences,Licence,Software,Data,IT-Data,Head of Data,74000,EUR,OPEX,2024-09-03,2027-09-02,2027-09-03,N,90,Annual,420,176.19,69000,0,0,0,0,0,0,0,0,74000,0,0,0,
+IT-015,Adatum Analytics,Data warehouse consumption,Service,Cloud services,Data,IT-Data,Head of Data,165000,EUR,OPEX,2024-12-08,2026-12-07,2026-12-08,Y,30,Monthly,,,174000,,,,,,,,,,,,,
+IT-016,Litware Collaboration,Video conferencing rooms,Licence,Software,End user,IT-Workplace,Head of Workplace,42000,EUR,OPEX,2026-10-25,2027-10-24,2027-10-25,Y,30,Annual,60,700.0,38000,0,0,0,0,0,0,0,0,0,42000,0,0,
+IT-017,Litware Collaboration,Team chat enterprise plan,Licence,Software,End user,IT-Workplace,,58000,EUR,OPEX,2024-01-25,2027-01-24,2027-01-25,N,60,Annual,1800,30,63500,58000,0,0,0,0,0,0,0,0,0,0,0,Owner left the company; needs reassignment.
+IT-018,Proseware HR,HR & payroll SaaS,Licence,Software,Application,IT-Apps,Head of Applications,128000,EUR,OPEX,2025-10-07,2027-10-06,2027-10-07,Y,60,Annual,2000,64.0,144000,0,0,0,0,0,0,0,0,0,128000,0,0,
+IT-019,Woodgrove Finance Apps,ERP subscription,Licence,Software,Application,IT-Apps,Head of Applications,395000,EUR,OPEX,2024-03-31,2027-03-30,2027-03-31,Y,90,Annual,350,1128.57,383500,0,0,395000,0,0,0,0,0,0,0,0,0,
+IT-020,Woodgrove Finance Apps,ERP implementation partner,Service,Outside services,Application,IT-Apps,Head of Applications,220000,EUR,OPEX,2026-06-02,2027-06-01,2027-06-02,Y,60,Monthly,,,195000,,,,,,,,,,,,,
+IT-021,Woodgrove Finance Apps,ERP premium support,Contract,Outside services,Application,IT-Apps,Head of Applications,61000,EUR,OPEX,2024-09-26,2027-09-25,2027-09-26,Y,30,Annual,,,63500,0,0,0,0,0,0,0,0,61000,0,0,0,
+IT-022,Coho Hardware Services,Laptop fleet maintenance,Contract,Hardware maintenance,End user,IT-Workplace,Head of Workplace,76000,EUR,OPEX,2026-10-13,2027-10-12,2027-10-13,N,90,Annual,,,79500,0,0,0,0,0,0,0,0,0,76000,0,0,
+IT-023,Coho Hardware Services,Laptop refresh (25% of fleet),Contract,Hardware,End user,IT-Workplace,Head of Workplace,310000,EUR,CAPEX,,,,,,One-off,,,281000,0,0,0,0,310000,0,0,0,0,0,0,0,Phased with the 4-year device lifecycle.
+IT-024,Coho Hardware Services,Printer managed service,Service,Outside services,End user,,,24000,EUR,OPEX,2024-01-05,2027-01-04,2027-01-05,Y,60,Quarterly,,,26500,6000.0,0,0,6000.0,0,0,6000.0,0,0,6000.0,0,0,
+IT-025,Fourth Coffee Consulting,IT service desk (outsourced),Service,Outside services,End user,IT-Workplace,Head of Workplace,360000,EUR,OPEX,2025-07-05,2027-07-04,2027-07-05,Y,30,Monthly,,,333000,,,,,,,,,,,,,
+IT-026,Fourth Coffee Consulting,Architecture advisory retainer,Service,Outside services,Application,IT-Apps,CIO Office,48000,EUR,OPEX,2024-05-21,2027-05-20,2027-05-21,Y,30,Quarterly,,,47500,12000.0,0,0,12000.0,0,0,12000.0,0,0,12000.0,0,0,
+IT-027,Relecloud Hosting,Colocation (2 racks),Contract,Outside services,Infrastructure,IT-Infra,Head of Infrastructure,72000,EUR,OPEX,2025-12-03,2026-12-02,2026-12-03,Y,90,Monthly,,,69500,,,,,,,,,,,,,
+IT-028,Relecloud Hosting,Disaster recovery site,Service,Cloud services,Infrastructure,IT-Infra,Head of Infrastructure,96000,EUR,OPEX,2026-04-17,2027-04-16,2027-04-17,Y,30,Monthly,,,89000,,,,,,,,,,,,,
+IT-029,VanArsdel Monitoring,APM & observability platform,Licence,Software,Infrastructure,IT-Infra,Head of Infrastructure,138000,EUR,OPEX,2026-03-31,2027-03-30,2027-03-31,Y,60,Annual,,,142000,0,0,138000,0,0,0,0,0,0,0,0,0,
+IT-030,VanArsdel Monitoring,Log management ingestion,Service,Cloud services,Infrastructure,IT-Infra,Head of Infrastructure,54000,EUR,OPEX,2026-04-18,2027-04-17,2027-04-18,Y,60,Monthly,,,56500,,,,,,,,,,,,,
+IT-031,Lamna Backup,Backup & recovery licences,Licence,Software,Infrastructure,IT-Infra,Head of Infrastructure,67000,EUR,OPEX,2024-09-30,2026-09-29,2026-09-30,Y,60,Annual,,,73500,,,,,,,,,,,,,
+IT-032,Trey Research,Analyst research subscription,Licence,Outside services,Application,IT-Apps,CIO Office,39000,EUR,OPEX,2025-12-10,2026-12-09,2026-12-10,N,90,Annual,3,13000.0,44000,,,,,,,,,,,,,
+IT-033,Graphic Design Institute,Design software seats,Licence,Software,End user,IT-Workplace,,26000,EUR,OPEX,2025-03-08,2027-03-07,2027-03-08,Y,60,Annual,40,650.0,24000,0,0,26000,0,0,0,0,0,0,0,0,0,
+IT-034,Alpine Identity,Identity & access management,Licence,Software,Security,IT-Security,CISO,112000,EUR,OPEX,2024-01-01,2026-12-31,2027-01-01,Y,90,Annual,2100,53.33,122000,112000,0,0,0,0,0,0,0,0,0,0,0,
+IT-035,Alpine Identity,Privileged access management,Licence,Software,Security,IT-Security,CISO,48000,EUR,OPEX,2023-12-24,2026-12-23,2026-12-24,Y,30,Annual,80,600.0,,,,,,,,,,,,,,
+IT-036,Humongous Code,Developer tooling & CI seats,Licence,Software,Application,IT-Apps,Head of Applications,52000,EUR,OPEX,2026-02-27,2027-02-26,2027-02-27,Y,30,Annual,160,325.0,53500,0,52000,0,0,0,0,0,0,0,0,0,0,
+IT-037,Humongous Code,Source code security scanning,Licence,Software,Security,IT-Security,CISO,34000,EUR,OPEX,2024-10-21,2027-10-20,2027-10-21,Y,60,Annual,160,212.5,,0,0,0,0,0,0,0,0,0,34000,0,0,
+IT-038,Datum Contact Centre,Contact centre platform,Licence,Software,Application,IT-Apps,Head of Applications,142000,EUR,OPEX,2026-11-13,2027-11-12,2027-11-13,N,30,Annual,180,788.89,124500,0,0,0,0,0,0,0,0,0,0,142000,0,
+IT-039,Lucerne Legal Tech,Contract management system,Licence,Software,Application,IT-Apps,Head of Applications,36000,EUR,OPEX,2025-11-19,2027-11-18,2027-11-19,N,90,Annual,60,600.0,35500,0,0,0,0,0,0,0,0,0,0,36000,0,
+IT-040,Litware Collaboration,Legacy phone system maintenance,Contract,Hardware maintenance,Network,IT-Infra,Network Manager,0,EUR,OPEX,,,,,,Annual,,,41000,,,,,,,,,,,,,Cancelled: not renewing.
+IT-041,Tailspin Networks,Legacy firewall support,Contract,Hardware maintenance,Security,IT-Security,CISO,0,EUR,OPEX,,,,,,Annual,,,22000,,,,,,,,,,,,,Cancelled: not renewing.</script>
+<script>
+(function () {
+'use strict';
+
+/* =====================================================================
+   IT Budget Explorer: single file, no dependencies, works from file://
+   1. helpers   2. CSV parsing   3. column profiling & role detection
+   4. records   5. filters       6. views   7. wiring
+   ===================================================================== */
+
+// ------------------------------------------------------------------ 1. helpers
+const LOCALE = 'en-GB';
+const SVGNS = 'http://www.w3.org/2000/svg';
+const BLANK = '(blank)';
+const DAY = 864e5;
+const MONTHS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+const PALETTE = ['--c1','--c2','--c3','--c4','--c5','--c6','--c7','--c8'];
+const URGENCY = [
+  { key:'passed', label:'Deadline passed', max:-1, color:'--urg-passed' },
+  { key:'d30', label:'≤ 30 days', max:30, color:'--urg-30' },
+  { key:'d60', label:'31–60 days', max:60, color:'--urg-60' },
+  { key:'d90', label:'61–90 days', max:90, color:'--urg-90' },
+  { key:'later', label:'> 90 days', max:Infinity, color:'--urg-later' },
+];
+const $ = (id) => document.getElementById(id);
+function make(ns, tag, attrs, kids) {
+  const el = ns ? document.createElementNS(ns, tag) : document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids.flat(Infinity)) { if (c == null || c === false) continue; el.append(c instanceof Node ? c : String(c)); }
+  return el;
+}
+const h = (t, a, ...k) => make(null, t, a, k);
+const s = (t, a, ...k) => make(SVGNS, t, a, k);
+const sum = (arr, fn) => arr.reduce((a, x) => a + (fn(x) || 0), 0);
+const v = (name) => `var(${name})`;
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem('itbx:' + k)); } catch (e) { return null; } },
+  set(k, val) { try { localStorage.setItem('itbx:' + k, JSON.stringify(val)); } catch (e) { /* storage unavailable */ } },
+};
+const todayDay = () => { const d = new Date(); return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / DAY; };
+const dayToISO = (d) => new Date(d * DAY).toISOString().slice(0, 10);
+const isoToDay = (iso) => Date.parse(iso + 'T00:00:00Z') / DAY;
+const fmtDay = (d) => (d == null || !isFinite(d) ? '–' : new Date(d * DAY).toLocaleDateString(LOCALE, { day:'numeric', month:'short', year:'numeric', timeZone:'UTC' }));
+const fmtPct = (x, d = 0) => (x == null || !isFinite(x) ? '–' : (x * 100).toFixed(d) + '%');
+const fmtSignedPct = (x) => (x == null || !isFinite(x) ? '–' : (x > 0 ? '+' : '') + (x * 100).toFixed(1) + '%');
+let money = new Intl.NumberFormat(LOCALE, { maximumFractionDigits:0 });
+let moneyC = new Intl.NumberFormat(LOCALE, { notation:'compact', maximumFractionDigits:1 });
+function setCurrency(code) {
+  try {
+    money = new Intl.NumberFormat(LOCALE, code ? { style:'currency', currency:code, maximumFractionDigits:0 } : { maximumFractionDigits:0 });
+    moneyC = new Intl.NumberFormat(LOCALE, code ? { style:'currency', currency:code, notation:'compact', maximumFractionDigits:1 } : { notation:'compact', maximumFractionDigits:1 });
+  } catch (e) { setCurrency(''); }
+}
+const fmtMoney = (x) => (x == null || !isFinite(x) ? '–' : money.format(x));
+const fmtC = (x) => (x == null || !isFinite(x) ? '–' : moneyC.format(x));
+const fmtSigned = (x) => (x > 0 ? '+' : x < 0 ? '−' : '') + fmtC(Math.abs(x));
+function niceTicks(max, n = 4) {
+  if (!(max > 0)) return { max:1, ticks:[0, 1] };
+  const raw = max / n, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((x) => x >= raw);
+  const top = Math.ceil(max / step - 1e-9) * step, ticks = [];
+  for (let t = 0; t <= top + step / 2; t += step) ticks.push(t);
+  return { max:top, ticks };
+}
+const tip = $('tooltip');
+function showTip(el, parts) {
+  tip.replaceChildren(...parts.filter(Boolean).map((p, i) => (i === 0 ? h('b', {}, p) : h('div', {}, p))));
+  tip.hidden = false;
+  const r = el.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
+  let x = r.right + 10, y = r.top + r.height / 2 - th / 2;
+  if (x + tw > innerWidth - 8) x = r.left - tw - 10;
+  if (x < 8) x = Math.max(8, Math.min(innerWidth - tw - 8, r.left));
+  tip.style.left = x + 'px'; tip.style.top = Math.max(8, Math.min(innerHeight - th - 8, y)) + 'px';
+}
+const hideTip = () => { tip.hidden = true; };
+function withTip(el, fn) {
+  el.addEventListener('mouseenter', () => showTip(el, fn())); el.addEventListener('focus', () => showTip(el, fn()));
+  el.addEventListener('mouseleave', hideTip); el.addEventListener('blur', hideTip);
+  return el;
+}
+addEventListener('scroll', hideTip, { passive:true });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideTip(); });
+
+// ------------------------------------------------------------------ 2. CSV parsing
+function detectDelimiter(text) {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim()).slice(0, 10);
+  let best = ',', bestScore = -1;
+  for (const d of [',', ';', '\t', '|']) {
+    const counts = lines.map((line) => { let n = 0, q = false; for (const ch of line) { if (ch === '"') q = !q; else if (!q && ch === d) n++; } return n; });
+    const score = Math.max(...counts, 0) * 10 + counts.filter((c) => c > 0).length;
+    if (score > bestScore) { bestScore = score; best = d; }
+  }
+  return best;
+}
+function parseCSV(text) {
+  text = text.replace(/^﻿/, '');
+  const d = detectDelimiter(text);
+  const rows = []; let row = [], f = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"' && f.trim() === '') { q = true; f = ''; }
+    else if (c === d) { row.push(f); f = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(f); rows.push(row); row = []; f = ''; }
+    else f += c;
+  }
+  if (f !== '' || row.length) { row.push(f); rows.push(row); }
+  const data = rows.map((r) => r.map((x) => x.trim())).filter((r) => r.some((x) => x !== ''));
+  if (!data.length) return { delimiter:d, headers:[], rows:[], skipped:0 };
+  // header = first row that fills at least half of the widest row (skips title rows above the table)
+  const width = Math.max(...data.map((r) => r.filter((x) => x !== '').length));
+  const hi = data.findIndex((r) => r.filter((x) => x !== '').length >= Math.max(2, width / 2));
+  const seen = new Map();
+  const headers = data[hi].map((x, i) => {
+    let name = x || `Column ${i + 1}`;
+    const n = (seen.get(name.toLowerCase()) || 0) + 1; seen.set(name.toLowerCase(), n);
+    return n > 1 ? `${name} (${n})` : name;
+  });
+  const body = data.slice(hi + 1).map((r) => headers.map((_, i) => r[i] ?? ''));
+  // drop trailing "total" rows that would double count
+  const filtered = body.filter((r) => !/^(grand\s+)?totals?:?$/i.test(r.find((x) => x !== '') || ''));
+  return { delimiter:d, headers, rows:filtered, skipped:hi + (body.length - filtered.length) };
+}
+function combine(parsed) {
+  const headers = [], index = new Map(), key = (x) => x.trim().toLowerCase();
+  for (const p of parsed) for (const hd of p.headers) if (!index.has(key(hd))) { index.set(key(hd), headers.length); headers.push(hd); }
+  const multi = parsed.length > 1;
+  if (multi) headers.push('Source file');
+  const rows = [];
+  for (const p of parsed) for (const r of p.rows) {
+    const out = new Array(headers.length).fill('');
+    p.headers.forEach((hd, i) => { out[index.get(key(hd))] = r[i] ?? ''; });
+    if (multi) out[headers.length - 1] = p.name;
+    rows.push(out);
+  }
+  return { headers, rows };
+}
+
+// ------------------------------------------------------------------ 3. profiling & role detection
+function cleanNum(raw) {
+  let t = String(raw).trim(); if (!t) return null;
+  let neg = false;
+  if (/^\(.*\)$/.test(t)) { neg = true; t = t.slice(1, -1); }
+  t = t.replace(/[\s '’€$£¥]|EUR|USD|GBP|CHF|SEK|NOK|DKK|INR|AUD|CAD/gi, '');
+  if (t.endsWith('-')) { neg = true; t = t.slice(0, -1); }
+  if (t.startsWith('-')) { neg = !neg; t = t.slice(1); }
+  return { t, neg };
+}
+function parseNum(raw, dec) {
+  const c = cleanNum(raw); if (!c) return null;
+  let t = c.t;
+  t = dec === ',' ? t.replace(/\./g, '').replace(',', '.') : t.replace(/,/g, '');
+  if (!/^\d*\.?\d+(e[-+]?\d+)?$/i.test(t)) return NaN;
+  const n = parseFloat(t); return c.neg ? -n : n;
+}
+function detectDecimal(values) {
+  let eu = 0, us = 0;
+  for (const raw of values.slice(0, 500)) {
+    const c = cleanNum(raw); if (!c) continue;
+    if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(c.t) || /^\d+,\d{1,2}$/.test(c.t)) eu++;
+    else if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(c.t) || /^\d+\.\d+$/.test(c.t)) us++;
+  }
+  return eu > us ? ',' : '.';
+}
+const MONTH_RE = /(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?/i;
+const RE_ISO = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s].*)?$/;
+const RE_NUM = /^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2}|\d{4})$/;
+const RE_DMON = /^(\d{1,2})[\s\-]+([a-z]{3,9})\.?[\s\-,]+(\d{2,4})$/i;
+const RE_MOND = /^([a-z]{3,9})\.?\s+(\d{1,2}),?\s+(\d{4})$/i;
+const y4 = (y) => (y.length === 2 ? 2000 + +y : +y);
+const mon = (name) => { const m = name.match(MONTH_RE); return m ? MONTHS.indexOf(m[1].toLowerCase()) : -1; };
+function mkDay(y, m, d) {
+  if (m < 0 || m > 11 || d < 1 || d > 31) return NaN;
+  const t = Date.UTC(y, m, d); const dt = new Date(t);
+  return dt.getUTCMonth() === m ? t / DAY : NaN;
+}
+function parseDate(raw, order) {
+  const t = String(raw).trim(); if (!t) return null;
+  let m;
+  if ((m = t.match(RE_ISO))) return mkDay(+m[1], +m[2] - 1, +m[3]);
+  if ((m = t.match(RE_NUM))) return order === 'mdy' ? mkDay(y4(m[3]), +m[1] - 1, +m[2]) : mkDay(y4(m[3]), +m[2] - 1, +m[1]);
+  if ((m = t.match(RE_DMON))) return mkDay(y4(m[3]), mon(m[2]), +m[1]);
+  if ((m = t.match(RE_MOND))) return mkDay(+m[3], mon(m[1]), +m[2]);
+  return NaN;
+}
+function detectDateOrder(values) {
+  let dmy = 0, mdy = 0;
+  for (const raw of values.slice(0, 500)) {
+    const m = String(raw).trim().match(RE_NUM); if (!m) continue;
+    if (+m[1] > 12) dmy++; else if (+m[2] > 12) mdy++;
+  }
+  return mdy > dmy ? 'mdy' : 'dmy';
+}
+function monthIndex(header) {
+  const t = header.trim().toLowerCase();
+  let m = t.match(/^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?(?:[\s_\-\/'’]*(?:fy)?\d{2,4})?$/);
+  if (m) return MONTHS.indexOf(m[1]);
+  if ((m = t.match(/^(?:fy)?\d{4}[-\/_\s](0?[1-9]|1[0-2])$/))) return +m[1] - 1;
+  if ((m = t.match(/^(?:m|p|period\s*|month\s*)(0?[1-9]|1[0-2])$/))) return +m[1] - 1;
+  return -1;
+}
+function profile(headers, rows) {
+  return headers.map((header, ci) => {
+    const vals = rows.map((r) => r[ci]).filter((x) => x !== '');
+    const dec = detectDecimal(vals);
+    const order = detectDateOrder(vals);
+    const numOk = vals.filter((x) => Number.isFinite(parseNum(x, dec))).length;
+    const dateOk = vals.filter((x) => /[\-\/.\s]/.test(x) && Number.isFinite(parseDate(x, order))).length;
+    const n = vals.length || 1;
+    const type = vals.length && dateOk / n >= 0.8 ? 'date' : vals.length && numOk / n >= 0.8 ? 'number' : 'text';
+    const total = type === 'number' ? sum(vals, (x) => parseNum(x, dec)) : 0;
+    return { header, ci, type, dec, order, filled:vals.length, uniq:new Set(vals).size, total,
+      month:type === 'number' ? monthIndex(header) : -1, sample:vals.slice(0, 3) };
+  });
+}
+
+const ROLES = [
+  { key:'amount', label:'Budget amount', type:'number', required:true, help:'The figure every chart adds up.' },
+  { key:'prior', label:'Prior-year amount', type:'number', help:'Enables the year-over-year view.' },
+  { key:'vendor', label:'Vendor / supplier', type:'text', re:/vendor|supplier|publisher|provider|manufacturer|partner|company|contractor/i },
+  { key:'item', label:'Product / service', type:'text', re:/product|service|description|item|application|software|title|name|detail/i },
+  { key:'category', label:'Category', type:'text', re:/categor|^type$|^line[\s_-]*type|class|kind|licen[cs]e[\s_-]*type/i },
+  { key:'pool', label:'Cost pool / spend type', type:'text', re:/cost[\s_-]*pool|pool|spend[\s_-]*type|cost[\s_-]*type|expense[\s_-]*type|account/i },
+  { key:'costcentre', label:'Cost centre / department', type:'text', re:/cost[\s_-]*cent|department|dept|business[\s_-]*unit|\bbu\b|division|team|function/i },
+  { key:'owner', label:'Owner', type:'text', re:/owner|holder|manager|responsible|accountable|contact/i },
+  { key:'capex', label:'CAPEX / OPEX', type:'text', re:/capex|opex/i },
+  { key:'renewal', label:'Renewal / end date', type:'date', re:[/renew/i, /expir/i, /end[\s_-]*date|contract[\s_-]*end|term[\s_-]*end|\bend\b|due/i] },
+  { key:'notice', label:'Notice period (days)', type:'number', re:/notice/i },
+  { key:'auto', label:'Auto-renews (Y/N)', type:'text', re:/auto/i },
+  { key:'id', label:'Line ID', type:'any', re:/^(line[\s_-]*)?id$|^ref(erence)?\b|^#$|^no\.?$|^item[\s_-]*no/i },
+];
+const NOT_AMOUNT = /unit|qty|quantity|seats|count|notice|days|%|percent|rate|price[\s_-]*per|users|id$|number|year$/i;
+const AMOUNT_RE = /budget|amount|cost|spend|value|total|eur|usd|gbp|plan|forecast|\bfy\b|fy\d/i;
+const PRIOR_RE = /prior|previous|last[\s_-]*year|\bpy\b|\bly\b|actual|current[\s_-]*year/i;
+const yearOf = (hd) => { const m = hd.match(/(?:fy\s*)?(20\d{2})|fy\s*(\d{2})\b/i); return m ? +(m[1] || 2000 + +m[2]) : null; };
+
+function guessMapping(prof) {
+  const map = {}, used = new Set();
+  const take = (key, ci) => { if (ci != null && ci >= 0) { map[key] = ci; used.add(ci); } };
+  const nums = prof.filter((p) => p.type === 'number' && p.month < 0 && !NOT_AMOUNT.test(p.header) && !/notice/i.test(p.header));
+  const amountish = nums.filter((p) => AMOUNT_RE.test(p.header));
+  const prior = amountish.find((p) => PRIOR_RE.test(p.header));
+  const withYear = amountish.filter((p) => p !== prior && yearOf(p.header)).sort((a, b) => yearOf(b.header) - yearOf(a.header));
+  if (withYear.length) {
+    take('amount', withYear[0].ci);
+    if (prior) take('prior', prior.ci); else if (withYear[1]) take('prior', withYear[1].ci);
+  } else {
+    const main = amountish.filter((p) => p !== prior).sort((a, b) => b.total - a.total)[0]
+      || nums.filter((p) => p !== prior).sort((a, b) => b.total - a.total)[0];
+    if (main) take('amount', main.ci);
+    if (prior) take('prior', prior.ci);
+  }
+  const order = ['id', 'vendor', 'pool', 'category', 'costcentre', 'owner', 'capex', 'renewal', 'notice', 'auto', 'item'];
+  for (const key of order) {
+    const role = ROLES.find((r) => r.key === key);
+    const fits = (p) => !used.has(p.ci) && p.month < 0 && (role.type === 'any' || p.type === role.type);
+    let hit = null;
+    for (const re of [].concat(role.re)) { hit = prof.find((p) => fits(p) && re.test(p.header)); if (hit) break; }
+    if (hit) take(key, hit.ci);
+  }
+  // fall back: first free text column with many distinct values = product/service
+  if (map.item == null) {
+    const t = prof.filter((p) => !used.has(p.ci) && p.type === 'text').sort((a, b) => b.uniq - a.uniq)[0];
+    if (t) take('item', t.ci);
+  }
+  const months = new Array(12).fill(null);
+  for (const p of prof) if (p.month >= 0 && months[p.month] == null) months[p.month] = p.ci;
+  return { map, months };
+}
+function guessCurrency(prof, rows, ci) {
+  if (ci == null) return '';
+  const text = prof[ci].header + ' ' + rows.slice(0, 50).map((r) => r[ci]).join(' ');
+  if (/€|\bEUR\b/i.test(text)) return 'EUR';
+  if (/£|\bGBP\b/i.test(text)) return 'GBP';
+  if (/\$|\bUSD\b/i.test(text)) return 'USD';
+  const m = text.match(/\b(CHF|SEK|NOK|DKK|INR|AUD|CAD|JPY)\b/i);
+  return m ? m[1].toUpperCase() : '';
+}
+
+// ------------------------------------------------------------------ state
+const S = {
+  files:[], headers:[], rows:[], prof:[], map:{}, months:new Array(12).fill(null),
+  opts:{ label:'', currency:'', asOf:dayToISO(todayDay()), fyStart:0, dateOrder:'auto', dec:'auto' },
+  recs:[], dims:[], colorDim:null, colorMap:new Map(),
+  filters:{}, q:'', flag:null, sort:{ col:null, dir:-1 }, showAll:false, breakdown:[],
+};
+const sig = () => S.headers.join('␟');
+
+// ------------------------------------------------------------------ 4. records
+function buildRecords() {
+  const { map, prof, opts } = S;
+  const dec = (ci) => (opts.dec === 'auto' ? prof[ci].dec : opts.dec);
+  const ord = (ci) => (opts.dateOrder === 'auto' ? prof[ci].order : opts.dateOrder);
+  const num = (r, key) => (map[key] == null ? null : parseNum(r[map[key]], dec(map[key])));
+  const txt = (r, key) => (map[key] == null ? '' : r[map[key]]);
+  const hasMonths = S.months.filter((c) => c != null).length >= 2;
+  const ids = new Map();
+  S.recs = S.rows.map((row, i) => {
+    const flags = new Set();
+    let amount = num(row, 'amount');
+    if (amount == null) { flags.add('amount_blank'); amount = 0; }
+    else if (!isFinite(amount)) { flags.add('amount_bad'); amount = 0; }
+    if (amount < 0) flags.add('amount_neg');
+    let prior = num(row, 'prior');
+    if (prior != null && !isFinite(prior)) { flags.add('prior_bad'); prior = null; }
+    let renewal = map.renewal == null ? null : parseDate(row[map.renewal], ord(map.renewal));
+    if (renewal != null && !isFinite(renewal)) { flags.add('date_bad'); renewal = null; }
+    let notice = num(row, 'notice');
+    if (notice != null && !isFinite(notice)) notice = null;
+    const autoTxt = txt(row, 'auto').toLowerCase();
+    const auto = /^(y|yes|true|1|x|ja|oui|si|sí)$/.test(autoTxt) ? true : /^(n|no|false|0|nein|non)$/.test(autoTxt) ? false : null;
+    let monthly = null;
+    if (hasMonths) {
+      monthly = S.months.map((ci) => { if (ci == null) return 0; const x = parseNum(row[ci], dec(ci)); return isFinite(x) ? x || 0 : 0; });
+      const ms = monthly.reduce((a, b) => a + b, 0);
+      if (ms === 0 && amount) { monthly = null; flags.add('phasing_missing'); }
+      else if (Math.abs(ms - amount) > Math.max(1, Math.abs(amount) * 0.005)) flags.add('phasing_mismatch');
+    }
+    const deadline = renewal == null ? null : renewal - (notice || 0);
+    const rec = { i, row, amount, prior, renewal, notice, auto, deadline, monthly, flags,
+      vendor:txt(row, 'vendor'), item:txt(row, 'item'), owner:txt(row, 'owner'), costcentre:txt(row, 'costcentre'),
+      id:txt(row, 'id') };
+    if (map.owner != null && !rec.owner && amount) flags.add('no_owner');
+    if (map.costcentre != null && !rec.costcentre && amount) flags.add('no_cc');
+    if (renewal != null && renewal < isoToDay(opts.asOf) && amount > 0) flags.add('renewal_passed');
+    if (auto && renewal != null && notice == null && map.notice != null) flags.add('auto_no_notice');
+    if (map.id != null && rec.id) ids.set(rec.id, (ids.get(rec.id) || 0) + 1);
+    return rec;
+  });
+  for (const r of S.recs) if (r.id && ids.get(r.id) > 1) r.flags.add('dup_id');
+}
+const CHECKS = [
+  ['amount_bad', 'Amount is not a number (counted as 0)'],
+  ['amount_blank', 'Amount is blank'],
+  ['amount_neg', 'Negative amount (credit?)'],
+  ['prior_bad', 'Prior-year amount is not a number'],
+  ['dup_id', 'Duplicate line ID'],
+  ['no_owner', 'No owner'],
+  ['no_cc', 'No cost centre'],
+  ['date_bad', 'Renewal date not recognised'],
+  ['renewal_passed', 'Renewal date already passed'],
+  ['auto_no_notice', 'Auto-renews but no notice period'],
+  ['phasing_mismatch', 'Monthly figures ≠ amount (>0.5%)'],
+  ['phasing_missing', 'No monthly figures (spread evenly)'],
+];
+
+// dimensions = columns that make sense to group/filter by
+function computeDims() {
+  const n = S.rows.length, roleOf = new Map(Object.entries(S.map).map(([k, ci]) => [ci, k]));
+  const pref = ['category', 'pool', 'vendor', 'costcentre', 'owner', 'capex'];
+  const ok = (p) => p.type === 'text' && p.filled >= n * 0.3 && p.uniq >= 1 && p.uniq <= Math.max(60, n * 0.5) && (p.uniq < n * 0.9 || n < 10) && p.month < 0;
+  const dims = S.prof.filter((p) => ok(p) || (pref.includes(roleOf.get(p.ci)) && p.type !== 'number'));
+  dims.sort((a, b) => {
+    const ra = pref.indexOf(roleOf.get(a.ci)), rb = pref.indexOf(roleOf.get(b.ci));
+    return (ra < 0 ? 99 : ra) - (rb < 0 ? 99 : rb) || a.uniq - b.uniq;
+  });
+  S.dims = dims.map((p) => p.ci).filter((ci) => S.prof[ci].uniq > 1 || S.rows.some((r) => r[ci] === ''));
+  // colour dimension: category, else pool, else first small dimension
+  const small = (ci) => ci != null && S.prof[ci].uniq >= 2 && S.prof[ci].uniq <= 8;
+  S.colorDim = [S.map.category, S.map.pool, S.map.capex, ...S.dims].find(small) ?? null;
+  S.colorMap = new Map();
+  if (S.colorDim != null) {
+    const groups = groupBy(S.recs, S.colorDim);
+    groups.forEach((g, i) => S.colorMap.set(g.key, PALETTE[i % PALETTE.length]));
+  }
+  // breakdown defaults
+  const saved = store.get('breakdown:' + sig());
+  const defaults = [S.map.pool ?? S.map.category, S.map.vendor, S.map.costcentre, S.map.owner ?? S.map.capex]
+    .filter((ci) => ci != null && S.dims.includes(ci));
+  for (const ci of S.dims) if (defaults.length < 4 && !defaults.includes(ci)) defaults.push(ci);
+  S.breakdown = (saved && saved.every((ci) => S.dims.includes(ci)) ? saved : defaults).slice(0, 4);
+}
+const cell = (rec, ci) => rec.row[ci] || BLANK;
+const colorOf = (val) => v(S.colorMap.get(val) || '--other');
+function groupBy(recs, ci) {
+  const m = new Map();
+  for (const r of recs) { const k = cell(r, ci); const g = m.get(k) || { key:k, value:0, count:0 }; g.value += r.amount; g.count++; m.set(k, g); }
+  return [...m.values()].sort((a, b) => b.value - a.value || a.key.localeCompare(b.key));
+}
+
+// ------------------------------------------------------------------ 5. filters
+function matches(r) {
+  for (const [ci, val] of Object.entries(S.filters)) if (cell(r, ci) !== val) return false;
+  if (S.flag && !r.flags.has(S.flag)) return false;
+  if (S.q && !r.row.join(' ').toLowerCase().includes(S.q)) return false;
+  return true;
+}
+function setFilter(ci, val) {
+  if (val == null || S.filters[ci] === val) delete S.filters[ci]; else S.filters[ci] = val;
+  S.showAll = false; render();
+}
+function buildFilterBar() {
+  const grid = $('filter-grid'); grid.replaceChildren();
+  for (const ci of S.dims.slice(0, 8)) {
+    const vals = groupBy(S.recs, ci).map((g) => g.key).sort((a, b) => (a === BLANK) - (b === BLANK) || a.localeCompare(b, undefined, { numeric:true }));
+    grid.append(h('label', {}, h('span', {}, S.prof[ci].header),
+      h('select', { 'data-ci':ci, onchange:(e) => setFilter(ci, e.target.value || null) },
+        h('option', { value:'' }, 'All'), vals.map((x) => h('option', { value:x }, x)))));
+  }
+}
+function syncFilterBar() {
+  for (const sel of $('filter-grid').querySelectorAll('select')) sel.value = S.filters[sel.dataset.ci] || '';
+  const chips = $('chips'); chips.replaceChildren();
+  for (const [ci, val] of Object.entries(S.filters)) chips.append(h('button', { type:'button', class:'chip', onclick:() => setFilter(ci, null) }, `${S.prof[ci].header}: `, h('b', {}, val), ' ✕'));
+  if (S.flag) chips.append(h('button', { type:'button', class:'chip', onclick:() => { S.flag = null; render(); } }, 'Check: ', h('b', {}, CHECKS.find((c) => c[0] === S.flag)[1]), ' ✕'));
+  if (S.q) chips.append(h('button', { type:'button', class:'chip', onclick:() => { S.q = ''; $('filter-q').value = ''; render(); } }, 'Search: ', h('b', {}, S.q), ' ✕'));
+}
+
+// ------------------------------------------------------------------ 6. views
+function computeBridge(recs) {
+  const b = { prior:0, added:0, increases:0, decreases:0, removed:0, next:0, newCount:0, removedCount:0 };
+  for (const r of recs) {
+    b.next += r.amount;
+    if (r.prior == null) { b.added += r.amount; if (r.amount) b.newCount++; continue; }
+    b.prior += r.prior;
+    if (r.amount === 0 && r.prior > 0) { b.removed += r.prior; b.removedCount++; }
+    else if (r.amount > r.prior) b.increases += r.amount - r.prior;
+    else b.decreases += r.prior - r.amount;
+  }
+  return b;
+}
+function urgencyOf(r) {
+  if (r.deadline == null || !(r.amount > 0)) return null;
+  const days = Math.round(r.deadline - isoToDay(S.opts.asOf));
+  const u = days < 0 ? URGENCY[0] : URGENCY.slice(1).find((x) => days <= x.max);
+  return { ...u, days };
+}
+const label = () => S.opts.label || 'Budget';
+
+function renderKpis(recs) {
+  const total = sum(recs, (r) => r.amount);
+  const tiles = [];
+  const vendors = S.map.vendor != null ? new Set(recs.filter((r) => r.amount).map((r) => r.vendor)).size : null;
+  tiles.push(h('div', { class:'kpi', 'data-kpi':'total' },
+    h('div', { class:'label' }, `Total ${label()}`),
+    h('div', { class:'value', 'data-value':total }, fmtC(total)),
+    h('div', { class:'detail' }, `${fmtMoney(total)} · ${recs.length} rows` + (vendors != null ? ` · ${vendors} vendors` : ''))));
+  if (S.map.prior != null) {
+    const b = computeBridge(recs), d = total - b.prior, p = b.prior ? d / b.prior : null;
+    tiles.push(h('div', { class:'kpi', 'data-kpi':'change' },
+      h('div', { class:'label' }, 'Change vs prior year'),
+      h('div', { class:'value' }, h('span', { class:d > 0 ? 'up' : d < 0 ? 'down' : '' }, (d > 0 ? '▲ ' : d < 0 ? '▼ ' : '') + fmtSignedPct(p))),
+      h('div', { class:'detail' }, b.prior ? `${fmtSigned(d)} vs ${fmtC(b.prior)}` : 'No prior-year figures')));
+  }
+  if (S.colorDim != null && total) {
+    const groups = groupBy(recs, S.colorDim);
+    tiles.push(h('div', { class:'kpi wide', 'data-kpi':'mix' },
+      h('div', { class:'label' }, `Split by ${S.prof[S.colorDim].header}`),
+      h('div', { class:'stack', role:'img', 'aria-label':groups.map((g) => `${g.key} ${fmtPct(g.value / total)}`).join(', ') },
+        groups.map((g) => h('span', { style:`width:${Math.max(0, g.value / total * 100)}%;background:${colorOf(g.key)}`, title:`${g.key}: ${fmtMoney(g.value)}` }))),
+      h('div', { class:'stack-legend' }, groups.map((g) => h('span', {}, h('span', { class:'swatch sq', style:`background:${colorOf(g.key)}` }),
+        `${g.key} `, h('b', {}, fmtC(g.value)), ` (${fmtPct(g.value / total)})`)))));
+  }
+  if (S.map.renewal != null) {
+    const due = recs.map((r) => ({ r, u:urgencyOf(r) })).filter((x) => x.u && x.u.max <= 90);
+    const passed = due.filter((x) => x.u.key === 'passed').length;
+    tiles.push(h('div', { class:'kpi' + (passed ? ' alert' : ''), 'data-kpi':'renewals' },
+      h('div', { class:'label' }, S.map.notice != null ? 'Notice deadlines ≤ 90 days' : 'Renewals ≤ 90 days'),
+      h('div', { class:'value' }, String(due.length)),
+      h('div', { class:'detail' }, `${fmtC(sum(due, (x) => x.r.amount))} of spend`, passed ? h('span', {}, ' · ', h('b', {}, `${passed} passed`)) : null)));
+  }
+  if (S.map.owner != null) {
+    const un = recs.filter((r) => !r.owner && r.amount), uv = sum(un, (r) => r.amount);
+    tiles.push(h('div', { class:'kpi', 'data-kpi':'unowned' },
+      h('div', { class:'label' }, 'Spend with no owner'),
+      h('div', { class:'value' }, fmtPct(total ? uv / total : 0, 1)),
+      h('div', { class:'detail' }, `${fmtC(uv)} · ${un.length} rows `,
+        un.length && S.flag !== 'no_owner' ? h('button', { type:'button', class:'btn small', onclick:() => { S.flag = 'no_owner'; render(); } }, 'Show') : null)));
+  } else if (recs.length) {
+    const top = recs.reduce((a, b) => (b.amount > a.amount ? b : a));
+    tiles.push(h('div', { class:'kpi', 'data-kpi':'largest' },
+      h('div', { class:'label' }, 'Largest line'),
+      h('div', { class:'value' }, fmtC(top.amount)),
+      h('div', { class:'detail' }, [top.vendor, top.item].filter(Boolean).join(': ') || `Row ${top.i + 1}`)));
+  }
+  if (S.map.vendor != null && total) {
+    const g = groupBy(recs.filter((r) => r.amount > 0), S.map.vendor);
+    const top5 = sum(g.slice(0, 5), (x) => x.value);
+    tiles.push(h('div', { class:'kpi', 'data-kpi':'concentration' },
+      h('div', { class:'label' }, 'Top 5 vendors share'),
+      h('div', { class:'value' }, fmtPct(top5 / total)),
+      h('div', { class:'detail' }, `of ${g.length} vendors · largest: ${g[0] ? g[0].key : '–'}`)));
+  }
+  $('kpis').replaceChildren(...tiles);
+}
+
+function hbars(container, items, { ci, total, limit = 12, colored }) {
+  container.replaceChildren();
+  if (!items.length || !total) { container.append(h('div', { class:'empty' }, 'No matching spend')); return; }
+  const shown = items.slice(0, limit), rest = items.slice(limit), restV = sum(rest, (x) => x.value);
+  const max = Math.max(restV, ...shown.map((x) => Math.abs(x.value))) || 1;
+  const row = (it, clickable) => {
+    const active = clickable && S.filters[ci] === it.key;
+    const kids = [
+      h('span', { class:'name', title:it.key }, it.key),
+      h('span', { class:'track' }, h('span', { class:'fill', style:`width:${Math.max(0, it.value / max * 100)}%` + (colored && clickable ? `;background:${colorOf(it.key)}` : '') })),
+      h('span', { class:'val' }, fmtMoney(it.value), h('small', {}, fmtPct(it.value / total))),
+    ];
+    return clickable
+      ? h('button', { type:'button', class:'hbar' + (active ? ' active' : ''), 'aria-pressed':String(active), title:`${it.key}: ${it.count} rows. Click to filter.`, onclick:() => setFilter(ci, it.key) }, kids)
+      : h('div', { class:'hbar static' }, kids);
+  };
+  shown.forEach((it) => container.append(row(it, true)));
+  if (rest.length) container.append(row({ key:`All other (${rest.length})`, value:restV }, false));
+}
+
+function renderBreakdowns(recs) {
+  const wrap = $('breakdowns'); wrap.replaceChildren();
+  const total = sum(recs, (r) => r.amount);
+  if (!S.dims.length) { wrap.append(h('div', { class:'card empty' }, 'No text columns suitable for grouping were found.')); return; }
+  S.breakdown.forEach((ci, k) => {
+    const body = h('div', { class:'hbars' });
+    const sel = h('select', { 'aria-label':'Group by column', onchange:(e) => { S.breakdown[k] = +e.target.value; store.set('breakdown:' + sig(), S.breakdown); render(); } },
+      S.dims.map((d) => h('option', { value:d, selected:d === ci }, S.prof[d].header)));
+    const groups = groupBy(recs, ci);
+    const note = ci === S.map.vendor && total ? h('p', { class:'sub' }, `${groups.filter((g) => g.value > 0).length} vendors; top 10 = ${fmtPct(sum(groups.slice(0, 10), (g) => g.value) / total)} of spend`) : null;
+    wrap.append(h('article', { class:'card' }, h('div', { class:'card-head' }, h('h3', {}, 'By'), sel), note, body));
+    hbars(body, groups, { ci, total, colored:ci === S.colorDim });
+  });
+}
+
+function renderTimeline(recs) {
+  const sec = $('sec-renewals');
+  sec.hidden = S.map.renewal == null;
+  if (sec.hidden) return;
+  const AS = isoToDay(S.opts.asOf);
+  $('renewal-hint').textContent = S.map.notice != null ? 'Deadline = renewal date − notice period' : 'No notice-period column: deadline = renewal date';
+  $('timeline-sub').textContent = 'Each dot is one row with a renewal/end date; size = amount, colour = how soon action is needed. Hover for details, click to filter by vendor.';
+  const pts = recs.filter((r) => r.renewal != null && r.amount > 0).map((r) => ({ r, u:urgencyOf(r) }));
+  $('urgency-legend').replaceChildren(...URGENCY.map((u) => h('span', {}, h('span', { class:'swatch', style:`background:${v(u.color)}` }), `${u.label} (${pts.filter((p) => p.u.key === u.key).length})`)));
+  const wrap = $('chart-timeline'); wrap.replaceChildren();
+  if (!pts.length) { wrap.append(h('div', { class:'empty' }, 'No renewal dates in the filtered rows')); return; }
+  const mStart = (d) => { const x = new Date(d * DAY); return Date.UTC(x.getUTCFullYear(), x.getUTCMonth(), 1) / DAY; };
+  const mNext = (d) => { const x = new Date(d * DAY); return Date.UTC(x.getUTCFullYear(), x.getUTCMonth() + 1, 1) / DAY; };
+  const ds = pts.map((p) => p.r.renewal).sort((a, b) => a - b);
+  // clip extreme outliers so one 2035 contract doesn't squash the chart
+  const lo = Math.min(AS, ds[Math.floor(ds.length * 0.02)]), hi = Math.max(AS + 365, ds[Math.ceil(ds.length * 0.98) - 1]);
+  const d0 = mStart(lo), d1 = mNext(hi);
+  const W = 960, ml = 110, mr = 16, mt = 26, mb = 26;
+  const lanes = S.colorDim != null ? groupBy(pts.map((p) => p.r), S.colorDim).map((g) => g.key) : ['All rows'];
+  const laneH = Math.max(46, Math.min(70, 200 / lanes.length)), H = mt + mb + laneH * lanes.length;
+  const x = (d) => ml + (Math.min(Math.max(d, d0), d1) - d0) / (d1 - d0) * (W - ml - mr);
+  const laneY = (r) => mt + laneH * ((S.colorDim != null ? lanes.indexOf(cell(r, S.colorDim)) : 0) + 0.5);
+  const maxV = Math.max(...pts.map((p) => p.r.amount));
+  const rad = (a) => 3.5 + 12 * Math.sqrt(a / maxV);
+  const g = s('svg', { viewBox:`0 0 ${W} ${H}`, role:'img', 'aria-label':`Renewal timeline, ${pts.length} rows` });
+  const months = []; for (let m = d0; m < d1; m = mNext(m)) months.push(m);
+  const every = months.length > 30 ? 6 : months.length > 20 ? 3 : months.length > 14 ? 2 : 1;
+  months.forEach((m, i) => {
+    g.append(s('line', { class:'gridline', x1:x(m), x2:x(m), y1:mt, y2:H - mb }));
+    if (i % every === 0) { const dt = new Date(m * DAY); g.append(s('text', { x:x(m) + 3, y:H - 8 }, dt.toLocaleDateString(LOCALE, { month:'short', timeZone:'UTC' }) + (dt.getUTCMonth() === 0 || i === 0 ? ' ' + String(dt.getUTCFullYear()).slice(2) : ''))); }
+  });
+  lanes.forEach((ln, i) => {
+    const y = mt + laneH * (i + 0.5);
+    g.append(s('line', { class:'axis', x1:ml, x2:W - mr, y1:y, y2:y }));
+    g.append(s('text', { x:4, y:y + 4 }, ln.length > 16 ? ln.slice(0, 15) + '…' : ln));
+  });
+  g.append(s('line', { class:'today', x1:x(AS), x2:x(AS), y1:mt - 16, y2:H - mb }));
+  g.append(s('text', { class:'today-label', x:x(AS) + 4, y:mt - 6 }, 'As of ' + new Date(AS * DAY).toLocaleDateString(LOCALE, { day:'numeric', month:'short', timeZone:'UTC' })));
+  const placed = [], step = Math.min(12, laneH / 6), offs = [0, -1, 1, -2, 2, -3, 3].map((k) => k * step);
+  pts.sort((a, b) => b.r.amount - a.r.amount).forEach(({ r, u }) => {
+    const cx = x(r.renewal), rr = rad(r.amount), base = laneY(r);
+    let cy = base;
+    for (const o of offs) { cy = base + o; if (!placed.some((q) => Math.hypot(q.cx - cx, q.cy - cy) < q.r + rr - 3)) break; }
+    placed.push({ cx, cy, r:rr });
+    const clipped = r.renewal < d0 || r.renewal > d1;
+    const dot = s('circle', { class:'dot', cx, cy, r:rr, tabindex:0, style:`fill:${v(u.color)}`, 'stroke-dasharray':clipped ? '2 2' : null,
+      'aria-label':`${r.vendor || r.item}: ${fmtDay(r.renewal)}, ${fmtMoney(r.amount)}`,
+      onclick:() => { if (S.map.vendor != null) setFilter(S.map.vendor, cell(r, S.map.vendor)); } });
+    withTip(dot, () => [
+      [r.vendor, r.item].filter(Boolean).join(': ') || `Row ${r.i + 1}`,
+      fmtMoney(r.amount),
+      `Renews/ends ${fmtDay(r.renewal)}` + (clipped ? ' (outside the axis range)' : '') + (r.auto ? ', auto-renews' : r.auto === false ? ', no auto-renew' : ''),
+      r.notice != null ? `Notice by ${fmtDay(r.deadline)} (${r.notice} d): ${u.days < 0 ? -u.days + ' days ago' : 'in ' + u.days + ' days'}` : `${u.days < 0 ? -u.days + ' days ago' : 'in ' + u.days + ' days'}`,
+      S.map.owner != null ? `Owner: ${r.owner || BLANK}` : null,
+    ]);
+    g.append(dot);
+  });
+  wrap.append(g);
+
+  const due = recs.map((r) => ({ r, u:urgencyOf(r) })).filter((x) => x.u && x.u.max <= 90).sort((a, b) => a.u.days - b.u.days || b.r.amount - a.r.amount);
+  const cols = [
+    ['Deadline', ({ r }) => fmtDay(r.deadline)],
+    ['Days', ({ u }) => h('span', { class:'badge urg', style:`background:${v(u.color)}` }, u.days < 0 ? `${-u.days} d overdue` : `${u.days} d`), true],
+    S.map.vendor != null && ['Vendor', ({ r }) => r.vendor],
+    ['Item', ({ r }) => r.item || `Row ${r.i + 1}`],
+    [label(), ({ r }) => fmtMoney(r.amount), true],
+    ['Renewal', ({ r }) => fmtDay(r.renewal)],
+    S.map.auto != null && ['Auto-renew', ({ r }) => (r.auto == null ? '–' : r.auto ? 'Yes' : 'No')],
+    S.map.owner != null && ['Owner', ({ r }) => r.owner || h('span', { class:'badge' }, BLANK)],
+  ].filter(Boolean);
+  $('table-renewals').replaceChildren(
+    h('thead', {}, h('tr', {}, cols.map(([c, , n]) => h('th', { class:n ? 'num' : null, scope:'col' }, c)))),
+    h('tbody', {}, due.length ? due.map((x) => h('tr', {}, cols.map(([, f, n]) => h('td', { class:n ? 'num' : null }, f(x)))))
+      : h('tr', {}, h('td', { colspan:cols.length, class:'empty' }, 'Nothing needs action in the next 90 days.'))));
+}
+
+function renderPhasing(recs) {
+  const sec = $('sec-phasing');
+  sec.hidden = S.months.filter((c) => c != null).length < 2;
+  if (sec.hidden) return;
+  const order = Array.from({ length:12 }, (_, k) => (S.opts.fyStart + k) % 12);
+  const total = sum(recs, (r) => r.amount);
+  const even = recs.filter((r) => !r.monthly);
+  $('phasing-note').textContent = total ? `${fmtPct(sum(even, (r) => r.amount) / total)} of the filtered spend has no monthly figures and is spread evenly over 12 months.` : '';
+  const keys = S.colorDim != null ? [...S.colorMap.keys()] : ['All'];
+  $('phasing-legend').replaceChildren(...(S.colorDim != null ? keys.map((k) => h('span', {}, h('span', { class:'swatch sq', style:`background:${colorOf(k)}` }), k)) : []));
+  const wrap = $('chart-phasing'); wrap.replaceChildren();
+  if (!total) { wrap.append(h('div', { class:'empty' }, 'No matching spend')); return; }
+  const data = order.map((m) => keys.map((k) => sum(recs.filter((r) => S.colorDim == null || cell(r, S.colorDim) === k), (r) => (r.monthly ? r.monthly[m] : r.amount / 12))));
+  const totals = data.map((d) => d.reduce((a, b) => a + b, 0));
+  const { max, ticks } = niceTicks(Math.max(...totals) * 1.1);
+  const W = 960, H = 270, ml = 70, mr = 12, mt = 20, mb = 26, bw = (W - ml - mr) / 12;
+  const y = (x) => H - mb - x / max * (H - mt - mb);
+  const g = s('svg', { viewBox:`0 0 ${W} ${H}`, role:'img', 'aria-label':'Monthly phasing' });
+  ticks.forEach((t) => { g.append(s('line', { class:'gridline', x1:ml, x2:W - mr, y1:y(t), y2:y(t) })); g.append(s('text', { x:ml - 6, y:y(t) + 4, 'text-anchor':'end' }, fmtC(t))); });
+  const mname = (m) => new Date(Date.UTC(2000, m, 1)).toLocaleDateString(LOCALE, { month:'short', timeZone:'UTC' });
+  order.forEach((m, k) => {
+    let acc = 0; const x0 = ml + k * bw + bw * 0.15, w = bw * 0.7;
+    data[k].forEach((val, ki) => {
+      if (val <= 0) return;
+      const rect = s('rect', { x:x0, y:y(acc + val), width:w, height:Math.max(0, y(acc) - y(acc + val)), style:`fill:${S.colorDim != null ? colorOf(keys[ki]) : 'var(--bar)'}`, tabindex:0 });
+      withTip(rect, () => [`${mname(m)}${S.colorDim != null ? ': ' + keys[ki] : ''}`, fmtMoney(val), `Month total ${fmtMoney(totals[k])}`]);
+      g.append(rect); acc += val;
+    });
+    g.append(s('text', { class:'bar-label', x:x0 + w / 2, y:y(totals[k]) - 5, 'text-anchor':'middle' }, fmtC(totals[k])));
+    g.append(s('text', { x:x0 + w / 2, y:H - 8, 'text-anchor':'middle' }, mname(m)));
+  });
+  g.append(s('line', { class:'axis', x1:ml, x2:W - mr, y1:y(0), y2:y(0) }));
+  wrap.append(g);
+}
+
+function renderBridge(recs) {
+  const sec = $('sec-bridge');
+  sec.hidden = S.map.prior == null;
+  if (sec.hidden) return;
+  const b = computeBridge(recs);
+  $('bridge-note').textContent = `How the prior-year figure (${S.prof[S.map.prior].header}) becomes ${label()} (${S.prof[S.map.amount].header}). `
+    + `Rows with no prior figure count as new (${b.newCount}); rows at 0 with a prior figure count as removed (${b.removedCount}).`;
+  const wrap = $('chart-bridge'); wrap.replaceChildren();
+  const steps = [
+    { label:'Prior year', v:b.prior, total:true }, { label:'New', v:b.added }, { label:'Increases', v:b.increases },
+    { label:'Decreases', v:-b.decreases }, { label:'Removed', v:-b.removed }, { label:label(), v:b.next, total:true },
+  ];
+  let acc = 0;
+  steps.forEach((st) => { if (st.total) { st.from = 0; st.to = st.v; } else { st.from = acc; st.to = acc + st.v; } acc = st.to; });
+  const { max, ticks } = niceTicks(Math.max(...steps.map((st) => Math.max(st.from, st.to))) * 1.1);
+  const W = 960, H = 260, ml = 70, mr = 12, mt = 20, mb = 26, bw = (W - ml - mr) / steps.length;
+  const y = (x) => H - mb - x / max * (H - mt - mb);
+  const g = s('svg', { viewBox:`0 0 ${W} ${H}`, role:'img', 'aria-label':'Prior year to budget bridge' });
+  ticks.forEach((t) => { g.append(s('line', { class:'gridline', x1:ml, x2:W - mr, y1:y(t), y2:y(t) })); g.append(s('text', { x:ml - 6, y:y(t) + 4, 'text-anchor':'end' }, fmtC(t))); });
+  steps.forEach((st, i) => {
+    const x0 = ml + i * bw + bw * 0.2, w = bw * 0.6, top = y(Math.max(st.from, st.to)), bot = y(Math.min(st.from, st.to));
+    const rect = s('rect', { x:x0, y:top, width:w, height:Math.max(1, bot - top), rx:2, tabindex:0, style:`fill:${st.total ? 'var(--bar)' : st.v >= 0 ? 'var(--bad)' : 'var(--good)'}` });
+    withTip(rect, () => [st.label, st.total ? fmtMoney(st.v) : (st.v >= 0 ? '+' : '−') + fmtMoney(Math.abs(st.v))]);
+    g.append(rect);
+    g.append(s('text', { class:'bar-label', x:x0 + w / 2, y:top - 5, 'text-anchor':'middle' }, st.total ? fmtC(st.v) : fmtSigned(st.v)));
+    g.append(s('text', { x:x0 + w / 2, y:H - 8, 'text-anchor':'middle' }, st.label.length > 18 ? st.label.slice(0, 17) + '…' : st.label));
+    if (i < steps.length - 1) g.append(s('line', { class:'connector', x1:x0 + w, x2:x0 + bw, y1:y(st.to), y2:y(st.to) }));
+  });
+  g.append(s('line', { class:'axis', x1:ml, x2:W - mr, y1:y(0), y2:y(0) }));
+  wrap.append(g);
+  const movers = recs.map((r) => ({ r, d:r.amount - (r.prior ?? 0) })).filter((x) => x.d !== 0).sort((a, b) => Math.abs(b.d) - Math.abs(a.d)).slice(0, 10);
+  $('table-movers').replaceChildren(
+    h('thead', {}, h('tr', {}, ['Item', S.map.vendor != null ? 'Vendor' : null, 'Prior', label(), 'Change', ''].filter((x) => x !== null)
+      .map((c, i, a) => h('th', { class:i >= a.length - 4 ? 'num' : null, scope:'col' }, c)))),
+    h('tbody', {}, movers.length ? movers.map(({ r, d }) => h('tr', {},
+      h('td', {}, r.item || `Row ${r.i + 1}`), S.map.vendor != null ? h('td', {}, r.vendor) : null,
+      h('td', { class:'num' }, r.prior == null ? h('span', { class:'badge' }, 'new') : fmtMoney(r.prior)),
+      h('td', { class:'num' }, fmtMoney(r.amount)),
+      h('td', { class:'num', style:`color:${d > 0 ? 'var(--bad)' : 'var(--good)'}` }, fmtSigned(d)),
+      h('td', { class:'num' }, r.prior ? fmtSignedPct(d / r.prior) : r.amount === 0 ? h('span', { class:'badge' }, 'removed') : '')))
+      : h('tr', {}, h('td', { colspan:6, class:'empty' }, 'No changes.'))));
+}
+
+function renderLines(recs) {
+  const { col, dir } = S.sort;
+  const ci = col ?? S.map.amount;
+  const type = S.prof[ci].type, dec = S.prof[ci].dec, ord = S.prof[ci].order;
+  const key = (r) => (ci === S.map.amount ? r.amount : type === 'number' ? parseNum(r.row[ci], dec) : type === 'date' ? parseDate(r.row[ci], ord) : r.row[ci].toLowerCase());
+  const rows = [...recs].sort((a, b) => {
+    const x = key(a), y = key(b);
+    const bx = x == null || x === '' || Number.isNaN(x), by = y == null || y === '' || Number.isNaN(y);
+    if (bx || by) return bx - by;
+    return (typeof x === 'number' ? x - y : x.localeCompare(y, undefined, { numeric:true })) * dir;
+  });
+  const limit = S.showAll ? rows.length : 200;
+  $('line-count').textContent = `${recs.length} of ${S.recs.length} rows`;
+  const numCol = (c) => S.prof[c].type === 'number';
+  $('table-lines').replaceChildren(
+    h('thead', {}, h('tr', {}, S.headers.map((hd, c) => h('th', { class:numCol(c) ? 'num' : null, scope:'col' },
+      h('button', { type:'button', 'aria-sort':c === ci ? (dir > 0 ? 'ascending' : 'descending') : 'none',
+        onclick:() => { S.sort = { col:c, dir:c === ci ? -dir : (numCol(c) ? -1 : 1) }; renderLines(recs); } }, hd))))),
+    h('tbody', {}, rows.slice(0, limit).map((r) => h('tr', {}, S.headers.map((_, c) => {
+      const val = r.row[c];
+      if (c === S.colorDim && val) return h('td', {}, h('span', { class:'swatch sq', style:`background:${colorOf(val)}` }), val);
+      return h('td', { class:(numCol(c) ? 'num' : '') + (c === S.map.amount ? ' key' : '') || null }, val);
+    })))),
+    h('tfoot', {}, h('tr', {}, S.headers.map((_, c) => h('th', { class:numCol(c) ? 'num' : null },
+      c === 0 ? `Total (${recs.length})` : c === S.map.amount ? fmtMoney(sum(recs, (r) => r.amount))
+        : c === S.map.prior ? fmtMoney(sum(recs, (r) => r.prior)) : '')))));
+  $('lines-more').replaceChildren(rows.length > limit
+    ? h('button', { type:'button', class:'btn', onclick:() => { S.showAll = true; renderLines(recs); } }, `Show all ${rows.length} rows`) : '');
+}
+
+function renderQuality(recs) {
+  const total = sum(recs, (r) => Math.abs(r.amount));
+  const res = CHECKS.map(([k, lbl]) => { const hit = recs.filter((r) => r.flags.has(k)); return { k, lbl, n:hit.length, v:sum(hit, (r) => Math.abs(r.amount)) }; }).filter((x) => x.n);
+  $('quality-hint').textContent = res.length ? `${sum(res, (x) => x.n)} findings in ${res.length} checks` : 'No findings';
+  $('table-quality').replaceChildren(
+    h('thead', {}, h('tr', {}, ['Check', 'Rows', 'Spend affected', ''].map((c, i) => h('th', { class:i && i < 3 ? 'num' : null, scope:'col' }, c)))),
+    h('tbody', {}, res.length ? res.map((x) => h('tr', {},
+      h('td', {}, x.lbl), h('td', { class:'num' }, x.n), h('td', { class:'num' }, `${fmtMoney(x.v)} (${fmtPct(total ? x.v / total : 0)})`),
+      h('td', {}, h('button', { type:'button', class:'btn small', onclick:() => { S.flag = S.flag === x.k ? null : x.k; render(); } }, S.flag === x.k ? 'Clear' : 'Show'))))
+      : h('tr', {}, h('td', { colspan:4, class:'empty' }, 'All checks passed for the filtered rows.'))));
+}
+
+function exportCsv() {
+  const recs = S.recs.filter(matches);
+  const esc = (x) => (/[",\n;]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x);
+  const out = [S.headers.map(esc).join(',')].concat(recs.map((r) => r.row.map((x) => esc(x ?? '')).join(',')));
+  const a = h('a', { href:URL.createObjectURL(new Blob(['﻿' + out.join('\r\n')], { type:'text/csv;charset=utf-8' })), download:'budget-filtered.csv' });
+  document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
+function render() {
+  hideTip();
+  const recs = S.recs.filter(matches);
+  syncFilterBar();
+  renderKpis(recs); renderBreakdowns(recs); renderTimeline(recs); renderPhasing(recs); renderBridge(recs); renderLines(recs); renderQuality(recs);
+}
+
+// ------------------------------------------------------------------ mapping UI
+function renderMapping() {
+  const grid = $('map-grid'); grid.replaceChildren();
+  const opt = (p) => h('option', { value:p.ci }, `${p.header}  ·  ${p.type}`);
+  for (const role of ROLES) {
+    const sel = h('select', { id:'map-' + role.key }, h('option', { value:'' }, '- not used -'), S.prof.map(opt));
+    sel.value = S.map[role.key] ?? '';
+    const prev = h('div', { class:'preview' });
+    const upd = () => { const ci = sel.value; prev.textContent = ci === '' ? (role.help || '') : 'e.g. ' + (S.prof[ci].sample.join(' · ') || '(empty)'); };
+    sel.addEventListener('change', upd); upd();
+    grid.append(h('label', { for:'map-' + role.key, class:role.required ? 'req' : null }, role.label), sel, prev);
+  }
+  const found = S.months.map((ci, m) => (ci == null ? null : `${MONTHS[m]} ← ${S.prof[ci].header}`)).filter(Boolean);
+  grid.append(h('div', { class:'months-found' }, found.length >= 2
+    ? `Monthly columns detected (${found.length}): ${found.join(', ')}`
+    : 'No monthly columns detected (headers like Jan, Feb… or 2027-01 enable the phasing chart).'));
+
+  const st = $('settings'); st.replaceChildren();
+  const row = (lbl, el) => st.append(h('label', { for:el.id }, lbl), el);
+  row('Budget label', h('input', { id:'opt-label', value:S.opts.label, placeholder:'e.g. FY2027' }));
+  row('Currency', h('select', { id:'opt-currency' }, ['', 'EUR', 'USD', 'GBP', 'CHF', 'SEK', 'NOK', 'DKK', 'INR', 'AUD', 'CAD', 'JPY'].map((c) => h('option', { value:c, selected:c === S.opts.currency }, c || 'None (plain numbers)'))));
+  row('Number format', h('select', { id:'opt-dec' }, [['auto', 'Detect per column'], ['.', '1,234.56'], [',', '1.234,56']].map(([k, t]) => h('option', { value:k, selected:k === S.opts.dec }, t))));
+  row('Date format', h('select', { id:'opt-date' }, [['auto', 'Detect per column'], ['dmy', 'Day/Month/Year'], ['mdy', 'Month/Day/Year']].map(([k, t]) => h('option', { value:k, selected:k === S.opts.dateOrder }, t))));
+  row('Renewal urgency as of', h('input', { id:'opt-asof', type:'date', value:S.opts.asOf }));
+  row('Fiscal year starts in', h('select', { id:'opt-fy' }, MONTHS.map((m, i) => h('option', { value:i, selected:i === S.opts.fyStart }, m[0].toUpperCase() + m.slice(1)))));
+
+  const used = ROLES.filter((r) => S.map[r.key] != null).map((r) => `${r.label} → ${S.prof[S.map[r.key]].header}`);
+  $('mapping-summary').textContent = S.map.amount == null ? '⚠ Choose the budget amount column to continue.' : used.join(' · ');
+  $('mapping').open = S.map.amount == null;
+}
+function readMapping() {
+  for (const role of ROLES) { const val = $('map-' + role.key).value; if (val === '') delete S.map[role.key]; else S.map[role.key] = +val; }
+  S.opts.label = $('opt-label').value.trim();
+  S.opts.currency = $('opt-currency').value;
+  S.opts.dec = $('opt-dec').value;
+  S.opts.dateOrder = $('opt-date').value;
+  S.opts.asOf = $('opt-asof').value || dayToISO(todayDay());
+  S.opts.fyStart = +$('opt-fy').value;
+}
+
+// ------------------------------------------------------------------ 7. wiring
+function apply() {
+  setCurrency(S.opts.currency);
+  renderMapping();
+  if (S.map.amount == null) { $('dashboard').hidden = true; return; }
+  store.set('map:' + sig(), { map:S.map, months:S.months, opts:{ ...S.opts, asOf:undefined } });
+  buildRecords(); computeDims();
+  S.filters = {}; S.flag = null; S.q = ''; $('filter-q').value = ''; S.sort = { col:null, dir:-1 }; S.showAll = false;
+  buildFilterBar();
+  $('dashboard').hidden = false;
+  $('title').textContent = `IT budget explorer${S.opts.label ? ': ' + S.opts.label : ''}`;
+  $('footer').textContent = `Source: ${S.files.join(', ')} · ${S.rows.length} rows · ${S.headers.length} columns · `
+    + `amounts from "${S.prof[S.map.amount].header}"${S.opts.currency ? ' in ' + S.opts.currency : ''}, as entered in the file (no VAT/FX adjustments) · `
+    + `renewal urgency as of ${fmtDay(isoToDay(S.opts.asOf))} · read in your browser, nothing uploaded.`;
+  render();
+}
+function load(parsedFiles) {
+  const ok = parsedFiles.filter((p) => p.headers.length && p.rows.length);
+  if (!ok.length) { alert('No table found in the file(s). Is it a CSV with a header row?'); return; }
+  const { headers, rows } = combine(ok);
+  S.files = ok.map((p) => p.name); S.headers = headers; S.rows = rows; S.prof = profile(headers, rows);
+  const saved = store.get('map:' + sig());
+  const guess = guessMapping(S.prof);
+  S.map = saved ? saved.map : guess.map;
+  S.months = saved ? saved.months : guess.months;
+  const yr = S.map.amount != null ? yearOf(S.prof[S.map.amount].header) : null;
+  S.opts = { label:yr ? `FY${yr}` : '', currency:guessCurrency(S.prof, rows, S.map.amount), asOf:dayToISO(todayDay()), fyStart:0, dateOrder:'auto', dec:'auto',
+    ...(saved ? Object.fromEntries(Object.entries(saved.opts).filter(([, x]) => x !== undefined)) : {}) };
+  $('landing').hidden = true; $('mapping').hidden = false;
+  const skipped = sum(ok, (p) => p.skipped);
+  $('file-meta').textContent = `${S.files.join(', ')} · ${rows.length} rows · ${headers.length} columns`
+    + (ok.some((p) => p.delimiter !== ',') ? ` · delimiter "${ok[0].delimiter === '\t' ? 'tab' : ok[0].delimiter}"` : '')
+    + (skipped ? ` · ${skipped} title/total row(s) skipped` : '');
+  apply();
+}
+async function readFiles(fileList) {
+  const files = [...fileList].filter((f) => /\.(csv|txt|tsv)$/i.test(f.name) || f.type === 'text/csv');
+  if (!files.length) { alert('Please choose .csv files. For Excel, use File → Save As → CSV UTF-8 first.'); return; }
+  const parsed = [];
+  for (const f of files) {
+    const buf = await f.arrayBuffer();
+    let text = new TextDecoder('utf-8').decode(buf);
+    if (text.includes('�')) text = new TextDecoder('windows-1252').decode(buf); // Excel "CSV" without UTF-8
+    parsed.push({ name:f.name, ...parseCSV(text) });
+  }
+  load(parsed);
+}
+function loadSample() {
+  load([{ name:'sample-budget.csv (fictional)', ...parseCSV($('sample-csv').textContent.trim()) }]);
+}
+
+$('btn-open').addEventListener('click', () => $('file-input').click());
+$('landing-open').addEventListener('click', () => $('file-input').click());
+$('btn-sample').addEventListener('click', loadSample);
+$('landing-sample').addEventListener('click', loadSample);
+$('file-input').addEventListener('change', (e) => { if (e.target.files.length) readFiles(e.target.files); e.target.value = ''; });
+let dragDepth = 0;
+addEventListener('dragenter', (e) => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { dragDepth++; document.body.classList.add('dragging'); } });
+addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging'); } });
+addEventListener('dragover', (e) => e.preventDefault());
+addEventListener('drop', (e) => { e.preventDefault(); dragDepth = 0; document.body.classList.remove('dragging'); if (e.dataTransfer.files.length) readFiles(e.dataTransfer.files); });
+$('map-apply').addEventListener('click', () => { readMapping(); apply(); });
+$('map-reset').addEventListener('click', () => { const g = guessMapping(S.prof); S.map = g.map; S.months = g.months; renderMapping(); $('mapping').open = true; });
+let qt;
+$('filter-q').addEventListener('input', (e) => { clearTimeout(qt); qt = setTimeout(() => { S.q = e.target.value.trim().toLowerCase(); S.showAll = false; render(); }, 150); });
+$('filter-reset').addEventListener('click', () => { S.filters = {}; S.flag = null; S.q = ''; $('filter-q').value = ''; render(); });
+$('export-csv').addEventListener('click', exportCsv);
+(() => {
+  const root = document.documentElement;
+  const saved = store.get('theme'); if (saved) root.dataset.theme = saved;
+  $('btn-theme').addEventListener('click', () => {
+    const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark'; store.set('theme', root.dataset.theme);
+  });
+})();
+
+// for automated tests and DevTools
+window.BudgetExplorer = { S, parseCSV, parseNum, parseDate, guessMapping, profile, computeBridge, loadSample };
+})();
+</script>
+</body>
+</html>
