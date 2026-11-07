@@ -1,0 +1,40 @@
+# DRAFT: not yet run on any GitLab instance. Copy to the project root as .gitlab-ci.yml
+# and adapt the image names to what your company runners can pull.
+# See docs/gitlab-deployment.md.
+
+variables:
+  BUDGET_FILE: data/budget.xlsx      # the real spreadsheet (see "Where to keep the real spreadsheet")
+  PYTHON_IMAGE: python:3.12-slim     # may need your internal registry prefix
+
+stages: [test, build, deploy]
+
+unit-tests:
+  stage: test
+  image: $PYTHON_IMAGE
+  script:
+    - python3 -m unittest discover -s tests -v
+
+build-data:
+  stage: build
+  image: $PYTHON_IMAGE
+  script:
+    # Fails (exit 1) on blocking data errors, so a bad spreadsheet never gets published.
+    - python3 scripts/build_data.py "$BUDGET_FILE"
+  artifacts:
+    when: always
+    expire_in: 30 days
+    paths:
+      - site/
+      - reports/validation-report.md
+
+pages:
+  stage: deploy
+  image: $PYTHON_IMAGE
+  needs: [build-data]
+  script:
+    - rm -rf public && cp -r site public
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

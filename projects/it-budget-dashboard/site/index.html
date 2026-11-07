@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IT Budget Dashboard</title>
+  <meta name="description" content="Corporate IT licences, services and contracts budget for the coming year.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip" href="#lines">Skip to line items</a>
+
+  <header class="page-header">
+    <div>
+      <h1>IT licences, services &amp; contracts budget <span id="budget-year"></span></h1>
+      <p class="basis" id="cost-basis"></p>
+    </div>
+    <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle light or dark theme">◐ Theme</button>
+  </header>
+
+  <!-- Global filters: the equivalent of dashboard template variables. Every view below respects them. -->
+  <section class="filters" aria-label="Filters">
+    <div class="filter-grid" id="filter-grid"></div>
+    <div class="filter-actions">
+      <label class="search">
+        <span>Search</span>
+        <input type="search" id="filter-q" placeholder="Vendor, product, ID, notes…" autocomplete="off">
+      </label>
+      <button type="button" id="filter-reset" class="btn-secondary">Reset filters</button>
+    </div>
+    <div class="chips" id="active-chips" aria-live="polite"></div>
+  </section>
+
+  <main>
+    <!-- 1. Headline numbers -->
+    <section class="kpis" id="kpis" aria-label="Headline figures"></section>
+
+    <!-- 2. Where the money goes -->
+    <details class="section" open>
+      <summary><h2>Where the money goes</h2><span class="hint">Click a bar to filter</span></summary>
+      <div class="grid grid-2">
+        <article class="card"><h3>By cost pool</h3><div id="chart-pool" class="hbars"></div></article>
+        <article class="card"><h3>Top vendors</h3><p class="sub" id="vendor-concentration"></p><div id="chart-vendor" class="hbars"></div></article>
+        <article class="card"><h3>By cost centre</h3><div id="chart-cc" class="hbars"></div></article>
+        <article class="card"><h3>OPEX vs CAPEX</h3><div id="chart-capex" class="hbars"></div>
+          <h3 class="mt">By tower</h3><div id="chart-tower" class="hbars"></div></article>
+      </div>
+    </details>
+
+    <!-- 3. Renewals -->
+    <details class="section" open>
+      <summary><h2>Renewals &amp; notice deadlines</h2><span class="hint">Deadline = renewal date − notice period</span></summary>
+      <article class="card">
+        <h3>Renewal timeline</h3>
+        <p class="sub">Each dot is a contract renewal; size = annual budget, colour = how soon notice must be given.</p>
+        <div class="legend" id="urgency-legend"></div>
+        <div id="chart-timeline" class="svg-wrap"></div>
+      </article>
+      <article class="card">
+        <h3>Act within 90 days</h3>
+        <div class="table-wrap"><table id="table-renewals"></table></div>
+      </article>
+    </details>
+
+    <!-- 4. Phasing -->
+    <details class="section" open>
+      <summary><h2>Monthly phasing</h2></summary>
+      <article class="card">
+        <p class="sub" id="phasing-note"></p>
+        <div class="legend" id="category-legend"></div>
+        <div id="chart-phasing" class="svg-wrap"></div>
+      </article>
+    </details>
+
+    <!-- 5. Year over year -->
+    <details class="section" open>
+      <summary><h2>Change from prior year</h2></summary>
+      <article class="card">
+        <p class="sub" id="bridge-note"></p>
+        <div id="chart-bridge" class="svg-wrap"></div>
+      </article>
+    </details>
+
+    <!-- 6. Line items -->
+    <details class="section" open id="lines">
+      <summary><h2>Line items</h2><span class="hint" id="line-count"></span></summary>
+      <article class="card">
+        <div class="table-toolbar">
+          <span class="sub">Click a column header to sort.</span>
+          <button type="button" id="export-csv" class="btn-secondary">Export filtered lines (CSV)</button>
+        </div>
+        <div class="table-wrap tall"><table id="table-lines"></table></div>
+      </article>
+    </details>
+
+    <!-- 7. Data quality -->
+    <details class="section" id="quality">
+      <summary><h2>Data quality</h2><span class="hint" id="quality-hint"></span></summary>
+      <div class="grid grid-2">
+        <article class="card"><h3>Coverage</h3><div id="quality-metrics" class="hbars"></div></article>
+        <article class="card"><h3>Validation warnings</h3><div class="table-wrap"><table id="table-issues"></table></div></article>
+      </div>
+    </details>
+  </main>
+
+  <footer class="page-footer" id="footer"></footer>
+  <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

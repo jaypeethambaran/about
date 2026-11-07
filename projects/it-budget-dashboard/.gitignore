@@ -1,0 +1,15 @@
+# Real budget files: keep out of git
+data/private/
+
+# Python
+__pycache__/
+*.pyc
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# GitLab Pages build output
+public/
