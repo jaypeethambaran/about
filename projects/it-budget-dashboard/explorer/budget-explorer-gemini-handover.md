@@ -73,6 +73,20 @@ Repo: `jaypeethambaran/about`, branch `claude/cloud-environment-setup-6a26xz`, f
   ```
   Expected: total 5,517,000 over 39 rows and currency USD. It opens on Overview. Renewals, Cash flow, Year over year and Cost centres show an explanation page instead of charts, and Executive benchmarks explains the missing spend-type and capability columns.
 - **`examples/utf8-names.csv`:** non-ASCII names (Zürich, Genève, Malmö) and `€` amounts. They must display exactly as written; total 6,000.
+- **`examples/pivot-export-macroman.csv`:** a fictional **Excel pivot-table export saved on a Mac**, the shape real finance exports come in:
+  - Mac Roman encoding.
+  - A `Reporting Category,Licences` title row above the header.
+  - The vendor written only on the first row of each group.
+  - `<Vendor> Total` subtotal rows and a `Grand Total` row.
+  - `-` for zero.
+  - A `1000 - Dummy` placeholder vendor and "CHECK WITH" / "NEED TO UPDATE" notes.
+
+  Expected:
+  - 10 line rows totalling **159,169**, with subtotals removed and vendors filled down.
+  - Encoding "Mac Roman", and `Sàrl` / `Zürich` intact.
+  - A "Reporting Category" column.
+  - Data source reports that the lines add up to the grand total.
+  - Checks: 4 placeholder-vendor lines, 2 open questions, 1 zero amount.
 
 ---
 
@@ -97,7 +111,11 @@ Repo: `jaypeethambaran/about`, branch `claude/cloud-environment-setup-6a26xz`, f
     - Never invent company revenue or headcount: when they're blank, show "—" and ask for them.
 11. **Write invisible characters as escapes.** A previous round of edits silently turned `'\ufffd'` into `''`, which broke UTF-8 detection for every file. Use `\ufffd`, `\u00a0` and `\u241f` in source, never the literal characters.
 12. **Sample data stays fictional, including vendor names.** Don't use real companies (a previous round added three; they were renamed).
-13. **Keep `window.BudgetExplorer`.** It is the hook used by automated tests: `{ S, parseCSV, parseNum, parseDate, guessMapping, computeBridge, loadSample, go }`.
+13. **Real company data never goes into the repo or a shared file.**
+    - Builds with real data embedded are made in `projects/it-budget-dashboard/data/private/`, which is git-ignored, and handed to the owner directly.
+    - Never paste real figures into this document, test files or the committed HTML.
+    - Get the owner's approval before sending real data to any external service, including other AI tools.
+14. **Keep `window.BudgetExplorer`.** It is the hook used by automated tests: `{ S, parseCSV, parseNum, parseDate, guessMapping, computeBridge, loadSample, go }`.
 
 ---
 
@@ -116,10 +134,17 @@ Repo: `jaypeethambaran/about`, branch `claude/cloud-environment-setup-6a26xz`, f
 
 1. **Helpers:** `h()` and `s()` build HTML and SVG elements (`h(tag, attrs, ...children)`; attributes starting with `on` become event listeners). Also `icon()` (inline SVG paths in `ICONS`), formatters (`fmtMoney`, `fmtC` compact, `fmtPct`, `fmtSignedPct`, `fmtDay`), `niceTicks`, the tooltip (`withTip`) and `toast`.
 2. **CSV:**
+   - `decodeBytes(buf)` uses UTF-8 when valid. Otherwise it picks Windows-1252 or Mac Roman (Excel on Windows / Mac), whichever produces more common accented letters and punctuation. The chosen encoding is shown on Data source.
    - `parseCSV(text)` detects the delimiter (`,` `;` tab `|`) and handles quotes and CRLF.
-   - It treats the first row filled to at least half the table's width as the header, so title rows are skipped.
-   - It drops "Total" rows.
+   - The header is the first row filled to **at least 60%** of the widest row.
+     - Title rows above it are skipped.
+     - "Key, Value" rows above it (e.g. `Reporting Category,Licences`) become constant columns.
+   - **Pivot-table exports:**
+     - Rows whose first cell ends in "Total" and whose other cells are numeric or blank are subtotals, and are removed so nothing is counted twice.
+     - `Grand Total` / `Total` is kept aside for reconciliation.
+     - Labels left blank under a group (in the columns that subtotals refer to) are filled down; this resets at each subtotal.
    - `combine()` merges several files by header name and adds a `Source file` column.
+   - `reconcile()` compares each file's line items with its own grand total. Data source shows "Lines add up? Yes / No", and a toast reports it on load.
 3. **Profiling and column detection:**
    - `profile()` classifies each column as `number`, `date` or `text`, and detects the decimal separator and date order per column.
    - `guessMapping()` assigns **roles** (below).
@@ -194,7 +219,8 @@ S = {
 **Monthly columns** are numeric columns whose header looks like a month: `Jan`, `January 2027`, `2027-01`, `M01`, `P1`.
 
 **Parsing rules:**
-- **Numbers:** `1,234.50`, `1.234,50`, `$1,234`, `(1,234)` for negatives and `1234-` are accepted. The decimal separator is detected per column.
+- **Numbers:** `1,234.50`, `1.234,50`, `$1,234`, `(1,234)` for negatives, `1234-`, and a lone `-` / `–` for zero (accounting format) are accepted. The decimal separator is detected per column.
+- **Run / Grow / Transform columns are also found by their values:** a text column whose values are mostly Run / Grow / Transform becomes the spend type, whatever its header says. Without this, a header like "Spend type (draft)" would match the cost-pool rule.
 - **Dates:** `YYYY-MM-DD`, `d/m/yyyy`, `d.m.yyyy`, `31 Mar 2027` and `Mar 31, 2027` are accepted. Day/month order is detected per column (day-first unless the data proves otherwise), and two-digit years mean 20xx.
 
 ### Definitions used across pages
@@ -204,7 +230,10 @@ S = {
 - **Year-over-year bridge:**
   - prior year + new (no prior figure) + increases − decreases − removed (amount 0 with a prior figure) = this budget.
   - It must always reconcile exactly.
-- **Data-quality score** = share of |spend| in rows with no *error* or *warning* flags. Info flags don't count. The checks are in `CHECKS` as `[key, label, severity]`.
+- **Data-quality score** = share of |spend| in rows with no *error* or *warning* flags. Info flags don't count. The checks are in `CHECKS` as `[key, label, severity]`, including:
+  - **placeholder vendor:** "Dummy", TBD, TBC, unknown, various, n/a (warning)
+  - **open question in the text:** "need to update", "check with", "to be confirmed", TBC (info)
+  - **zero amount** (info)
 - **Monthly phasing:** rows with month columns use them. Rows without them are spread evenly over 12 months, and the share of spend this affects is always stated.
 - **Fiscal year start** (`opts.fyStart`) reorders months on Cash flow and the Overview chart, and defines Q1–Q4.
 - **New spend:** a blank **or zero** prior-year figure counts as new in the bridge, the Year over year tabs and the vendor table.
@@ -315,7 +344,7 @@ The mapping form picks it up automatically.
 
 ## 8. Testing and verification
 
-**Automated (in the source repo):** `projects/it-budget-dashboard/tests/explorer_test.cjs`, a Playwright script with 57 checks that opens the file from disk. Run it with `node tests/explorer_test.cjs`, or `SCREENSHOT_DIR=… node tests/explorer_test.cjs` to also save a screenshot of each page. It checks that:
+**Automated (in the source repo):** `projects/it-budget-dashboard/tests/explorer_test.cjs`, a Playwright script with 64 checks that opens the file from disk. Run it with `node tests/explorer_test.cjs`, or `SCREENSHOT_DIR=… node tests/explorer_test.cjs` to also save a screenshot of each page. It checks that:
 - The sample opens on Executive benchmarks.
 - Entering revenue, headcount and other IT spend gives the worked example in section 2.
 - Tab moves focus to the next field after a re-render.
@@ -327,6 +356,7 @@ The mapping form picks it up automatically.
 - The renewal urgency filter and the calendar work.
 - "View rows" filters Line items, and pagination works.
 - UTF-8 names stay intact.
+- The Mac Roman pivot export loads with subtotals removed, vendors filled down, the title row kept as a column, reconciliation "Yes" and the expected checks.
 - The EU and minimal CSVs load with the expected column detection.
 - Remapping the amount column changes the total, and re-detect restores it.
 - There's no horizontal scroll at 390 px, and the phone menu opens.
@@ -341,7 +371,7 @@ If you can't run it, do the manual checklist below after every change.
 4. A Vendors row opens the panel. Clicking a line inside opens line details. Esc closes the panel, and focus returns to where it was.
 5. Renewals: each urgency segment and each tab (Timeline, Calendar, List) shows matching counts.
 6. Data source: changing the amount column to `prior_year_budget` and selecting **Apply** gives total 5,214,500. **Re-detect columns** followed by **Apply** restores it.
-7. Load the EU, minimal and UTF-8 CSVs; check against section 2.
+7. Load the EU, minimal, UTF-8 and pivot-export CSVs; check against section 2.
 8. Toggle dark mode with the moon icon; check the 390 px phone width.
 
 **Invariants that must always hold:**
@@ -419,6 +449,17 @@ Before starting large items (1, 2, 4), propose the approach to the owner in a fe
 ---
 
 ## 13. Change log
+
+**Ready for real finance exports (8 Nov 2026), done by Claude.** Tested against the owner's real licence-spend export, which isn't in the repo, and reproduced with the fictional `pivot-export-macroman.csv`:
+- Mac Roman / Windows-1252 detection.
+- Header detection at 60% width, with "Key, Value" title rows turned into columns.
+- Pivot subtotal removal with label fill-down, and grand-total reconciliation on Data source.
+- `-` as zero.
+- Run / Grow / Transform column detection by value.
+- Placeholder-vendor, open-question and zero-amount checks.
+- Pages that aren't available say what they need in the subtitle.
+- **Embedded data:** `<script type="text/plain" id="sample-csv" data-name="…" data-label="…" data-button="…" data-autoload="true">` lets a private build open straight onto its own data.
+- Remaining invisible characters in the script (BOM, NBSP) were converted to escapes.
 
 **Integration of the Gemini rework (8 Nov 2026), done by Claude.** Kept from Gemini:
 - The Executive benchmarks page.

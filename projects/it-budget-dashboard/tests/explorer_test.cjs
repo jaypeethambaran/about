@@ -130,6 +130,19 @@ const PAGES = ['strategy', 'overview', 'breakdown', 'vendors', 'organisation', '
   check(JSON.stringify(await S(() => window.BudgetExplorer.S.rows.map((r) => r[2]))) === '["Zürich","Genève","Malmö"]', 'UTF-8 names (Zürich, Genève, Malmö) are read correctly');
   check(await total() === 6000, '€-prefixed amounts parse: total 6,000');
 
+  console.log('Pivot-table export (Mac Roman, title row, subtotals, fill-down, dashes)');
+  await loadFile(EX('examples/pivot-export-macroman.csv'), 'pivot-export-macroman.csv');
+  check(await total() === 159169, 'subtotal and grand-total rows removed: total 159,169 (not double counted)');
+  check(await S(() => window.BudgetExplorer.S.rows.length) === 10, '10 line rows kept');
+  check(await S(() => window.BudgetExplorer.S.fileInfo[0].encoding) === 'Mac Roman', 'encoding detected as Mac Roman');
+  check(JSON.stringify(await S(() => { const s = window.BudgetExplorer.S, v = s.map.vendor; return [...new Set(s.rows.map((r) => r[v]))]; })) === JSON.stringify(['1000 - Dummy', 'Northwind Software', 'Fabrikam Sàrl', 'Contoso Cloud', 'Wingtip Zürich AG']), 'vendor labels filled down; Sàrl / Zürich decoded correctly');
+  check(await mapped('category') === 'Reporting Category', '"Reporting Category, Licences" title row becomes a column');
+  const flags = await S(() => { const c = {}; for (const r of window.BudgetExplorer.S.recs) for (const f of r.flags) c[f] = (c[f] || 0) + 1; return c; });
+  check(flags.vendor_placeholder === 4 && flags.open_question === 2 && flags.amount_zero === 1 && !flags.amount_bad, `checks: 4 placeholder-vendor lines, 2 open questions, 1 zero ("-") amount, no parse errors (${JSON.stringify(flags)})`);
+  await nav('source');
+  check((await page.textContent('#file-table')).includes('Yes'), 'Data source confirms the lines add up to the file\'s grand total');
+  await shot('32-pivot-source', false);
+
   console.log('EU finance export');
   await loadFile(EX('examples/finance-export-eu.csv'), 'finance-export-eu.csv');
   check(await total() === 5517000, 'lands on Overview (no strategy columns) with total 5,517,000');

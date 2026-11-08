@@ -550,7 +550,7 @@ function detectDelimiter(text) {
   return best;
 }
 function parseCSV(text) {
-  text = text.replace(/^﻿/, '');
+  text = text.replace(/^\ufeff/, '');
   const d = detectDelimiter(text);
   const rows = []; let row = [], f = '', q = false;
   for (let i = 0; i < text.length; i++) {
@@ -563,9 +563,13 @@ function parseCSV(text) {
   }
   if (f !== '' || row.length) { row.push(f); rows.push(row); }
   const data = rows.map((r) => r.map((x) => x.trim())).filter((r) => r.some((x) => x !== ''));
-  if (!data.length) return { delimiter:d, headers:[], rows:[], skipped:0 };
-  const width = Math.max(...data.map((r) => r.filter((x) => x !== '').length));
-  const hi = data.findIndex((r) => r.filter((x) => x !== '').length >= Math.max(2, width / 2));
+  if (!data.length) return { delimiter:d, headers:[], rows:[], skipped:0, meta:[], subtotals:0, grand:null, filledDown:0 };
+  const filled = (r) => r.filter((x) => x !== '').length;
+  // Header = first row filled to at least 60% of the widest row. Rows above it are titles or
+  // "Key, Value" pairs (e.g. "Reporting Category, Licences"), which become constant columns.
+  const width = Math.max(...data.map(filled));
+  const hi = Math.max(0, data.findIndex((r) => filled(r) >= Math.max(2, Math.ceil(width * 0.6))));
+  const meta = data.slice(0, hi).filter((r) => filled(r) === 2 && r[0] && r[1] && !/^\d/.test(r[0])).map((r) => [r[0].replace(/:$/, ''), r[1]]);
   const seen = new Map();
   const headers = data[hi].map((x, i) => {
     const name = x || `Column ${i + 1}`;
@@ -573,8 +577,34 @@ function parseCSV(text) {
     return n > 1 ? `${name} (${n})` : name;
   });
   const body = data.slice(hi + 1).map((r) => headers.map((_, i) => r[i] ?? ''));
-  const kept = body.filter((r) => !/^(grand\s+)?totals?:?$/i.test(r.find((x) => x !== '') || ''));
-  return { delimiter:d, headers, rows:kept, skipped:hi + (body.length - kept.length) };
+  // Pivot-table exports: "<label> Total" rows hold subtotals (dropped, so nothing is counted twice),
+  // "Grand Total" is kept aside to reconcile against, and labels left blank under a group are filled down.
+  const numLike = (x) => /^[\s()\-–—\d.,'\u00a0%€$£¥]*$/.test(x);
+  const out = []; let subtotals = 0, grand = null, filledDown = 0;
+  const groupCols = new Set();
+  for (const r of body) {
+    const fi = r.findIndex((x) => x !== '');
+    const lead = r[fi] || '';
+    if (/(^|\s)totals?:?$/i.test(lead) && r.every((x, i) => i === fi || numLike(x))) {
+      if (/^(grand\s+)?totals?:?$/i.test(lead)) grand = Object.fromEntries(headers.map((hd, i) => [hd, r[i]]));
+      else { subtotals++; groupCols.add(fi); }
+      out.push({ reset:fi });
+      continue;
+    }
+    out.push(r);
+  }
+  if (subtotals) {
+    const carry = new Map();
+    for (const r of out) {
+      if (!Array.isArray(r)) { for (const c of [...carry.keys()]) if (c >= r.reset) carry.delete(c); continue; }
+      for (const c of groupCols) {
+        if (r[c] === '' && carry.has(c)) { r[c] = carry.get(c); filledDown++; } else if (r[c] !== '') carry.set(c, r[c]);
+      }
+    }
+  }
+  const kept = out.filter(Array.isArray);
+  for (const [k, v] of meta) if (!headers.some((hd) => hd.toLowerCase() === k.toLowerCase())) { headers.push(k); kept.forEach((r) => r.push(v)); }
+  return { delimiter:d, headers, rows:kept, skipped:hi + (body.length - kept.length), meta, subtotals, grand, filledDown };
 }
 function combine(parsed) {
   const headers = [], index = new Map(), key = (x) => x.trim().toLowerCase();
@@ -602,6 +632,7 @@ function cleanNum(raw) {
   return { t, neg };
 }
 function parseNum(raw, dec) {
+  if (/^\s*[-\u2013\u2014]+\s*$/.test(String(raw))) return 0; // accounting format: "-" means zero
   const c = cleanNum(raw); if (!c) return null;
   let t = c.t;
   t = dec === ',' ? t.replace(/\./g, '').replace(',', '.') : t.replace(/,/g, '');
@@ -664,7 +695,8 @@ function profile(headers, rows) {
     const type = vals.length && dateOk / n >= 0.8 ? 'date' : vals.length && numOk / n >= 0.8 ? 'number' : 'text';
     return { header, ci, type, dec, order, filled:vals.length, uniq:new Set(vals).size,
       total:type === 'number' ? sum(vals, (x) => parseNum(x, dec)) : 0,
-      month:type === 'number' ? monthIndex(header) : -1, sample:vals.slice(0, 3) };
+      month:type === 'number' ? monthIndex(header) : -1, sample:vals.slice(0, 3),
+      rgt:vals.length ? vals.filter((x) => rgtClass(x) !== 'none').length / vals.length : 0 }; // share of Run/Grow/Transform-like values
   });
 }
 const ROLES = [
@@ -703,6 +735,9 @@ function guessMapping(prof) {
     if (main) take('amount', main.ci);
     if (prior) take('prior', prior.ci);
   }
+  // a text column whose values are mostly Run / Grow / Transform is the spend type, whatever its header says
+  const rgtCol = prof.filter((p) => !used.has(p.ci) && p.type === 'text' && p.rgt >= 0.6 && p.uniq <= 12).sort((a, b) => b.rgt - a.rgt)[0];
+  if (rgtCol) take('spend_cat', rgtCol.ci);
   for (const key of ['id', 'vendor', 'pool', 'category', 'costcentre', 'owner', 'capability', 'spend_cat', 'capex', 'renewal', 'notice', 'auto', 'item']) {
     const role = ROLES.find((r) => r.key === key);
     const fits = (p) => !used.has(p.ci) && p.month < 0 && (role.type === 'any' || p.type === role.type);
@@ -765,7 +800,10 @@ const CHECKS = [
   ['auto_no_notice', 'Auto-renews but no notice period', 'warning'],
   ['phasing_mismatch', 'Monthly figures don’t add up to the amount', 'warning'],
   ['amount_neg', 'Negative amount (credit?)', 'info'],
+  ['vendor_placeholder', 'Placeholder vendor (e.g. “Dummy”, TBD): real supplier not yet assigned', 'warning'],
   ['phasing_missing', 'No monthly figures (spread evenly)', 'info'],
+  ['open_question', 'Open question noted in the text (e.g. “check with”, “need to update”)', 'info'],
+  ['amount_zero', 'Zero amount (saving, cancelled or not yet priced?)', 'info'],
 ];
 const SEV = { error:{ label:'Error', tag:'red' }, warning:{ label:'Warning', tag:'yellow' }, info:{ label:'Info', tag:'blue' } };
 function buildRecords() {
@@ -801,6 +839,9 @@ function buildRecords() {
     if (map.costcentre != null && !rec.costcentre && amount) flags.add('no_cc');
     if (renewal != null && renewal < AS && amount > 0) flags.add('renewal_passed');
     if (auto && renewal != null && notice == null && map.notice != null) flags.add('auto_no_notice');
+    if (map.vendor != null && /\b(dummy|tbd|tbc|unknown|various|placeholder)\b|^(misc\.?|n\/?a|-)$/i.test(rec.vendor)) flags.add('vendor_placeholder');
+    if (/\b(need to update|needs? updat|check with|to be confirmed|to confirm|tbc)\b/i.test(row.join(' '))) flags.add('open_question');
+    if (amount === 0 && !flags.has('amount_blank') && !flags.has('amount_bad')) flags.add('amount_zero');
     if (map.id != null && rec.id) ids.set(rec.id, (ids.get(rec.id) || 0) + 1);
     return rec;
   });
@@ -927,13 +968,13 @@ function renderTopbar() {
   if (S.loaded) ds.replaceChildren(icon('source', 14), h('span', { title:S.files.join(', ') },
     `${S.files.length > 1 ? S.files.length + ' files' : S.files[0]} · ${fmtInt(S.rows.length)} rows` + (S.opts.label ? ` · ${S.opts.label}` : '') + (S.opts.currency ? ` · ${S.opts.currency}` : '')));
 }
-function pageHeader(page, recs) {
+function pageHeader(page, recs, avail = true) {
   const actions = [];
   if (ready() && page.id !== 'source') actions.push(btn('Export CSV', 'secondary', () => exportCsv(recs), 'download', { title:'Export the filtered rows', id:'export-csv' }));
   return h('div', {},
     h('nav', { class:'crumbs', 'aria-label':'Breadcrumb' }, h('a', { href:'#/' + defaultPage() }, 'IT budget'), '/', h('span', {}, page.group), '/', h('span', { 'aria-current':'page' }, page.label)),
     h('div', { class:'page-head' },
-      h('div', {}, h('h1', { class:'page-t' }, page.label), h('p', { class:'page-s', id:'page-insight' }, ready() && page.insight ? page.insight(recs) : '')),
+      h('div', {}, h('h1', { class:'page-t' }, page.label), h('p', { class:'page-s', id:'page-insight' }, !ready() ? '' : !avail ? `Needs ${page.needsText}.` : page.insight ? page.insight(recs) : '')),
       actions.length ? h('div', { class:'page-a' }, actions) : null));
 }
 
@@ -1269,8 +1310,9 @@ function heatCell(v, max) {
 // Page subtitles state the main finding (Carbon: "titles should state the insight").
 
 // ---------- Executive benchmarks ----------
-function rgtOf(r) {
-  const v = (r.row[S.map.spend_cat] || '').toLowerCase();
+function rgtOf(r) { return rgtClass(r.row[S.map.spend_cat]); }
+function rgtClass(raw) {
+  const v = String(raw || '').toLowerCase();
   if (/transform|innovat|change the business|\bctb\b/.test(v)) return 'transform';
   if (/grow|expan|scale/.test(v)) return 'grow';
   if (/\brun\b|operat|maint|sustain|keep the lights|\bktlo\b|\brtb\b/.test(v)) return 'run';
@@ -1346,7 +1388,7 @@ function pageStrategy(recs) {
   const cards = [];
   if (x) {
     const base = x.classified || 1, tSum = (T.run + T.grow + T.transform) || 1;
-    const seg = (g, v, total, withLabel) => (v > 0 ? h('div', { class:'rgt-seg' + (g.key === 'none' ? ' none' : ''), style:`width:${v / total * 100}%;background:${g.color}`, title:`${g.label}: ${fmtPct(v / total, 1)}` }, withLabel && v / total >= 0.07 ? `${g.label} ${fmtPct(v / total)}` : '') : null);
+    const seg = (g, v, total, withLabel) => (v > 0 ? h('div', { class:'rgt-seg' + (g.key === 'none' ? ' none' : ''), style:`width:${v / total * 100}%;background:${g.color}`, title:`${g.label}: ${fmtPct(v / total, 1)}` }, withLabel && v / total >= 0.2 ? `${g.label} ${fmtPct(v / total)}` : withLabel && v / total >= 0.06 ? fmtPct(v / total) : '') : null);
     const rows = RGT.filter((g) => g.key !== 'none' || x.m.none).map((g) => ({ ...g, v:x.m[g.key], share:g.key === 'none' ? null : x.m[g.key] / base, target:g.key === 'none' ? null : T[g.key] / 100, values:[...x.vals[g.key]] }));
     const cols = [
       { key:'label', label:'Spend type', render:(g) => h('span', { class:'sw-label' }, h('span', { class:'swatch', style:`background:${g.color}` }), h('b', {}, g.label), h('span', { class:'muted' }, g.note)) },
@@ -1370,7 +1412,7 @@ function pageStrategy(recs) {
       { key:'key', label:hdr(S.map.capability), cls:'strong' },
       { key:'value', label:label(), num:true, render:(g) => fmtMoney(g.value) },
       { key:'share', label:'Share', num:true, sortVal:(g) => g.value, render:(g) => fmtPct(total ? g.value / total : 0, 1) },
-      x ? { key:'mix', label:'Run / Grow / Transform', sortable:false, cls:'mix', render:(g) => { const y = rgtSplit(g.recs); return y.all ? h('span', { class:'stack mini', style:'width:72px' }, RGT.map((r) => (y.m[r.key] > 0 ? h('span', { style:`width:${y.m[r.key] / y.all * 100}%;background:${r.color}`, title:`${r.label}: ${fmtMoney(y.m[r.key])}` }) : null))) : ''; } } : null,
+      x ? { key:'mix', label:'Spend type mix', sortable:false, cls:'mix', render:(g) => { const y = rgtSplit(g.recs); return y.all ? h('span', { class:'stack mini', style:'width:72px' }, RGT.map((r) => (y.m[r.key] > 0 ? h('span', { style:`width:${y.m[r.key] / y.all * 100}%;background:${r.color}`, title:`${r.label}: ${fmtMoney(y.m[r.key])}` }) : null))) : ''; } } : null,
       S.map.prior != null ? { key:'chg', label:'vs prior', num:true, sortVal:(g) => (g.prior ? (g.value - g.prior) / g.prior : null), render:(g) => (g.prior ? h('span', { style:`color:${g.value > g.prior ? 'var(--up)' : 'var(--down)'}` }, fmtSignedPct((g.value - g.prior) / g.prior)) : '—') } : null,
     ].filter(Boolean);
     S.ui.capSort = S.ui.capSort || { key:'value', dir:-1 };
@@ -1448,7 +1490,7 @@ function pageOverview(recs) {
       body:h('div', { class:'chart small' }, waterfall(bridgeSteps(b), { height:300, compact:true })), foot:linkTo('yoy', 'Open year over year') }));
   }
   const top = q.res.filter((x) => x.n && x.sev !== 'info').slice(0, 5);
-  cards.push(card({ title:top.length ? `${top.length} data checks need attention` : 'All data checks passed', sub:'Errors and warnings · click a row to see the lines', flush:true,
+  cards.push(card({ title:top.length ? `${top.length} data check${top.length === 1 ? ' needs' : 's need'} attention` : 'All data checks passed', sub:'Errors and warnings · click a row to see the lines', flush:true,
     body:dataTable({ cols:[{ key:'sev', label:'Severity', render:(x) => tag(SEV[x.sev].label, SEV[x.sev].tag) }, { key:'lbl', label:'Check' }, { key:'n', label:'Rows', num:true }],
       rows:top, onRow:(x) => { S.flag = x.k; go('lines'); }, empty:'No errors or warnings.' }),
     foot:linkTo('quality', 'Open data quality') }));
@@ -1764,7 +1806,14 @@ function pageSource() {
   out.push(h('div', { class:'grid g2' },
     card({ title:'Loaded data', sub:'Read in this browser only. Nothing is uploaded.', flush:true,
       actions:[btn('Replace…', 'secondary sm', openPicker, 'upload'), btn('Sample data', 'ghost sm', loadSample)],
-      body:dataTable({ cols:[{ key:'name', label:'File' }, { key:'rows', label:'Rows', num:true }, { key:'cols', label:'Columns', num:true }, { key:'delim', label:'Delimiter' }, { key:'skipped', label:'Skipped rows', num:true }], rows:S.fileInfo }) }),
+      body:dataTable({ id:'file-table', rows:reconcile(), cols:[
+        { key:'name', label:'File', cls:'wrap' },
+        { key:'rows', label:'Line rows', num:true, render:(f) => fmtInt(f.rows) },
+        { key:'encoding', label:'Encoding' },
+        { key:'skipped', label:'Removed', num:true, render:(f) => h('span', { title:`${f.subtotals} subtotal rows, ${f.skipped - f.subtotals - (f.grand ? 1 : 0)} title rows${f.grand ? ', 1 grand-total row' : ''}; ${f.filledDown} blank labels filled down` }, fmtInt(f.skipped)) },
+        { key:'grandValue', label:'Grand total in file', num:true, render:(f) => (f.grandValue == null ? h('span', { class:'muted' }, 'none') : fmtMoney(f.grandValue)) },
+        { key:'status', label:'Lines add up?', render:(f) => (f.status === 'ok' ? tag(Math.abs(f.diff) >= 0.5 ? `Yes (±${fmtMoney(Math.abs(f.diff))} rounding)` : 'Yes', 'green') : f.status === 'off' ? tag(`No: off by ${fmtMoney(f.diff)}`, 'red') : h('span', { class:'muted' }, 'n/a')) },
+      ] }) }),
     card({ title:'Settings', body:settingsForm() })));
   out.push(card({ title:'Column mapping', sub:'What each column means. Detected automatically; change anything that looks wrong, then select Apply.', body:mappingForm() }));
   out.push(h('div', { class:'action-bar' }, btn('Re-detect columns', 'ghost', () => { const g = guessMapping(S.prof); S.map = g.map; S.months = g.months; render(); toast('Columns re-detected. Select Apply to use them.'); }, null, { id:'map-reset' }),
@@ -1815,7 +1864,7 @@ function landing() {
     h('div', { class:'hero' }, h('div', { class:'hero-icon' }, icon('upload', 28)),
       h('h1', { class:'page-t' }, 'Load your IT budget'),
       h('p', { class:'page-s' }, 'Drop one or more CSV exports anywhere on this page, or choose files. Any column layout works: columns are detected automatically and you can adjust them.'),
-      h('div', { class:'btn-row' }, btn('Choose CSV files', 'primary', openPicker, 'upload', { id:'landing-open' }), btn('Use sample data', 'secondary', loadSample, 'flask', { id:'landing-sample' })),
+      h('div', { class:'btn-row' }, btn('Choose CSV files', 'primary', openPicker, 'upload', { id:'landing-open' }), btn($('sample-csv').dataset.button || 'Use sample data', 'secondary', loadSample, 'flask', { id:'landing-sample' })),
       h('p', { class:'privacy' }, icon('lock', 14), 'Files are read by your browser only. Nothing is uploaded.'),
       h('p', { class:'card-s', style:'margin-top:12px' }, 'Comma, semicolon or tab separated · 1,234.50 or 1.234,50 · 2027-03-31, 31/03/2027 or 31.03.2027 · Excel: save as “CSV UTF-8” first')),
     h('div', { class:'features' }, feats.map(([ic, t, d, n]) => h('div', { class:'feature' }, icon(ic, 20), h('h3', {}, t), h('p', {}, d), h('div', { class:'needs' }, n)))));
@@ -1840,7 +1889,7 @@ function render() {
   if (!S.loaded) content.append(landing());
   else {
     const avail = !page.needs || page.needs();
-    content.append(pageHeader(page, recs));
+    content.append(pageHeader(page, recs, avail));
     if (ready() && !page.noFilters) content.append(filterBar());
     content.append(...[].concat(avail ? page.render(recs) : unavailable(page)));
   }
@@ -1869,40 +1918,72 @@ function apply() {
   S.filters = {}; S.flag = null; S.q = ''; S.ui.lPage = 0; S.ui.lSort = { key:null, dir:-1 };
   render();
 }
-function load(parsed) {
+function load(parsed, preset = {}) {
   const ok = parsed.filter((p) => p.headers.length && p.rows.length);
   if (!ok.length) { toast('No table found. Is it a CSV with a header row?'); return; }
   const { headers, rows } = combine(ok);
   S.files = ok.map((p) => p.name); S.headers = headers; S.rows = rows; S.prof = profile(headers, rows);
-  S.fileInfo = ok.map((p) => ({ name:p.name, rows:fmtInt(p.rows.length), cols:p.headers.length, delim:{ ',':'Comma', ';':'Semicolon', '\t':'Tab', '|':'Pipe' }[p.delimiter], skipped:p.skipped }));
+  let offset = 0;
+  S.fileInfo = ok.map((p) => {
+    const info = { name:p.name, rows:p.rows.length, cols:p.headers.length, delim:{ ',':'Comma', ';':'Semicolon', '\t':'Tab', '|':'Pipe' }[p.delimiter],
+      encoding:p.encoding || '—', skipped:p.skipped, subtotals:p.subtotals || 0, filledDown:p.filledDown || 0, grand:p.grand, start:offset, end:offset + p.rows.length };
+    offset += p.rows.length;
+    return info;
+  });
   const saved = store.get('map:' + sig()), guess = guessMapping(S.prof);
   S.map = saved ? saved.map : guess.map; S.months = saved ? saved.months : guess.months;
   const yr = S.map.amount != null ? yearOf(headers[S.map.amount]) : null;
-  S.opts = { label:yr ? `FY${yr}` : '', currency:guessCurrency(S.prof, rows, S.map.amount), asOf:dayToISO(todayDay()), fyStart:0, dateOrder:'auto', dec:'auto',
+  S.opts = { label:preset.label || (yr ? `FY${yr}` : ''), currency:guessCurrency(S.prof, rows, S.map.amount), asOf:dayToISO(todayDay()), fyStart:0, dateOrder:'auto', dec:'auto',
     ...(saved ? Object.fromEntries(Object.entries(saved.opts || {}).filter(([, x]) => x !== undefined)) : {}) };
   S.loaded = true;
   apply();
-  toast(`Loaded ${fmtInt(rows.length)} rows from ${S.files.join(', ')}.`);
+  const rec = reconcile();
+  toast(`Loaded ${fmtInt(rows.length)} rows from ${S.files.join(', ')}.` + (rec.some((x) => x.status === 'ok') && rec.every((x) => x.status !== 'off') ? ` Lines add up to the file's grand total.` : rec.some((x) => x.status === 'off') ? ` Warning: lines don't add up to the file's grand total; see Data source.` : ''));
   go(S.map.amount == null ? 'source' : defaultPage());
+}
+// Decode bytes: UTF-8 when valid, otherwise whichever legacy encoding (Windows-1252 or Mac Roman,
+// as written by Excel on Windows / Mac) produces more common accented letters and punctuation.
+function decodeBytes(buf) {
+  const utf8 = new TextDecoder('utf-8').decode(buf);
+  if (!utf8.includes('\ufffd')) return { text:utf8, encoding:'UTF-8' };
+  const COMMON = /[\u00c0-\u00cf\u00d1-\u00d6\u00d8-\u00dd\u00df-\u00ef\u00f1-\u00f6\u00f8-\u00fd\u00ff\u0152\u0153\u20ac\u00a3\u2013\u2014\u2018\u2019\u201c\u201d\u2026\u2022\u00b0]/g;
+  const tries = [['windows-1252', 'Windows-1252'], ['macintosh', 'Mac Roman']].map(([enc, lbl]) => {
+    try { const text = new TextDecoder(enc).decode(buf); return { text, encoding:lbl, score:(text.match(COMMON) || []).length }; } catch (e) { return null; }
+  }).filter(Boolean).sort((a, b) => b.score - a.score);
+  return tries[0] || { text:utf8, encoding:'UTF-8 (with errors)' };
 }
 async function readFiles(fileList) {
   const files = [...fileList].filter((f) => /\.(csv|txt|tsv)$/i.test(f.name) || f.type === 'text/csv');
   if (!files.length) { toast('Please choose .csv files. For Excel, use File → Save As → CSV UTF-8 first.'); return; }
   const parsed = [];
   for (const f of files) {
-    const buf = await f.arrayBuffer();
-    let text = new TextDecoder('utf-8').decode(buf);
-    if (text.includes('\ufffd')) text = new TextDecoder('windows-1252').decode(buf); // U+FFFD = invalid UTF-8, so retry as Windows-1252
-    parsed.push({ name:f.name, ...parseCSV(text) });
+    const { text, encoding } = decodeBytes(await f.arrayBuffer());
+    parsed.push({ name:f.name, encoding, ...parseCSV(text) });
   }
   load(parsed);
 }
-function loadSample() { load([{ name:'sample-budget.csv (fictional)', ...parseCSV($('sample-csv').textContent.trim()) }]); }
+// Compare each file's line items with the "Grand Total" row the file itself carried (pivot exports).
+function reconcile() {
+  if (S.map.amount == null) return [];
+  const hdr0 = S.headers[S.map.amount], dec = S.opts.dec === 'auto' ? S.prof[S.map.amount].dec : S.opts.dec;
+  return S.fileInfo.map((f) => {
+    const lines = sum(S.recs.slice(f.start, f.end), (r) => r.amount);
+    const g = f.grand && f.grand[hdr0] != null ? parseNum(f.grand[hdr0], dec) : null;
+    if (g == null || !isFinite(g)) return { ...f, lines, grandValue:null, status:'none' };
+    const diff = lines - g;
+    return { ...f, lines, grandValue:g, diff, status:Math.abs(diff) <= Math.max(1, Math.abs(g) * 0.0005) ? 'ok' : 'off' };
+  });
+}
+// Embedded data: <script type="text/plain" id="sample-csv" data-name=… data-label=… data-button=… data-autoload="true">
+function loadSample() {
+  const el = $('sample-csv');
+  load([{ name:el.dataset.name || 'sample-budget.csv (fictional)', encoding:'Embedded', ...parseCSV(el.textContent.trim()) }], { label:el.dataset.label });
+}
 function openPicker() { $('file-input').click(); }
 function exportCsv(recs) {
   const esc = (x) => (/[",\n;]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x);
   const out = [S.headers.map(esc).join(',')].concat(recs.map((r) => r.row.map((x) => esc(x ?? '')).join(',')));
-  const a = h('a', { href:URL.createObjectURL(new Blob(['﻿' + out.join('\r\n')], { type:'text/csv;charset=utf-8' })), download:'budget-filtered.csv' });
+  const a = h('a', { href:URL.createObjectURL(new Blob(['\ufeff' + out.join('\r\n')], { type:'text/csv;charset=utf-8' })), download:'budget-filtered.csv' });
   document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   toast(`Exported ${fmtInt(recs.length)} rows.`);
 }
@@ -1937,6 +2018,7 @@ addEventListener('dragover', (e) => e.preventDefault());
 addEventListener('drop', (e) => { e.preventDefault(); dragDepth = 0; document.body.classList.remove('dragging'); if (e.dataTransfer.files.length) readFiles(e.dataTransfer.files); });
 addEventListener('hashchange', route);
 route();
+if ($('sample-csv').dataset.autoload === 'true') loadSample();
 
 // for automated tests and DevTools
 window.BudgetExplorer = { S, parseCSV, parseNum, parseDate, guessMapping, computeBridge, loadSample, go };
