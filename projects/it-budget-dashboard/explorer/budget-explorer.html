@@ -312,6 +312,8 @@ dl.kv dd { overflow-wrap:anywhere; }
 .ct-notes li + li { margin-top:6px; }
 .ct-bars .hb { grid-template-columns:minmax(110px, 42%) minmax(40px, 1fr) 92px 42px; }
 @media (max-width:640px) { .ct-bars .hb { grid-template-columns:minmax(80px, 42%) 1fr 84px; } }
+.dt tr.ended td { color:var(--text-3); }
+#ct-lines td, #ct-lines th { padding-left:9px; padding-right:9px; }
 .sub-h { font-size:13px; font-weight:600; margin:16px 16px 8px; }
 
 /* ---------- landing / empty states ---------- */
@@ -435,12 +437,15 @@ IT-043,Wide World Revenue AI,Revenue intelligence (AI),Licence,Software,Applicat
         { "product": "Enterprise support plan", "qty": 1, "kind": "Support", "amount": 4950.00 } ] } ] },
   { "id": "fabrikam", "name": "Fabrikam Security", "match": "^fabrikam security$", "currency": "USD",
     "fx": { "to": "EUR", "rate": 0.89, "note": "Illustrative rate for the fictional sample." },
-    "notes": ["The penetration test in the budget is a one-off and is not on this quarterly invoice."],
-    "invoices": [ { "ref": "FS-Q4-2026", "from": "2026-10-01", "to": "2026-12-31", "vat": 0, "total": 116600.00,
+    "notes": ["Endpoint licences are billed yearly in advance; the SOC service and retainer quarterly.", "The penetration test in the budget is a one-off and is not on these invoices."],
+    "invoices": [ { "ref": "FS-Q4-2026", "from": "2026-10-01", "to": "2026-12-31", "vat": 0, "total": 248900.00,
       "lines": [
-        { "product": "Endpoint detection & response", "qty": 2100, "unit": "endpoints", "kind": "Licences", "amount": 44100.00 },
+        { "product": "Endpoint detection & response", "qty": 2100, "unit": "endpoints", "kind": "Licences", "from": "2026-10-01", "to": "2027-09-30", "amount": 176400.00 },
         { "product": "Managed SOC service (24×7)", "qty": 1, "kind": "Services", "amount": 66000.00 },
-        { "product": "Incident response retainer", "qty": 40, "unit": "hours", "kind": "Services", "amount": 6500.00 } ] } ] }
+        { "product": "Incident response retainer", "qty": 40, "unit": "hours", "kind": "Services", "amount": 6500.00 } ] },
+      { "ref": "FS-ONB-2026", "from": "2026-01-01", "to": "2026-06-30", "status": "ended", "statusNote": "One-off onboarding, finished in June 2026.", "vat": 0, "total": 12000.00,
+      "lines": [
+        { "product": "Onboarding & detection tuning", "qty": 1, "kind": "Services", "amount": 12000.00 } ] } ] }
 ] }
 </script>
 <script>
@@ -481,6 +486,8 @@ const ICONS = {
   warn:'M12 3l10 18H2zM12 10v5M12 18v.01',
 };
 const $ = (id) => document.getElementById(id);
+// data-upload="off" on the embedded data block (a curated build) removes every way to load other CSV files in the page
+const UPLOAD = (($('sample-csv') || {}).dataset || {}).upload !== 'off';
 function make(ns, tag, attrs, kids) {
   const el = ns ? document.createElementNS(ns, tag) : document.createElement(tag);
   for (const [k, v] of Object.entries(attrs || {})) {
@@ -939,7 +946,7 @@ function vendorAgg(recs) {
 // ================================================================ 5. shell: pages, nav, header, filters, drawer
 const CONTRACTS = readContracts();
 const PAGES = [
-  { id:'overview', label:'Overview', icon:'overview', group:'Analyse', render:pageOverview, insight:insOverview },
+  { id:'overview', label:'Overview', icon:'overview', group:'Analyse', render:pageOverview, insight:insOverview, noFilters:true },
   { id:'breakdown', label:'Spend breakdown', icon:'breakdown', group:'Analyse', render:pageBreakdown, insight:insBreakdown },
   { id:'vendors', label:'Vendors', icon:'vendors', group:'Analyse', render:pageVendors, insight:insVendors,
     needs:() => S.map.vendor != null, needsText:'a vendor / supplier column' },
@@ -1007,9 +1014,12 @@ function matches(r) {
   if (S.q && !r.row.join(' ').toLowerCase().includes(S.q.toLowerCase())) return false;
   return true;
 }
+// On a page without a filter bar (Overview, contract pages), clicking to filter opens Line items with that filter.
 function setFilter(ci, val) {
-  if (val == null || val === '' || S.filters[ci] === val) delete S.filters[ci]; else S.filters[ci] = val;
-  S.ui.lPage = 0; render();
+  const p = pageById(S.page), away = !!(p && p.noFilters && val != null && val !== '');
+  if (!away && (val == null || val === '' || S.filters[ci] === val)) delete S.filters[ci]; else S.filters[ci] = val;
+  S.ui.lPage = 0;
+  if (away) go('lines'); else render();
 }
 function clearFilters() { S.filters = {}; S.q = ''; S.flag = null; S.ui.lPage = 0; render(); }
 let qTimer;
@@ -1076,13 +1086,13 @@ function lineDrawer(r) {
       dsec('All fields from the file', kv(S.headers.map((hd, c) => [pretty(hd), r.row[c]]))),
     ],
     footer:[
-      S.map.vendor != null && r.vendor ? btn('Show only this vendor', 'secondary', () => { closeDrawer(); setFilter(S.map.vendor, cell(r, S.map.vendor)); }) : null,
+      S.map.vendor != null && r.vendor ? btn('Show only this vendor', 'secondary', () => { closeDrawer(); delete S.filters[S.map.vendor]; setFilter(S.map.vendor, cell(r, S.map.vendor)); }) : null,
       btn('Close', 'primary', closeDrawer),
     ],
   });
 }
 function vendorDrawer(g) {
-  const total = sum(S.recs.filter(matches), (r) => r.amount);
+  const p = pageById(S.page), total = sum(p && p.noFilters ? S.recs : S.recs.filter(matches), (r) => r.amount);
   const lines = [...g.recs].sort((a, b) => b.amount - a.amount);
   const cols = [
     { key:'item', label:'Line', render:(r) => r.item || `Row ${r.i + 1}` },
@@ -1092,7 +1102,7 @@ function vendorDrawer(g) {
   ].filter(Boolean);
   openDrawer({
     title:g.key,
-    sub:`${g.count} line${g.count === 1 ? '' : 's'} · ${fmtPct(total ? g.value / total : 0, 1)} of filtered spend`,
+    sub:`${g.count} line${g.count === 1 ? '' : 's'} · ${fmtPct(total ? g.value / total : 0, 1)} of ${p && p.noFilters ? 'total' : 'filtered'} spend`,
     body:[
       h('div', { class:'stats' }, stat(label(), fmtMoney(g.value)),
         S.map.prior != null ? stat('Prior year', g.priorN ? fmtMoney(g.prior) : 'New') : null,
@@ -1102,7 +1112,7 @@ function vendorDrawer(g) {
       S.map.owner != null ? dsec('Owners', g.owners.size ? [...g.owners].join(', ') : tag('No owner', 'yellow')) : null,
       dsec('Lines', dataTable({ cols, rows:lines, onRow:(r) => lineDrawer(r) })),
     ],
-    footer:[btn('Show only this vendor', 'secondary', () => { closeDrawer(); setFilter(S.map.vendor, g.key); }), btn('Close', 'primary', closeDrawer)],
+    footer:[btn('Show only this vendor', 'secondary', () => { closeDrawer(); delete S.filters[S.map.vendor]; setFilter(S.map.vendor, g.key); }), btn('Close', 'primary', closeDrawer)],
   });
 }
 
@@ -1134,7 +1144,7 @@ function mixBar(parts, total, withLegend) {
   if (!withLegend) return bar;
   return h('div', {}, bar, h('div', { class:'legend', style:'margin-top:8px' }, items.map(([k, v]) => h('span', {}, h('span', { class:'swatch', style:`background:${colorOf(k)}` }), `${k} `, h('b', {}, fmtC(v)), ` ${fmtPct(v / total)}`))));
 }
-function hbarList(items, { total, limit = 10, onClick, activeKey, colorFn }) {
+function hbarList(items, { total, limit = 10, onClick, activeKey, colorFn, hint = 'Click to filter.' }) {
   const box = h('div', { class:'hbars' });
   if (!items.length || !total) { box.append(h('div', { class:'empty-mini' }, 'No matching spend')); return box; }
   const shown = items.slice(0, limit), rest = items.slice(limit), restV = sum(rest, (x) => x.value);
@@ -1144,7 +1154,7 @@ function hbarList(items, { total, limit = 10, onClick, activeKey, colorFn }) {
     const kids = [h('span', { class:'hb-name', title:it.key }, it.key),
       h('span', { class:'hb-track' }, h('span', { class:'hb-fill', style:`width:${Math.max(0, it.value / max * 100)}%` + (colorFn && click ? `;background:${colorFn(it.key)}` : '') })),
       h('span', { class:'hb-val' }, fmtMoney(it.value)), h('span', { class:'hb-pct' }, fmtPct(it.value / total))];
-    return click ? h('button', { type:'button', class:'hb' + (active ? ' active' : ''), 'aria-pressed':String(active), title:`${it.key}: ${it.count} lines. Click to filter.`, onclick:() => onClick(it.key) }, kids)
+    return click ? h('button', { type:'button', class:'hb' + (active ? ' active' : ''), 'aria-pressed':String(active), title:`${it.key}: ${it.count} lines. ${hint}`, onclick:() => onClick(it.key) }, kids)
       : h('div', { class:'hb static' }, kids);
   };
   shown.forEach((it) => box.append(row(it, !!onClick)));
@@ -1344,17 +1354,17 @@ function pageOverview(recs) {
   const cards = [];
   if (S.colorDim != null && total) {
     const g = groupBy(recs, S.colorDim);
-    cards.push(card({ title:`${g[0].key} is the largest ${low(S.colorDim)} at ${fmtPct(g[0].value / total)}`, sub:`Spend by ${low(S.colorDim)} · click a bar to filter`,
-      body:[mixBar(new Map(g.map((x) => [x.key, x.value])), total, false), h('div', { style:'margin-top:12px' }, hbarList(g, { total, onClick:(k) => setFilter(S.colorDim, k), activeKey:S.filters[S.colorDim], colorFn:colorOf }))],
+    cards.push(card({ title:`${g[0].key} is the largest ${low(S.colorDim)} at ${fmtPct(g[0].value / total)}`, sub:`Spend by ${low(S.colorDim)} · click a bar to list its lines`,
+      body:[mixBar(new Map(g.map((x) => [x.key, x.value])), total, false), h('div', { style:'margin-top:12px' }, hbarList(g, { total, onClick:(k) => setFilter(S.colorDim, k), colorFn:colorOf, hint:'Click to list its lines.' }))],
       foot:linkTo('breakdown', 'Open spend breakdown') }));
   }
   if (S.map.vendor != null) {
     const g = vendorAgg(recs).filter((v) => v.value > 0);
-    cards.push(card({ title:g.length && total ? `${g[0].key} is the largest vendor at ${fmtPct(g[0].value / total)}` : 'Top vendors', sub:'Top 8 vendors by spend · click a bar to filter',
-      body:hbarList(g, { total, limit:8, onClick:(k) => setFilter(S.map.vendor, k), activeKey:S.filters[S.map.vendor] }), foot:linkTo('vendors', 'All vendors') }));
+    cards.push(card({ title:g.length && total ? `${g[0].key} is the largest vendor at ${fmtPct(g[0].value / total)}` : 'Top vendors', sub:`Top ${Math.min(15, g.length)} vendors by spend · click a bar for details`, id:'ov-vendors',
+      body:hbarList(g, { total, limit:15, onClick:(k) => vendorDrawer(g.find((v) => v.key === k)), hint:'Click for details.' }), foot:linkTo('vendors', 'All vendors') }));
   } else if (S.dims.length) {
     const ci = S.dims.find((d) => d !== S.colorDim) ?? S.dims[0];
-    cards.push(card({ title:`Spend by ${low(ci)}`, body:hbarList(groupBy(recs, ci), { total, limit:8, onClick:(k) => setFilter(ci, k), activeKey:S.filters[ci] }), foot:linkTo('breakdown', 'Open spend breakdown') }));
+    cards.push(card({ title:`Spend by ${low(ci)}`, body:hbarList(groupBy(recs, ci), { total, limit:15, onClick:(k) => setFilter(ci, k), hint:'Click to list its lines.' }), foot:linkTo('breakdown', 'Open spend breakdown') }));
   }
   if (S.map.renewal != null) {
     const due = recs.map((r) => ({ r, u:urgencyOf(r) })).filter((x) => x.u && x.u.max <= 90).sort((a, b) => a.u.days - b.u.days).slice(0, 6);
@@ -1473,8 +1483,8 @@ function pageVendors(recs) {
 
 // ---------- Key contracts (one page per contract, from its invoice lines) ----------
 // Data: <script type="application/json" id="contracts-json"> { "contracts": [ { id, name, nav?, match, related?, currency?,
-//   fx?:{ to, rate, note }, notes?:[…], invoices:[ { ref, from?, to?, vat?, vatLabel?, total?, lines:[ { product, qty?, unit?, kind?,
-//   from?, to?, months?, amount } ] } ] } ] }. A line's service period (its own, or the invoice's) sets how often it is billed;
+//   fx?:{ to, rate, note }, notes?:[…], invoices:[ { ref, short?, from?, to?, vat?, vatLabel?, total?, status?, statusNote?, lines:[ { product,
+//   qty?, unit?, kind?, from?, to?, months?, amount, status?, note? } ] } ] } ] }. status "ended" = shown but left out of the run-rate. A line's service period (its own, or the invoice's) sets how often it is billed;
 //   the annual cost is amount × 12 / months: 1 month ×12, a quarter ×4, a year ×1. "match" is a regular expression tested
 //   against the vendor column to find the budget lines; "related" lists other rows that mention the contract, not counted.
 function readContracts() {
@@ -1498,6 +1508,7 @@ function annualise(l, inv) {
   const amount = +l.amount || 0, qty = +l.qty > 0 ? +l.qty : null;
   const factor = months ? 12 / months : null, annual = factor == null ? null : amount * factor;
   return { ...l, inv, product:l.product || 'Unnamed line', kind:l.kind || 'Other', from, to, months, amount, qty, factor, annual,
+    ended:(l.status || inv.status) === 'ended', endNote:l.statusNote || inv.statusNote || '',
     perUnitMonth:qty && months ? amount / qty / months : null, perUnitYear:qty && annual != null ? annual / qty : null };
 }
 const fmtFactor = (f) => (f == null ? '—' : '×' + (Math.abs(f - Math.round(f)) < 0.005 ? Math.round(f) : f.toFixed(2)));
@@ -1512,7 +1523,8 @@ function fmtIn(x, code, dp = 0, compact = false) {
   return curFmt.get(k).format(x);
 }
 function contractData(c) {
-  const lines = c.invoices.flatMap((inv) => inv.lines);
+  const all = c.invoices.flatMap((inv) => inv.lines), lines = all.filter((l) => !l.ended), ended = all.filter((l) => l.ended);
+  const current = c.invoices.filter((inv) => inv.lines.some((l) => !l.ended));
   const re = (src) => { try { return src ? new RegExp(src, 'i') : null; } catch (e) { return null; } };
   const mRe = re(c.match), rRe = re(c.related), recs = ready() ? S.recs : [];
   const matched = mRe ? recs.filter((r) => mRe.test(S.map.vendor != null ? r.vendor : r.row.join(' '))) : [];
@@ -1524,10 +1536,14 @@ function contractData(c) {
   const annual = sum(lines, (l) => l.annual), budget = sum(matched, (r) => r.amount);
   const annualB = lines.length && rate != null ? annual * rate : null;
   const ms = [...new Set(lines.map((l) => l.months))];
-  const cadence = c.invoices.length === 1 && ms.length === 1 && ms[0] ? ({ 1:'monthly', 3:'quarterly', 6:'half-yearly', 12:'annual' }[ms[0]] || `${+ms[0].toFixed(1)}-month`) : null;
+  const cadence = current.length === 1 && ms.length === 1 && ms[0] ? ({ 1:'monthly', 3:'quarterly', 6:'half-yearly', 12:'annual' }[ms[0]] || `${+ms[0].toFixed(1)}-month`) : null;
   const kinds = [...lines.reduce((m, l) => m.set(l.kind, (m.get(l.kind) || 0) + (l.annual || 0)), new Map())].sort((a, b) => b[1] - a[1]);
   const kindColor = new Map(kinds.map(([k], i) => [k, cv(PALETTE[i % PALETTE.length])]));
-  return { lines, matched, related, budget, bc, ic, needFx, rate, rateFrom:!needFx ? null : mine > 0 ? 'mine' : fileRate ? 'file' : null, fileRate,
+  for (const l of ended) if (!kindColor.has(l.kind)) kindColor.set(l.kind, 'var(--other)');
+  // end of the current term: the latest end date among current lines billed for 6 months or more (not monthly or quarterly)
+  const long = lines.filter((l) => l.months >= 6 && l.to && isFinite(isoToDay(l.to)));
+  const termEnd = long.length ? Math.max(...long.map((l) => isoToDay(l.to))) : null;
+  return { all, lines, ended, current, endedAnnual:sum(ended, (l) => l.annual), termEnd, matched, related, budget, bc, ic, needFx, rate, rateFrom:!needFx ? null : mine > 0 ? 'mine' : fileRate ? 'file' : null, fileRate,
     invoiced:sum(lines, (l) => l.amount), annual, annualB, gap:annualB != null && matched.length ? budget - annualB : null,
     cadence, factor:cadence ? 12 / ms[0] : null, kinds, kindColor, unscaled:lines.filter((l) => l.annual == null) };
 }
@@ -1539,10 +1555,13 @@ function matchText(c, d) {
 function insContract(c) {
   const d = contractData(c);
   const bud = d.matched.length ? `the ${fmtMoney(d.budget)} budget` : 'the budget (no matching budget line found)';
+  if (!d.lines.length && d.ended.length) return `Every invoice added has ended, so there is no current run-rate. ${d.matched.length ? `Budget: ${fmtMoney(d.budget)}.` : ''}`;
   if (!d.lines.length) return `No invoice added yet. ${d.matched.length ? `Budget: ${fmtMoney(d.budget)} in ${d.matched.length} line${d.matched.length === 1 ? '' : 's'}.` : 'No matching budget line found.'}`;
-  const head = d.cadence ? `The ${d.cadence} invoice of ${fmtIn(d.invoiced, d.ic)} comes to` : `${d.lines.length} invoice lines come to`;
-  return `${head} ${fmtIn(d.annual, d.ic)} a year at current quantities` + (d.gap == null ? `; compare with ${bud}.`
-    : `, ${fmtMoney(Math.abs(d.gap))} ${d.gap >= 0 ? 'below' : 'above'} ${bud}` + (d.needFx ? ` (at 1 ${d.ic} = ${d.rate} ${d.bc}).` : '.'));
+  const head = d.cadence === 'annual' ? 'The current annual invoice comes to' : d.cadence ? `The ${d.cadence} invoice of ${fmtIn(d.invoiced, d.ic)} comes to` : `${d.lines.length} current invoice lines come to`;
+  return `${head} ${fmtIn(d.annual, d.ic)} a year before VAT` + (d.gap == null ? `; compare with ${bud}.`
+    : `, ${fmtMoney(Math.abs(d.gap))} ${d.gap >= 0 ? 'below' : 'above'} ${bud}` + (d.needFx ? ` (at 1 ${d.ic} = ${d.rate} ${d.bc}).` : '.'))
+    + (d.ended.length ? ` ${d.ended.length} line${d.ended.length === 1 ? '' : 's'} from an ended invoice ${d.ended.length === 1 ? 'is' : 'are'} not counted.` : '')
+    + (d.termEnd != null ? ` The current term ends ${fmtDay(d.termEnd)}.` : '');
 }
 function invoiceDrawer(c, d, lines) {
   const l0 = lines[0], annual = sum(lines, (l) => l.annual), invoiced = sum(lines, (l) => l.amount);
@@ -1558,17 +1577,19 @@ function invoiceDrawer(c, d, lines) {
         ['Months billed', l.months != null ? +l.months.toFixed(2) : null], ['Invoiced', fmtIn(l.amount, d.ic, 2)],
         ['Scaled to a year', l.factor != null ? `${fmtFactor(l.factor)} = ${fmtIn(l.annual, d.ic, 2)}` : 'No service period, not scaled'],
         ['Per unit per month', l.perUnitMonth != null ? fmtIn(l.perUnitMonth, d.ic, 2) : null], ['Per unit per year', l.perUnitYear != null ? fmtIn(l.perUnitYear, d.ic, 2) : null],
+        ['Status', l.ended ? `Ended, not counted in the run-rate${l.endNote ? '. ' + l.endNote : ''}` : 'Current'],
         l.note ? ['Note', l.note] : null]))),
     ],
     footer:[btn('Close', 'primary', closeDrawer)],
   });
 }
 function pageContract(c) {
-  const d = contractData(c), out = [], has = d.lines.length > 0;
+  const d = contractData(c), out = [], has = d.lines.length > 0, any = d.all.length > 0;
   const budLbl = d.matched.length ? [...new Set(d.matched.map((r) => r.vendor || r.item))].join(', ') : '';
   out.push(h('div', { class:'kpis' },
     kpi({ id:'ct-annual', label:'Annual cost at current run-rate', value:has ? fmtIn(d.annual, d.ic, 0, true) : '—', raw:has ? d.annual : null,
-      meta:h('span', {}, !has ? 'No invoice added yet' : d.cadence ? `${fmtFactor(d.factor)} the ${d.cadence} invoice of ${fmtIn(d.invoiced, d.ic, 2)}` : `${d.lines.length} lines, each scaled to 12 months`),
+      meta:[h('span', {}, !has ? (any ? 'Every invoice added has ended' : 'No invoice added yet') : d.cadence ? `${fmtFactor(d.factor)} the ${d.cadence} invoice of ${fmtIn(d.invoiced, d.ic, 2)}` : `${d.lines.length} lines, each scaled to 12 months`),
+        d.ended.length ? h('span', {}, `Not counted: ${d.ended.length} ended line${d.ended.length === 1 ? '' : 's'} (${fmtIn(d.endedAnnual, d.ic)} a year if renewed)`) : null],
       hint:'Each invoice line × 12 ÷ months in its service period. Assumes today’s quantities and prices for a full year. Excludes VAT.' }),
     kpi({ id:'ct-budget', label:`Budget${S.opts.label ? ' (' + S.opts.label + ')' : ''}`, value:d.matched.length ? fmtC(d.budget) : '—', raw:d.matched.length ? d.budget : null,
       meta:h('span', { title:budLbl }, d.matched.length ? `${d.matched.length} line${d.matched.length === 1 ? '' : 's'}: ${budLbl}` : 'No matching budget line') }),
@@ -1576,7 +1597,9 @@ function pageContract(c) {
       meta:h('span', {}, d.rate == null ? 'Enter an exchange rate below' : `At 1 ${d.ic} = ${d.rate} ${d.bc}${d.rateFrom === 'mine' ? ' (your rate)' : ' (assumed)'}`) }) : null,
     kpi({ id:'ct-gap', label:d.gap != null && d.gap < 0 ? 'Run-rate over budget' : 'Budget headroom', value:d.gap == null ? '—' : fmtC(Math.abs(d.gap)), raw:d.gap, alert:d.gap != null && d.gap < 0,
       meta:d.gap == null ? h('span', {}, !has ? 'Needs invoice lines' : !d.matched.length ? 'Needs a budget line' : 'Needs an exchange rate')
-        : [tag(d.gap >= 0 ? 'Budget covers the run-rate' : 'Run-rate exceeds budget', d.gap >= 0 ? 'green' : 'red'), h('span', {}, `${fmtPct(d.budget ? Math.abs(d.gap) / d.budget : 0, 1)} of budget`)] })));
+        : [tag(d.gap >= 0 ? 'Budget covers the run-rate' : 'Run-rate exceeds budget', d.gap >= 0 ? 'green' : 'red'), h('span', {}, `${fmtPct(d.budget ? Math.abs(d.gap) / d.budget : 0, 1)} of budget`)] }),
+    d.termEnd != null ? (() => { const days = Math.round(d.termEnd - asOfDay()); return kpi({ id:'ct-term', label:'Current term ends', value:fmtDay(d.termEnd), raw:dayToISO(d.termEnd),
+      meta:[tag(days < 0 ? `${-days} days ago` : `${days} days left`, days < 0 ? 'red' : days <= 90 ? 'orange' : 'gray'), h('span', {}, `as of ${fmtDay(asOfDay())}`)], hint:'Latest end date among current lines billed for 6 months or more. Check the notice period in the contract.' }); })() : null));
   if (d.unscaled.length) out.push(h('div', { class:'notice warn' }, icon('warn'), h('span', {}, `${d.unscaled.length} invoice line${d.unscaled.length === 1 ? ' has' : 's have'} no service period, so ${d.unscaled.length === 1 ? 'it is' : 'they are'} not scaled to a year: ${d.unscaled.map((l) => l.product).join(', ')}.`)));
 
   const cards = [];
@@ -1592,6 +1615,8 @@ function pageContract(c) {
           h('span', { class:'hb-name', title:g.key }, g.key), h('span', { class:'hb-track' }, h('span', { class:'hb-fill', style:`width:${Math.max(0, g.value / max * 100)}%;background:${d.kindColor.get(g.kind)}` })),
           h('span', { class:'hb-val' }, fmtIn(g.value, d.ic)), h('span', { class:'hb-pct' }, fmtPct(d.annual ? g.value / d.annual : 0))))),
       ] }));
+  } else if (any) {
+    cards.push(emptyState('invoice', `No current invoice for ${c.name}`, 'Every invoice added has ended. Add the latest invoice to see the run-rate.'));
   } else {
     cards.push(emptyState('invoice', `No invoice added for ${c.name} yet`, 'Add the invoice lines (product, quantity, service period and amount) to the contracts block in this file. This page then scales them to a full year and compares them with the budget.'));
   }
@@ -1624,32 +1649,35 @@ function pageContract(c) {
     ] }));
   out.push(h('div', { class:'grid g2' }, cards));
 
-  if (has) {
+  if (any) {
     const multi = c.invoices.length > 1;
     const cols = [
-      { key:'product', label:'Product', cls:'wrap', render:(l) => h('div', {}, h('div', { class:'sw-label strong' }, h('span', { class:'swatch', style:`background:${d.kindColor.get(l.kind)}` }), l.product), h('div', { class:'muted' }, l.kind)) },
-      multi ? { key:'ref', label:'Invoice', sortVal:(l) => l.inv.ref, render:(l) => l.inv.ref } : null,
+      { key:'product', label:'Product', cls:'wrap', render:(l) => h('div', {}, h('div', { class:'sw-label strong' }, h('span', { class:'swatch', style:`background:${d.kindColor.get(l.kind)}` }), l.product), h('div', { class:'muted' }, l.kind), l.ended ? h('div', { style:'margin-top:4px' }, tag(`Ended ${l.to ? fmtDay(isoToDay(l.to)) : ''} · not counted`, 'gray', l.endNote)) : null) },
+      multi ? { key:'ref', label:'Invoice', sortVal:(l) => l.inv.short || l.inv.ref, render:(l) => h('span', { title:l.inv.ref, style:'white-space:nowrap' }, l.inv.short || l.inv.ref) } : null,
       { key:'qty', label:'Quantity', num:true, render:(l) => (l.qty == null ? '—' : `${fmtInt(l.qty)}${l.unit ? ' ' + l.unit : ''}`) },
       { key:'from', label:'Service period', sortVal:(l) => l.from || '', render:(l) => (l.from && l.to ? `${fmtDay(isoToDay(l.from))} – ${fmtDay(isoToDay(l.to))}` : '—') },
-      { key:'amount', label:`Invoiced (${d.ic})`, num:true, render:(l) => fmtIn(l.amount, '', 2) },
+      { key:'amount', label:'Invoiced', num:true, render:(l) => fmtIn(l.amount, '', 2) },
       { key:'factor', label:'To a year', num:true, render:(l) => fmtFactor(l.factor) },
-      { key:'annual', label:`Per year (${d.ic})`, num:true, cls:'strong', render:(l) => fmtIn(l.annual, '', 2) },
-      { key:'perUnitMonth', label:'Per unit / month', num:true, render:(l) => fmtIn(l.perUnitMonth, '', 2) },
-      { key:'share', label:'Share', num:true, sortVal:(l) => l.annual, render:(l) => fmtPct(d.annual && l.annual != null ? l.annual / d.annual : null, 1) },
+      { key:'annual', label:'Per year', num:true, cls:'strong', render:(l) => fmtIn(l.annual, '', 2) },
+      { key:'perUnitMonth', label:'Unit / month', num:true, render:(l) => fmtIn(l.perUnitMonth, '', 2) },
+      { key:'share', label:'Share', num:true, sortVal:(l) => l.annual, render:(l) => (l.ended ? '—' : fmtPct(d.annual && l.annual != null ? l.annual / d.annual : null, 1)) },
     ].filter(Boolean);
     const checks = c.invoices.map((inv) => {
       const lines = sum(inv.lines, (l) => l.amount), net = inv.total != null ? +inv.total - (+inv.vat || 0) : null;
       const vat = inv.vat != null ? ` · VAT ${fmtIn(+inv.vat, d.ic, 2)}${inv.vatLabel ? ' (' + inv.vatLabel + ')' : ''}, not included` : ' · excludes VAT';
-      return h('span', {}, `${inv.ref}: `, net == null ? `${fmtIn(lines, d.ic, 2)} in lines` : Math.abs(lines - net) < 0.005 ? tag(`Lines add up to ${fmtIn(net, d.ic, 2)}`, 'green') : tag(`Lines ${fmtIn(lines, d.ic, 2)} ≠ invoice ${fmtIn(net, d.ic, 2)}`, 'red'), vat);
+      const over = inv.lines.length && inv.lines.every((l) => l.ended);
+      return h('span', { style:'display:block' }, over ? [tag('Ended, not counted', 'gray', inv.statusNote), ' '] : null, `${inv.ref}: `, net == null ? `${fmtIn(lines, d.ic, 2)} in lines` : Math.abs(lines - net) < 0.005 ? tag(`Lines add up to ${fmtIn(net, d.ic, 2)}`, 'green') : tag(`Lines ${fmtIn(lines, d.ic, 2)} ≠ invoice ${fmtIn(net, d.ic, 2)}`, 'red'), vat);
     });
-    out.push(card({ title:`Invoice lines scaled to a year: ${fmtIn(d.annual, d.ic, 2)}`, sub:'Amount × 12 ÷ months in the service period · click a row for details', flush:true, id:'ct-lines-card',
+    out.push(card({ title:`Invoice lines scaled to a year: ${fmtIn(d.annual, d.ic, 2)}`, sub:`Amounts in ${d.ic || 'invoice currency'}, before VAT · per year = invoiced × 12 ÷ months in the service period · click a row for details`, flush:true, id:'ct-lines-card',
       body:[h('div', { class:'table-bar', style:'justify-content:flex-start' }, checks),
-        dataTable({ cols, rows:sortRows(d.lines, cols, S.ui.ctSort), sort:S.ui.ctSort, onSort:sorter('ctSort'), onRow:(l) => invoiceDrawer(c, d, [l]), id:'ct-lines',
-          foot:cols.map((x, i) => (i === 0 ? `Total (${d.lines.length} lines)` : x.key === 'amount' ? fmtIn(d.invoiced, '', 2) : x.key === 'annual' ? fmtIn(d.annual, '', 2) : x.key === 'share' ? '100%' : '')) })] }));
+        dataTable({ cols, rows:sortRows(d.lines, cols, S.ui.ctSort).concat(sortRows(d.ended, cols, S.ui.ctSort)), sort:S.ui.ctSort, onSort:sorter('ctSort'), onRow:(l) => invoiceDrawer(c, d, [l]), id:'ct-lines', rowClass:(l) => (l.ended ? 'ended' : ''),
+          foot:cols.map((x, i) => (i === 0 ? `Total (${d.lines.length} current lines${d.ended.length ? `; ${d.ended.length} ended, not counted` : ''})` : x.key === 'amount' ? fmtIn(d.invoiced, '', 2) : x.key === 'annual' ? fmtIn(d.annual, '', 2) : x.key === 'share' ? '100%' : '')) })] }));
   }
   const notes = [
     'Each invoice line is scaled to 12 months from its service period: a month ×12, a quarter ×4, a year ×1. This assumes today’s quantities and prices stay the same for the whole year. Amounts exclude VAT.',
     d.needFx ? (d.rate != null ? `The run-rate is converted to ${d.bc} at 1 ${d.ic} = ${d.rate} ${d.bc} (${d.rateFrom === 'mine' ? 'your rate' : 'assumed; replace it with your budget rate'}).` : `Enter an exchange rate to compare the ${d.ic} invoice with the ${d.bc} budget.`) : null,
+    d.ended.length ? `${d.ended.length} line${d.ended.length === 1 ? '' : 's'} from ended invoices ${d.ended.length === 1 ? 'is' : 'are'} shown but not counted. Renewed at the same price, ${d.ended.length === 1 ? 'it' : 'they'} would add ${fmtIn(d.endedAnnual, d.ic)} a year.` : null,
+    d.termEnd != null ? `The current term ends ${fmtDay(d.termEnd)}: the latest end date among current lines billed for 6 months or more.` : null,
     `The budget is the ${matchText(c, d)}${d.related.length ? `; ${d.related.length} other row${d.related.length === 1 ? '' : 's'} mentioning the contract ${d.related.length === 1 ? 'is' : 'are'} listed as related but not counted` : ''}.`,
     ...(c.notes || []),
   ].filter(Boolean);
@@ -1874,7 +1902,7 @@ function pageSource() {
   if (S.map.amount == null) out.push(h('div', { class:'notice warn' }, icon('warn'), h('span', {}, 'Choose which column holds the budget amount, then select Apply.')));
   out.push(h('div', { class:'grid g2' },
     card({ title:'Loaded data', sub:'Read in this browser only. Nothing is uploaded.', flush:true,
-      actions:[btn('Replace…', 'secondary sm', openPicker, 'upload'), btn('Sample data', 'ghost sm', loadSample)],
+      actions:UPLOAD ? [btn('Replace…', 'secondary sm', openPicker, 'upload'), btn('Sample data', 'ghost sm', loadSample)] : null,
       body:dataTable({ id:'file-table', rows:reconcile(), cols:[
         { key:'name', label:'File', cls:'wrap' },
         { key:'rows', label:'Line rows', num:true, render:(f) => fmtInt(f.rows) },
@@ -1933,7 +1961,7 @@ function landing() {
     h('div', { class:'hero' }, h('div', { class:'hero-icon' }, icon('upload', 28)),
       h('h1', { class:'page-t' }, 'Load your IT budget'),
       h('p', { class:'page-s' }, 'Drop one or more CSV exports anywhere on this page, or choose files. Any column layout works: columns are detected automatically and you can adjust them.'),
-      h('div', { class:'btn-row' }, btn('Choose CSV files', 'primary', openPicker, 'upload', { id:'landing-open' }), btn($('sample-csv').dataset.button || 'Use sample data', 'secondary', loadSample, 'flask', { id:'landing-sample' })),
+      h('div', { class:'btn-row' }, UPLOAD ? btn('Choose CSV files', 'primary', openPicker, 'upload', { id:'landing-open' }) : null, btn($('sample-csv').dataset.button || 'Use sample data', 'secondary', loadSample, 'flask', { id:'landing-sample' })),
       h('p', { class:'privacy' }, icon('lock', 14), 'Files are read by your browser only. Nothing is uploaded.'),
       h('p', { class:'card-s', style:'margin-top:12px' }, 'Comma, semicolon or tab separated · 1,234.50 or 1.234,50 · 2027-03-31, 31/03/2027 or 31.03.2027 · Excel: save as “CSV UTF-8” first')),
     h('div', { class:'features' }, feats.map(([ic, t, d, n]) => h('div', { class:'feature' }, icon(ic, 20), h('h3', {}, t), h('p', {}, d), h('div', { class:'needs' }, n)))));
@@ -1953,7 +1981,7 @@ function render() {
   renderNav(); renderTopbar();
   let page = pageById(S.page) || PAGES[0];
   if (S.loaded && !ready()) page = pageById('source');
-  const recs = ready() ? S.recs.filter(matches) : [];
+  const recs = !ready() ? [] : page.noFilters ? S.recs : S.recs.filter(matches); // pages without a filter bar always show everything
   const content = h('div', { class:'page' });
   if (!S.loaded) content.append(landing());
   else {
@@ -2059,9 +2087,9 @@ function downloadCsv(header, rows, name) {
 function exportCsv(recs) { downloadCsv(S.headers, recs.map((r) => r.row), 'budget-filtered.csv'); }
 function exportContract(c) {
   const d = contractData(c), r2 = (x) => (x == null ? '' : x.toFixed(2));
-  const header = ['Contract', 'Invoice', 'Product', 'Kind', 'Quantity', 'Unit', 'Service from', 'Service to', 'Months billed', `Invoiced (${d.ic})`, 'Annual factor', `Annual (${d.ic})`, `Per unit per month (${d.ic})`]
+  const header = ['Contract', 'Invoice', 'Status', 'Product', 'Kind', 'Quantity', 'Unit', 'Service from', 'Service to', 'Months billed', `Invoiced (${d.ic})`, 'Annual factor', `Annual (${d.ic})`, `Per unit per month (${d.ic})`]
     .concat(d.needFx ? [`Annual (${d.bc}, at ${d.rate ?? 'no rate'})`] : []);
-  downloadCsv(header, d.lines.map((l) => [c.name, l.inv.ref, l.product, l.kind, l.qty ?? '', l.unit || '', l.from || '', l.to || '', l.months == null ? '' : +l.months.toFixed(2), r2(l.amount),
+  downloadCsv(header, d.all.map((l) => [c.name, l.inv.ref, l.ended ? 'Ended (not counted)' : 'Current', l.product, l.kind, l.qty ?? '', l.unit || '', l.from || '', l.to || '', l.months == null ? '' : +l.months.toFixed(2), r2(l.amount),
     l.factor == null ? '' : +l.factor.toFixed(4), r2(l.annual), r2(l.perUnitMonth)].concat(d.needFx ? [d.rate != null && l.annual != null ? r2(l.annual * d.rate) : ''] : [])), `contract-${c.id}-annualised.csv`);
 }
 
@@ -2077,28 +2105,31 @@ $('nav-toggle').addEventListener('click', () => {
 });
 $('nav-scrim').addEventListener('click', () => document.body.classList.remove('nav-open'));
 if (store.get('navCollapsed')) document.body.classList.add('nav-collapsed');
-$('tb-load').addEventListener('click', openPicker);
+$('tb-load').hidden = !UPLOAD;
+if (UPLOAD) $('tb-load').addEventListener('click', openPicker);
 $('tb-theme').addEventListener('click', () => {
   const root = document.documentElement;
   const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
   root.dataset.theme = dark ? 'light' : 'dark'; store.set('theme', root.dataset.theme);
 });
 if (store.get('theme')) document.documentElement.dataset.theme = store.get('theme');
-$('file-input').addEventListener('change', (e) => { if (e.target.files.length) readFiles(e.target.files); e.target.value = ''; });
+if (UPLOAD) $('file-input').addEventListener('change', (e) => { if (e.target.files.length) readFiles(e.target.files); e.target.value = ''; });
 $('scrim').addEventListener('click', closeDrawer);
 $('main').addEventListener('scroll', hideTip, { passive:true });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { hideTip(); closeDrawer(); document.body.classList.remove('nav-open'); } });
 let dragDepth = 0;
+if (UPLOAD) {
 addEventListener('dragenter', (e) => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { dragDepth++; document.body.classList.add('dragging'); } });
 addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging'); } });
 addEventListener('dragover', (e) => e.preventDefault());
 addEventListener('drop', (e) => { e.preventDefault(); dragDepth = 0; document.body.classList.remove('dragging'); if (e.dataTransfer.files.length) readFiles(e.dataTransfer.files); });
+}
 addEventListener('hashchange', route);
 route();
 if ($('sample-csv').dataset.autoload === 'true') loadSample();
 
 // for automated tests and DevTools
-window.BudgetExplorer = { S, parseCSV, parseNum, parseDate, guessMapping, computeBridge, loadSample, go, CONTRACTS, contractData, periodMonths };
+window.BudgetExplorer = { S, parseCSV, parseNum, parseDate, guessMapping, computeBridge, loadSample, go, CONTRACTS, contractData, periodMonths, UPLOAD };
 })();
 </script>
 </body>

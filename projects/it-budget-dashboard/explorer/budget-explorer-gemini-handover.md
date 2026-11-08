@@ -26,6 +26,7 @@ You are taking over a working prototype. This document explains what it is, how 
 4. **The owner's focus is the UI** and **accepting any CSV**. Keep both central.
 5. A previous Gemini session added an Executive benchmarks page and the Hardware / Licence / Service taxonomy. Claude integrated it with fixes (see the change log in section 13).
 6. **The owner then had Executive benchmarks and the vendor Pareto chart removed**, and asked for **a page per key contract built from its invoices, adjusted to a yearly figure**. Don't bring the removed views back unless the owner asks.
+7. **Overview has no filter bar and lists the top 15 vendors.** The owner's own build also has **no way to load CSV files in the page** (`data-upload="off"`, section 3): its data is embedded at build time.
 
 ---
 
@@ -50,7 +51,7 @@ Set **Data source & columns → Urgency as of = 2026-11-07** first, because rene
 | Business capabilities | Enterprise IT 80.6% · ERP & Supply Chain 11.6% · Commercial 5.0% · G&A 2.8% |
 | Vendors insight | 23 vendors; top 5 = **49%** of spend, top 10 = **75%** |
 | Key contract: Contoso Cloud | Monthly invoice 56,500 × 12 = **678,000** a year; budget (2 lines) **758,000**; headroom **80,000**; no exchange rate needed |
-| Key contract: Fabrikam Security | Quarterly USD invoice 116,600 × 4 = **466,400 USD**; at the file's illustrative rate 0.89 = **415,096 EUR**; budget (3 lines) **441,000**; headroom **25,904**. Typing rate 0.95 gives **2,080 over budget** |
+| Key contract: Fabrikam Security | Endpoint licences 176,400 billed yearly (×1) + SOC and retainer 72,500 a quarter (×4) = **466,400 USD**; at the file's illustrative rate 0.89 = **415,096 EUR**; budget (3 lines) **441,000**; headroom **25,904**; term ends **30 Sep 2027**. An ended onboarding invoice (12,000 for 6 months) is listed but not counted. Typing rate 0.95 gives **2,080 over budget** |
 | Notice deadlines within 90 days | **18**, of which **7 overdue** |
 | Data quality | 97% score, 0 errors, **5 warnings** (3 no owner, 1 no cost centre, 1 renewal date passed) |
 | Monthly columns detected | 12 (Jan…Dec) |
@@ -118,7 +119,8 @@ Repo: `jaypeethambaran/about`, branch `claude/cloud-environment-setup-6a26xz`, f
     - Builds with real data embedded are made in `projects/it-budget-dashboard/data/private/`, which is git-ignored, and handed to the owner directly.
     - Never paste real figures into this document, test files or the committed HTML.
     - Get the owner's approval before sending real data to any external service, including other AI tools.
-14. **Keep `window.BudgetExplorer`.** It is the hook used by automated tests: `{ S, parseCSV, parseNum, parseDate, guessMapping, computeBridge, loadSample, go, CONTRACTS, contractData, periodMonths }`.
+14. **Curated builds can switch off CSV loading.** `data-upload="off"` on `script#sample-csv` hides **Load CSV**, drag and drop, the landing page's **Choose CSV files** and the Data source **Replace…** / **Sample data** buttons (`UPLOAD` in the script). The committed template keeps loading on, so it can be tested with the example files.
+15. **Keep `window.BudgetExplorer`.** It is the hook used by automated tests: `{ S, parseCSV, parseNum, parseDate, guessMapping, computeBridge, loadSample, go, CONTRACTS, contractData, periodMonths, UPLOAD }`.
 
 ---
 
@@ -253,6 +255,8 @@ S = {
   - **Exchange rate** (when invoice and budget currencies differ): the user's rate from `localStorage`, else `fx.rate` from the file when `fx.to` is the budget currency, else none. With no budget currency set, amounts are compared as they are.
   - **Headroom** = budget − run-rate in budget currency. Negative is shown as "Run-rate over budget" with a red KPI accent.
   - **Invoice check:** the lines must add up to `total − vat` when the invoice gives a total.
+  - **Ended invoices** (`"status": "ended"` on an invoice or a line) are listed last, greyed, and left out of the run-rate; the page states what they would add a year if renewed. Status is set in the data, not from dates, because a monthly invoice from a past month still stands for a recurring charge.
+  - **Current term ends** = the latest end date among current lines billed for 6 months or more, with days left from "as of" (orange within 90 days). Monthly and quarterly contracts don't show it.
 
 ---
 
@@ -262,11 +266,11 @@ Each entry is `{ id, label, icon, group, render, insight, needs?, needsText?, no
 
 | Group | Page | Shows | Needs |
 |---|---|---|---|
-| Analyse | **Overview** | **The landing page.** KPI tiles (total with trend line and change vs prior year, vendors, 90-day deadlines, new spend, quality score), then cards for category mix, top vendors, the first deadlines to act on, monthly cash flow, a mini bridge and data checks. Each card links to its page. | amount |
+| Analyse | **Overview** | **The landing page. No filter bar: it always shows the whole budget.** KPI tiles (total with trend line and change vs prior year, vendors, 90-day deadlines, new spend, quality score), then cards for category mix (a bar opens Line items filtered to it), the **top 15 vendors** (a bar opens the vendor panel), the first deadlines to act on, monthly cash flow, a mini bridge and data checks. Each card links to its page. | amount |
 | Analyse | **Spend breakdown** | **Group by** any column, **Split by** another, and a **View** switch (Chart / Table / Chart + table). Stacked bars plus a cross-table with shaded cells. Clicking filters. | amount |
 | Analyse | **Vendors** | Vendor table with rank, lines, share, change, category mix, next deadline and owner (the Pareto chart was removed at the owner's request). A row opens the **vendor details panel**. | vendor |
 | Analyse | **Cost centres & owners** | Shaded grid of cost centre × colour column, and an owner table with lines lacking an owner highlighted | cost centre or owner |
-| Key contracts | **One page per contract** in `#contracts-json` (id `c-<id>`) | KPI tiles: annual cost at current run-rate, budget, run-rate in budget currency (when currencies differ), headroom or over budget. Cards: annual cost by product (coloured by `kind`, click for line details); budget vs run-rate bars with the exchange-rate input and the matched and related budget lines; the invoice lines table (quantity, service period, invoiced, factor, per year, per unit per month, share) with an invoice-total check; and how the figures are calculated. Export CSV gives the annualised lines. No filter bar. | invoice lines in `#contracts-json` |
+| Key contracts | **One page per contract** in `#contracts-json` (id `c-<id>`) | KPI tiles: annual cost at current run-rate, budget, run-rate in budget currency (when currencies differ), headroom or over budget, and current term end (yearly or half-yearly contracts). Cards: annual cost by product (coloured by `kind`, click for line details); budget vs run-rate bars with the exchange-rate input and the matched and related budget lines; the invoice lines table (quantity, service period, invoiced, factor, per year, per unit per month, share) with an invoice-total check; and how the figures are calculated. Export CSV gives the annualised lines. No filter bar. | invoice lines in `#contracts-json` |
 | Plan | **Renewals** | Urgency filter buttons, then **Timeline / Calendar / List** tabs. The calendar has 12 month cards grouped by notice-deadline month, plus Overdue and Later cards. | renewal date |
 | Plan | **Cash flow** | Monthly stacked columns with a cumulative-% line, and a quarterly summary table | ≥ 2 month columns |
 | Plan | **Year over year** | Waterfall bridge, then Increases / Decreases / New / Removed tabs | prior-year amount |
@@ -274,7 +278,7 @@ Each entry is `{ id, label, icon, group, render, insight, needs?, needsText?, no
 | Data | **Data quality** | Score ring, checks by severity and "View rows" (filters Line items to that check) | amount |
 | Data | **Data source & columns** | Loaded files, settings (label, currency, number format, date format, as-of date, fiscal-year start) and the column mapping form. Apply / Re-detect. | (always) |
 
-**Global filter bar**, which appears on every page except Data source and the contract pages:
+**Global filter bar**, which appears on every page except Overview, Data source and the contract pages. Those pages always use every row; clicking a bar there that would filter opens Line items with the filter instead (`setFilter`).
 - Up to 6 dropdowns for the main groupable columns, plus a full-text search.
 - Active filters appear as removable chips with a "Showing X of Y rows" note.
 - Filters persist across pages.
@@ -334,6 +338,7 @@ Use function declarations, not `const` arrow functions, because `PAGES` referenc
       "lines": [ { "product": "Reserved compute capacity", "qty": 120, "unit": "vCPU", "kind": "Compute", "amount": 26400.00,
                    "from": "2026-10-01", "to": "2026-10-31", "note": "optional" } ] } ] } ] }
 ```
+- An invoice can have `short` (a short label for the Invoice column), `status: "ended"` and `statusNote`.
 - `id`, `name` and `match` are required; `nav` (shorter nav label), `related`, `currency`, `fx`, `notes` and `invoices` are optional.
 - A line's `from` / `to` override the invoice's. `months` can be given instead of dates.
 - `kind` groups and colours lines (for example "Full user licences", "Capacity & sandbox").
@@ -361,11 +366,13 @@ The mapping form picks it up automatically.
 
 ## 8. Testing and verification
 
-**Automated (in the source repo):** `projects/it-budget-dashboard/tests/explorer_test.cjs`, a Playwright script with 74 checks that opens the file from disk. Run it with `node tests/explorer_test.cjs`, or `SCREENSHOT_DIR=… node tests/explorer_test.cjs` to also save a screenshot of each page. It checks that:
+**Automated (in the source repo):** `projects/it-budget-dashboard/tests/explorer_test.cjs`, a Playwright script with 85 checks that opens the file from disk. Run it with `node tests/explorer_test.cjs`, or `SCREENSHOT_DIR=… node tests/explorer_test.cjs` to also save a screenshot of each page. It checks that:
 - The sample opens on Overview; there is no Executive benchmarks page, and the nav groups are Analyse, Key contracts, Plan, Data.
 - Every page renders and is marked current in the nav.
+- Overview has no filter bar, shows 15 vendors plus "All other", and its bars open the vendor panel or Line items without leaving a hidden filter.
 - Vendors has no Pareto chart.
-- Service periods map to 1, 1, 3, 12 and 0.46 months; both sample contracts give the figures in section 2; typing an exchange rate updates the comparison and "Use 0.89" restores it; a bar opens the line details; Export CSV gives the annualised lines.
+- A copy with `data-upload="off"` has no Load CSV button and no Replace / Sample data buttons.
+- Service periods map to 1, 1, 3, 12 and 0.46 months; both sample contracts give the figures in section 2, including the ended invoice and term end; typing an exchange rate updates the comparison and "Use 0.89" restores it; a bar opens the line details; Export CSV gives the annualised lines.
 - No "Contract" category remains, and the bridge reconciles with 6 new lines.
 - Group-by, filter chips and the view switch work.
 - The vendor panel opens, a line panel opens from inside it, and Esc closes the panel.
@@ -465,6 +472,12 @@ Before starting large items (1, 2, 4), propose the approach to the owner in a fe
 ---
 
 ## 13. Change log
+
+**Overview, CSV loading and ended invoices (8 Nov 2026), done by Claude, at the owner's request:**
+- Overview has no filter bar and always shows the whole budget; top vendors went from 8 to 15. Bars open the vendor panel or Line items instead of applying a filter you can't see.
+- `data-upload="off"` removes every way to load CSV files in the page, for curated builds. The owner's build uses it.
+- Contract pages: invoices can be marked ended (listed, not counted, with their yearly value if renewed); yearly contracts show when the current term ends; tighter invoice table.
+- 85 checks in `explorer_test.cjs`.
 
 **Key contracts; benchmarks and Pareto removed (8 Nov 2026), done by Claude, at the owner's request:**
 - Removed the Executive benchmarks page with its company figures, targets, CSS and landing card. Overview is now the landing page for every file.

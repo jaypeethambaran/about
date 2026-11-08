@@ -51,6 +51,17 @@ const PAGES = ['overview', 'breakdown', 'vendors', 'organisation', 'c-contoso', 
   check(await total() === 5817000, 'overview total = 5,817,000 (43 lines)');
   check(await page.locator('#nav-strategy').count() === 0 && !(await page.textContent('#sidenav')).includes('benchmark'), 'no Executive benchmarks page in the navigation');
   check(JSON.stringify(await page.locator('#sidenav .nav-h').allTextContents()) === JSON.stringify(['Analyse', 'Key contracts', 'Plan', 'Data']), 'navigation groups: Analyse, Key contracts, Plan, Data');
+  check(await page.locator('.filterbar').count() === 0, 'Overview has no filter bar');
+  check(await page.locator('#ov-vendors .hb').count() === 16 && (await page.textContent('#ov-vendors .card-s')).startsWith('Top 15 vendors'), 'Overview lists the top 15 vendors (+ "All other")');
+  await page.locator('#ov-vendors button.hb').first().click();
+  check((await page.textContent('#drawer-title')) === 'Northwind Software', 'clicking a vendor bar on Overview opens its details (no hidden filter)');
+  await page.keyboard.press('Escape');
+  check(await page.locator('#chips').count() === 0 && await S(() => Object.keys(window.BudgetExplorer.S.filters).length) === 0, 'no filter was applied');
+  await page.locator('.card').first().locator('button.hb').first().click();
+  await page.waitForFunction(() => window.BudgetExplorer.S.page === 'lines');
+  check(await page.locator('#chips .chip').count() === 1, 'clicking a category bar on Overview opens Line items filtered to it');
+  await page.click('#filter-reset');
+  await nav('overview');
 
   console.log('Sample data: every page renders');
   for (const [i, id] of PAGES.entries()) {
@@ -133,6 +144,11 @@ const PAGES = ['overview', 'breakdown', 'vendors', 'organisation', 'c-contoso', 
   await page.locator('#ct-bars button').first().click();
   check((await page.textContent('#drawer-title')) === 'Managed SOC service (24×7)', 'clicking the largest bar opens the invoice line details');
   await page.keyboard.press('Escape');
+  check(await page.locator('#ct-lines tbody tr').count() === 4 && await page.locator('#ct-lines tbody tr.ended').count() === 1, 'ended onboarding invoice is listed but greyed out');
+  check((await page.textContent('[data-kpi="ct-annual"]')).includes('Not counted: 1 ended line') && await kpiVal('ct-annual') === 466400, 'ended invoice is left out of the run-rate (annual line ×1 + quarterly lines ×4 = 466,400)');
+  check(await page.getAttribute('[data-kpi="ct-term"] .kpi-v', 'data-value') === '2027-09-30', 'current term ends 30 Sep 2027 (latest end of a line billed for 6+ months)');
+  await page.evaluate(() => window.BudgetExplorer.go('c-contoso')); await page.waitForTimeout(100);
+  check(await page.locator('[data-kpi="ct-term"]').count() === 0, 'monthly contract shows no term end');
 
   console.log('Encoding');
   await loadFile(EX('examples/utf8-names.csv'), 'utf8-names.csv');
@@ -214,6 +230,20 @@ const PAGES = ['overview', 'breakdown', 'vendors', 'organisation', 'c-contoso', 
   await page.emulateMedia({ colorScheme:'dark' });
   await page.evaluate(() => window.BudgetExplorer.go('c-contoso')); await page.waitForTimeout(100);
   await shot('42-dark-contract');
+
+  console.log('Curated build: data-upload="off"');
+  const fs = require('fs'), os = require('os');
+  const tmp = path.join(os.tmpdir(), 'explorer-upload-off.html');
+  fs.writeFileSync(tmp, fs.readFileSync(path.join(ROOT, 'explorer', 'budget-explorer.html'), 'utf8').replace('<script type="text/plain" id="sample-csv">', '<script type="text/plain" id="sample-csv" data-upload="off" data-autoload="true">'));
+  const p2 = await browser.newPage({ viewport:{ width:1440, height:900 } });
+  p2.on('pageerror', (e) => errors.push(e.message));
+  await p2.goto('file://' + tmp);
+  await p2.waitForFunction(() => window.BudgetExplorer.S.loaded && location.hash === '#/overview');
+  check(!(await p2.isVisible('#tb-load')) && await p2.evaluate(() => window.BudgetExplorer.UPLOAD) === false, 'no Load CSV button; opens straight on Overview');
+  await p2.click('#nav-source');
+  await p2.waitForFunction(() => window.BudgetExplorer.S.page === 'source');
+  check(await p2.locator('text=Replace…').count() === 0 && await p2.locator('#file-table').count() === 1, 'Data source has no Replace / Sample data buttons');
+  await p2.close();
 
   check(errors.length === 0, 'no console errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   await browser.close();
