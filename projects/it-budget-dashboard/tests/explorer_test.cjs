@@ -10,7 +10,7 @@ const EX = (f) => path.join(ROOT, 'data', ...f.split('/'));
 const shots = process.env.SCREENSHOT_DIR;
 let failures = 0;
 const check = (c, msg) => { console.log((c ? '  ok   ' : '  FAIL ') + msg); if (!c) failures++; };
-const PAGES = ['overview', 'breakdown', 'vendors', 'organisation', 'c-contoso', 'c-fabrikam', 'renewals', 'cashflow', 'yoy', 'lines', 'quality', 'source'];
+const PAGES = ['overview', 'breakdown', 'vendors', 'organisation', 'c-contoso', 'c-proseware', 'c-fabrikam', 'renewals', 'cashflow', 'yoy', 'lines', 'quality', 'source'];
 
 (async () => {
   const browser = await chromium.launch();
@@ -171,6 +171,10 @@ const PAGES = ['overview', 'breakdown', 'vendors', 'organisation', 'c-contoso', 
   await page.evaluate(() => window.BudgetExplorer.go('c-contoso')); await page.waitForTimeout(100);
   check(await page.locator('[data-kpi="ct-term"]').count() === 0, 'monthly contract shows no term end');
 
+  await nav('c-proseware');
+  check(await page.locator('#ct-single').count() === 1 && await page.locator('#ct-bars').count() === 0 && await page.locator('#ct-includes li').count() === 5, 'one-fee contract: summary card with the 5 included modules instead of a single bar');
+  check(await kpiVal('ct-annual') === 126000 && Math.abs(await kpiVal('ct-gap') - 2000) < 0.01, 'one-fee contract: 126,000 a year, 2,000 below the 128,000 budget');
+
   console.log('Encoding');
   await loadFile(EX('examples/utf8-names.csv'), 'utf8-names.csv');
   check(JSON.stringify(await S(() => window.BudgetExplorer.S.rows.map((r) => r[2]))) === '["Zürich","Genève","Malmö"]', 'UTF-8 names (Zürich, Genève, Malmö) are read correctly');
@@ -195,6 +199,11 @@ const PAGES = ['overview', 'breakdown', 'vendors', 'organisation', 'c-contoso', 
   check(await mapped('amount') === 'Sum of Total in USD' && await mapped('capability') === 'Capability' && await mapped('vendor') === 'Vendor', 'amount / capability / vendor detected; opens on Overview');
   check(await total() === 110720, 'total 110,720');
   const f2 = await S(() => { const c = {}; for (const r of window.BudgetExplorer.S.recs) for (const f of r.flags) c[f] = (c[f] || 0) + 1; return c; });
+  check((await page.locator('.card-t').first().textContent()).startsWith('Sales is the largest capability'), 'Overview leads with spend by capability (from the file)');
+  await nav('vendors');
+  const vh2 = await page.locator('#vendor-table thead th').allTextContents();
+  check(vh2.some((x) => x.startsWith('Capability')) && await page.locator('#vendor-table .owner-chip').count() === 6, 'Vendors: no owner column in the file, so the coloured column is Capability (from the file)');
+  check((await page.textContent('#v-fn-card .card-s')).includes('capability') && await page.locator('#v-fn').count() === 0, 'pie by capability, no toggle when it is the only department column');
   check(f2.open_question === 2 && f2.vendor_placeholder === 1 && f2.unclassified_value === 1, `reviewer notes flagged: "unclear" + "double?" = 2 open questions, "Varied" vendor, "Unknown" capability (${JSON.stringify(f2)})`);
 
   console.log('EU finance export');

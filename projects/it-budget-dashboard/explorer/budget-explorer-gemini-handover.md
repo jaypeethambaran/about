@@ -270,9 +270,9 @@ Each entry is `{ id, label, icon, group, render, insight, needs?, needsText?, no
 
 | Group | Page | Shows | Needs |
 |---|---|---|---|
-| Analyse | **Overview** | **The landing page. No filter bar: it always shows the whole budget.** KPI tiles (total with trend line and change vs prior year, vendors, 90-day deadlines, new spend, quality score), then cards for category mix (a bar opens Line items filtered to it), the **top 15 vendors** (a bar opens the vendor panel), the first deadlines to act on, monthly cash flow, a mini bridge and data checks. Each card links to its page. | amount |
+| Analyse | **Overview** | **The landing page. No filter bar: it always shows the whole budget.** When no column is small enough to colour by (8 values or fewer), the first card is spend by capability (else cost centre or owner). KPI tiles (total with trend line and change vs prior year, vendors, 90-day deadlines, new spend, quality score), then cards for category mix (a bar opens Line items filtered to it), the **top 15 vendors** (a bar opens the vendor panel), the first deadlines to act on, monthly cash flow, a mini bridge and data checks. Each card links to its page. | amount |
 | Analyse | **Spend breakdown** | **Group by** any column, **Split by** another, and a **View** switch (Chart / Table / Chart + table). Stacked bars plus a cross-table with shaded cells. Clicking filters. | amount |
-| Analyse | **Vendors** | **No filter bar.** KPI tiles: vendors with spend, top-10 share, vendors in the long tail (under 25k, moving to 50k / 100k when fewer than 3 vendors are that small; thresholds scale with the budget size), renewals in the next 90 days. A **pie (donut) chart by budget owner**, switchable to capability or cost centre, with its key as a table and a note on vendors bought by more than one owner; a **vendor-size card** (vendors and spend per spend band). Then the vendor table: rank, spend, share, change vs prior, **renewal date** (the file's renewal column, else the day after a key contract's current term) and **owner as a coloured chip** (same colours as the pie). Slices, bands and rows open panels. The Pareto chart, Lines and Mix columns were removed at the owner's request. | vendor |
+| Analyse | **Vendors** | **No filter bar.** KPI tiles: vendors with spend, top-10 share, vendors in the long tail (under 25k, moving to 50k / 100k when fewer than 3 vendors are that small; thresholds scale with the budget size), renewals in the next 90 days. A **pie (donut) chart by budget owner**, switchable to capability or cost centre, with its key as a table and a note on vendors bought by more than one owner; a **vendor-size card** (vendors and spend per spend band). Then the vendor table: rank, spend, share, change vs prior, **renewal date** (the file's renewal column, else the day after a key contract's current term) and **owner as a coloured chip** (same colours as the pie). Without an owner column the chips show the capability (else cost centre) column, under that column's name. Slices, bands and rows open panels. The Pareto chart, Lines and Mix columns were removed at the owner's request. | vendor |
 | Analyse | **Cost centres & owners** | Shaded grid of cost centre × colour column, and an owner table with lines lacking an owner highlighted | cost centre or owner |
 | Key contracts | **One page per contract** in `#contracts-json` (id `c-<id>`) | KPI tiles: annual cost at current run-rate, budget, run-rate in budget currency (when currencies differ), headroom or over budget, and current term end (yearly or half-yearly contracts). Cards: annual cost by product (coloured by `kind`, click for line details); budget vs run-rate bars with the exchange-rate input and the matched and related budget lines; the invoice lines table (quantity, service period, invoiced, factor, per year, per unit per month, share) with an invoice-total check; and how the figures are calculated. Export CSV gives the annualised lines. No filter bar. | invoice lines in `#contracts-json` |
 | Plan | **Renewals** | Urgency filter buttons, then **Timeline / Calendar / List** tabs. The calendar has 12 month cards grouped by notice-deadline month, plus Overdue and Later cards. | renewal date |
@@ -346,6 +346,7 @@ Use function declarations, not `const` arrow functions, because `PAGES` referenc
 - A contract can also have `term: { from, to }`, `warning`, `schedule: [ { label, from, to, fee, payment?, note? } ]` and `dates: [ { date, from?, label, note? } ]`.
 - `id`, `name` and `match` are required; `nav` (shorter nav label), `related`, `currency`, `fx`, `notes` and `invoices` are optional.
 - A line's `from` / `to` override the invoice's. `months` can be given instead of dates.
+- A line can list what it covers in `includes` (array of text). A contract with one product shows a summary card (quantity, price per unit, included items) instead of a one-bar chart.
 - `kind` groups and colours lines (for example "Full user licences", "Capacity & sandbox").
 - Keep amounts as on the invoice, excluding VAT. Real invoices go only into private builds (constraint 13).
 
@@ -371,7 +372,7 @@ The mapping form picks it up automatically.
 
 ## 8. Testing and verification
 
-**Automated (in the source repo):** `projects/it-budget-dashboard/tests/explorer_test.cjs`, a Playwright script with 100 checks that opens the file from disk. Run it with `node tests/explorer_test.cjs`, or `SCREENSHOT_DIR=… node tests/explorer_test.cjs` to also save a screenshot of each page. It checks that:
+**Automated (in the source repo):** `projects/it-budget-dashboard/tests/explorer_test.cjs`, a Playwright script with 106 checks that opens the file from disk. Run it with `node tests/explorer_test.cjs`, or `SCREENSHOT_DIR=… node tests/explorer_test.cjs` to also save a screenshot of each page. It checks that:
 - The sample opens on Overview; there is no Executive benchmarks page, and the nav groups are Analyse, Key contracts, Plan, Data.
 - Every page renders and is marked current in the nav.
 - Overview has no filter bar, shows 15 vendors plus "All other", and its bars open the vendor panel or Line items without leaving a hidden filter.
@@ -477,6 +478,10 @@ Before starting large items (1, 2, 4), propose the approach to the owner in a fe
 ---
 
 ## 13. Change log
+
+**Departments from the owner's own column (8 Nov 2026), done by Claude, at the owner's request:**
+- The owner's build now embeds only the owner's cleaned sheet. Columns joined from an older finance export had shown a different "budget owner" for 38 of 98 tools; rule: never add columns to the owner's data that the owner didn't provide.
+- Vendors and Overview use the capability column as the department when there is no owner column. One-product contracts get a summary card with `includes`. A third fictional contract (Proseware HR) covers it; 106 checks.
 
 **Multi-year contracts (8 Nov 2026), done by Claude, at the owner's request (pages for two more contracts in the owner's build):**
 - Contract pages read order forms as well as invoices: contract term, contract years with yearly fee vs invoiced amount, key dates (deadlines and reporting windows) with a Next key date tile, replaced orders, and a warning banner.

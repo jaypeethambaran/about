@@ -466,6 +466,13 @@ IT-043,Wide World Revenue AI,Revenue intelligence (AI),Licence,Software,Applicat
       { "ref": "Quote CQ-2025 (replaced)", "short": "CQ-2025", "from": "2025-10-24", "to": "2026-10-23", "status": "superseded", "statusNote": "Replaced by the 3-year commitment.", "total": 300000.00,
       "lines": [
         { "product": "Reserved compute capacity (old rate)", "qty": 100, "unit": "vCPU", "kind": "Compute", "amount": 300000.00 } ] } ] },
+  { "id": "proseware", "name": "Proseware HR", "match": "^proseware hr$", "currency": "EUR",
+    "term": { "from": "2025-10-07", "to": "2027-10-06" },
+    "notes": ["One fee covers every module for up to 2,000 employees."],
+    "invoices": [ { "ref": "PW-2026", "from": "2026-10-07", "to": "2027-10-06", "total": 126000.00,
+      "lines": [
+        { "product": "HR & payroll suite, all modules", "qty": 2000, "unit": "employees", "kind": "Subscription", "amount": 126000.00,
+          "includes": ["Core HR", "Payroll", "Absence", "Performance", "Learning"] } ] } ] },
   { "id": "fabrikam", "name": "Fabrikam Security", "match": "^fabrikam security$", "currency": "USD",
     "fx": { "to": "EUR", "rate": 0.89, "note": "Illustrative rate for the fictional sample." },
     "term": { "from": "2026-10-01", "to": "2029-09-30" },
@@ -1392,6 +1399,14 @@ function pageOverview(recs) {
     meta:[q.errors ? tag(`${q.errors} errors`, 'red') : tag('No errors', 'green'), h('span', {}, `${q.warnings} warnings`)], hint:'Share of spend in rows without errors or warnings' }));
 
   const cards = [];
+  const dept = ['capability', 'costcentre', 'owner'].map((k) => S.map[k]).find((ci) => ci != null && S.dims.includes(ci));
+  if (S.colorDim == null && dept != null && total) {
+    const g = groupBy(recs, dept), cols = rankColors(dept);
+    cards.push(card({ title:`${g[0].key} is the largest ${low(dept)} at ${fmtPct(g[0].value / total)}`, sub:`Spend by ${low(dept)} · click a bar to list its lines`, id:'ov-dept',
+      body:[h('div', { class:'stack tall', role:'img', 'aria-label':g.map((x) => `${x.key} ${fmtPct(x.value / total)}`).join(', ') }, g.map((x) => h('span', { style:`width:${Math.max(0, x.value / total * 100)}%;background:${cols.get(x.key)}`, title:`${x.key}: ${fmtMoney(x.value)}` }))),
+        h('div', { style:'margin-top:12px' }, hbarList(g, { total, limit:15, onClick:(k) => setFilter(dept, k), colorFn:(k) => cols.get(k) || 'var(--other)', hint:'Click to list its lines.' }))],
+      foot:linkTo('breakdown', 'Open spend breakdown') }));
+  }
   if (S.colorDim != null && total) {
     const g = groupBy(recs, S.colorDim);
     cards.push(card({ title:`${g[0].key} is the largest ${low(S.colorDim)} at ${fmtPct(g[0].value / total)}`, sub:`Spend by ${low(S.colorDim)} · click a bar to list its lines`,
@@ -1553,7 +1568,10 @@ function insVendors(recs) {
 function pageVendors(recs) {
   const all = vendorAgg(recs), pos = all.filter((v) => v.value > 0), total = sum(all, (v) => v.value), AS = asOfDay();
   const ren = renewalLookup(), vren = new Map(all.map((v) => [v, vendorRenewal(v, ren, AS)]));
-  const oc = S.map.owner != null ? rankColors(S.map.owner) : null, sb = sizeBands(pos, total);
+  // the coloured "who" column: the owner, or else the capability / cost centre column (the same colours as the pie chart)
+  const chipKey = ['owner', 'capability', 'costcentre'].find((k) => S.map[k] != null), chipCi = chipKey ? S.map[chipKey] : null;
+  const oc = chipKey ? rankColors(chipCi) : null, sb = sizeBands(pos, total);
+  const whoOf = (v) => { const m = new Map(); for (const r of v.recs) if (r.amount > 0 && r.row[chipCi]) m.set(r.row[chipCi], (m.get(r.row[chipCi]) || 0) + r.amount); return [...m].sort((a, b) => b[1] - a[1]).map(([k]) => k); };
   const soon = pos.filter((v) => { const x = vren.get(v); return x && x.day >= AS && x.day - AS <= 90; }), anyRen = [...vren.values()].some(Boolean);
   const top = (n) => (total ? sum(pos.slice(0, n), (v) => v.value) / total : 0);
   const out = [h('div', { class:'kpis' },
@@ -1569,7 +1587,7 @@ function pageVendors(recs) {
   const cards = [];
   if (fns.length && total) {
     if (!fns.some(([k]) => k === S.ui.vFn)) S.ui.vFn = fns[0][0];
-    const ci = S.map[S.ui.vFn], colors = S.ui.vFn === 'owner' && oc ? oc : rankColors(ci), fnName = fns.find(([k]) => k === S.ui.vFn)[1];
+    const ci = S.map[S.ui.vFn], colors = S.ui.vFn === chipKey ? oc : rankColors(ci), fnName = fns.find(([k]) => k === S.ui.vFn)[1];
     const groups = groupBy(recs.filter((r) => r.amount > 0), ci).map((g) => ({ ...g, color:colors.get(g.key) || 'var(--other)', n:new Set(g.recs.map((r) => cell(r, S.map.vendor))).size }));
     const open = (g) => vendorListDrawer(g.key, `${fmtMoney(g.value)} · ${fmtPct(g.value / total, 1)} of vendor spend · ${g.n} vendor${g.n === 1 ? '' : 's'}`, vendorAgg(g.recs).filter((v) => v.value > 0), all,
       btn('List its lines', 'secondary', () => { closeDrawer(); setFilter(ci, g.key); }));
@@ -1617,9 +1635,9 @@ function pageVendors(recs) {
     const d = Math.round(x.day - AS);
     return h('div', { title:x.note, style:'white-space:nowrap' }, fmtDay(x.day), h('div', { style:'margin-top:2px' }, d < 0 ? tag(`${-d} days ago`, 'red') : d <= 90 ? tag(`in ${d} days`, 'orange') : h('span', { class:'muted', style:'font-size:12px' }, `in ${d} days`)));
   } });
-  if (oc) cols.push({ key:'owners', label:'Owner', sortVal:(v) => [...v.owners].join(), render:(v) => {
-    const os = [...v.owners];
-    return !os.length ? tag('No owner', 'yellow') : h('span', { class:'owner-cell' }, ownerChip(os[0], oc.get(os[0]) || 'var(--other)', os.join(', ')), os.length > 1 ? h('span', { class:'muted', title:os.join(', ') }, `+${os.length - 1}`) : null);
+  if (oc) cols.push({ key:'owners', label:chipKey === 'owner' ? 'Owner' : hdr(chipCi), sortVal:(v) => whoOf(v).join(), render:(v) => {
+    const os = whoOf(v);
+    return !os.length ? tag(chipKey === 'owner' ? 'No owner' : 'None', 'yellow') : h('span', { class:'owner-cell' }, ownerChip(os[0], oc.get(os[0]) || 'var(--other)', os.join(', ')), os.length > 1 ? h('span', { class:'muted', title:os.join(', ') }, `+${os.length - 1}`) : null);
   } });
   out.push(card({ title:'All vendors', sub:'Click a vendor to open its lines, renewal and owners', flush:true,
     body:dataTable({ cols, rows:sortRows(all, cols, S.ui.vSort), sort:S.ui.vSort, onSort:sorter('vSort'), onRow:(v) => vendorDrawer(v), maxHeight:'620px', id:'vendor-table',
@@ -1764,7 +1782,7 @@ function scheduleCard(c, d, AS) {
     { key:'fee', label:'Yearly fee', num:true, render:(x) => fmtIn(x.fee, d.ic) },
     pay ? { key:'payment', label:'Invoiced', num:true, render:(x) => fmtIn(amt(x), d.ic) } : null,
     { key:'st', label:'Status', render:st },
-    { key:'note', label:'Note', cls:'wrap muted', render:(x) => x.note || '' },
+    rows.some((x) => x.note) ? { key:'note', label:'Note', cls:'wrap muted', render:(x) => x.note || '' } : null,
   ].filter(Boolean);
   return card({ id:'ct-schedule', flush:true,
     title:next ? `Next invoice: ${fmtIn(amt(next), d.ic)} on ${fmtDay(next.a)}` + (Math.abs(off) > 0.05 ? `, ${fmtPct(Math.abs(off))} ${off > 0 ? 'more' : 'less'} than the yearly fee` : '') : 'Contract years',
@@ -1797,7 +1815,14 @@ function pageContract(c) {
   if (d.unscaled.length) out.push(h('div', { class:'notice warn' }, icon('warn'), h('span', {}, `${d.unscaled.length} invoice line${d.unscaled.length === 1 ? ' has' : 's have'} no service period, so ${d.unscaled.length === 1 ? 'it is' : 'they are'} not scaled to a year: ${d.unscaled.map((l) => l.product).join(', ')}.`)));
 
   const cards = [];
-  if (has) {
+  const single = has && new Set(d.lines.map((l) => l.product)).size === 1 ? d.lines[0] : null;
+  if (single) {
+    const l = single, inc = d.lines.flatMap((x) => x.includes || []);
+    cards.push(card({ title:`One ${d.cadence || 'yearly'} fee: ${fmtIn(d.annual, d.ic)} a year`, id:'ct-single', sub:l.product,
+      body:[kv([['Quantity', l.qty != null ? `${fmtInt(l.qty)}${l.unit ? ' ' + l.unit : ''}` : null], ['Per unit per year', l.perUnitYear != null ? fmtIn(l.perUnitYear, d.ic, 2) : null],
+        ['Service period', l.from && l.to ? `${fmtDay(isoToDay(l.from))} – ${fmtDay(isoToDay(l.to))}` : null], l.note ? ['Note', l.note] : null]),
+        inc.length ? [h('div', { class:'sub-h', style:'margin:14px 0 6px' }, `Included (${inc.length})`), h('ul', { class:'ct-notes', id:'ct-includes' }, inc.map((x) => h('li', {}, x)))] : null] }));
+  } else if (has) {
     const groups = [...d.lines.reduce((m, l) => { const g = m.get(l.product) || { key:l.product, kind:l.kind, value:0, lines:[] }; g.value += l.annual || 0; g.lines.push(l); return m.set(l.product, g); }, new Map()).values()].sort((a, b) => b.value - a.value);
     const max = Math.max(...groups.map((g) => g.value), 1), [k0, v0] = d.kinds[0];
     cards.push(card({ title:d.kinds.length > 1 ? `${k0}: ${fmtPct(d.annual ? v0 / d.annual : 0)} of the annual cost` : `${groups[0].key}: ${fmtPct(d.annual ? groups[0].value / d.annual : 0)} of the annual cost`,
@@ -1866,7 +1891,7 @@ function pageContract(c) {
     out.push(card({ title:`Invoice lines scaled to a year: ${fmtIn(d.annual, d.ic, 2)}`, sub:`Amounts in ${d.ic || 'invoice currency'}, before VAT · per year = invoiced × 12 ÷ months in the service period · click a row for details`, flush:true, id:'ct-lines-card',
       body:[h('div', { class:'table-bar', style:'justify-content:flex-start' }, checks),
         dataTable({ cols, rows:sortRows(d.lines, cols, S.ui.ctSort).concat(sortRows(d.ended, cols, S.ui.ctSort)), sort:S.ui.ctSort, onSort:sorter('ctSort'), onRow:(l) => invoiceDrawer(c, d, [l]), id:'ct-lines', rowClass:(l) => (l.ended ? 'ended' : ''),
-          foot:cols.map((x, i) => (i === 0 ? `Total (${d.lines.length} current lines${d.ended.length ? `; ${d.ended.length} not counted` : ''})` : x.key === 'amount' ? fmtIn(d.invoiced, '', 2) : x.key === 'annual' ? fmtIn(d.annual, '', 2) : x.key === 'share' ? '100%' : '')) })] }));
+          foot:cols.map((x, i) => (i === 0 ? `Total (${d.lines.length} current line${d.lines.length === 1 ? '' : 's'}${d.ended.length ? `; ${d.ended.length} not counted` : ''})` : x.key === 'amount' ? fmtIn(d.invoiced, '', 2) : x.key === 'annual' ? fmtIn(d.annual, '', 2) : x.key === 'share' ? '100%' : '')) })] }));
   }
   const notes = [
     'Each invoice line is scaled to 12 months from its service period: a month ×12, a quarter ×4, a year ×1. This assumes today’s quantities and prices stay the same for the whole year. Amounts exclude VAT.',
