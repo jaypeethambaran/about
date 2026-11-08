@@ -51,7 +51,7 @@ Set **Data source & columns → Urgency as of = 2026-11-07** first, because rene
 | Business capabilities | Enterprise IT 80.6% · ERP & Supply Chain 11.6% · Commercial 5.0% · G&A 2.8% |
 | Vendors page | 23 vendors; top 5 = **49%** of spend, top 10 = **75%**; no vendor under €25k, so the long-tail cut moves to €50k: **3 vendors**; pie by budget owner, largest Head of Workplace (24%); by capability, 4 slices with Enterprise IT largest |
 | Key contract: Contoso Cloud | Monthly invoice 56,500 × 12 = **678,000** a year; budget (2 lines) **758,000**; headroom **80,000**; no exchange rate needed |
-| Key contract: Fabrikam Security | Endpoint licences 176,400 billed yearly (×1) + SOC and retainer 72,500 a quarter (×4) = **466,400 USD**; at the file's illustrative rate 0.89 = **415,096 EUR**; budget (3 lines) **441,000**; headroom **25,904**; term ends **30 Sep 2027**. An ended onboarding invoice (12,000 for 6 months) is listed but not counted. Typing rate 0.95 gives **2,080 over budget** |
+| Key contract: Fabrikam Security | Endpoint licences 176,400 billed yearly (×1) + SOC and retainer 72,500 a quarter (×4) = **466,400 USD**; at the file's illustrative rate 0.89 = **415,096 EUR**; budget (3 lines) **441,000**; headroom **25,904**; contract ends **30 Sep 2029**; contract years 400,000 / 466,400 / 532,800 invoiced, next **466,400 on 1 Oct 2027**; next key date: endpoint-count window opens **3 Jul 2027**. An ended onboarding invoice (12,000 for 6 months) is listed but not counted. Typing rate 0.95 gives **2,080 over budget** |
 | Notice deadlines within 90 days | **18**, of which **7 overdue** |
 | Data quality | 97% score, 0 errors, **5 warnings** (3 no owner, 1 no cost centre, 1 renewal date passed) |
 | Monthly columns detected | 12 (Jan…Dec) |
@@ -256,7 +256,11 @@ S = {
   - **Headroom** = budget − run-rate in budget currency. Negative is shown as "Run-rate over budget" with a red KPI accent.
   - **Invoice check:** the lines must add up to `total − vat` when the invoice gives a total.
   - **Ended invoices** (`"status": "ended"` on an invoice or a line) are listed last, greyed, and left out of the run-rate; the page states what they would add a year if renewed. Status is set in the data, not from dates, because a monthly invoice from a past month still stands for a recurring charge.
-  - **Current term ends** = the latest end date among current lines billed for 6 months or more, with days left from "as of" (orange within 90 days). Monthly and quarterly contracts don't show it.
+  - **Current term ends** = the latest end date among current lines billed for 6 months or more, with days left from "as of" (orange within 90 days). Monthly and quarterly contracts don't show it. When the contract has `term`, the tile says **Contract ends** and uses `term.to`; the Vendors renewal date is the day after.
+  - **Replaced orders** (`"status": "superseded"`) are listed and greyed like ended ones, but without an "if renewed" value.
+  - **Contract years** (`schedule`): one row per year with the yearly fee and, when it differs, what is invoiced (back-loaded payment plans). The title names the next invoice and how far it is from the yearly fee; the subtitle gives what is still to be invoiced after "as of".
+  - **Key dates** (`dates`): single dates or windows (`from` … `date`), with status Passed / Open (days left) / In N days; the next one is also a KPI tile. Six tiles show as two rows of three.
+  - **`warning`** shows a yellow banner at the top of the page (for example, a figure taken from a draft).
 
 ---
 
@@ -338,7 +342,8 @@ Use function declarations, not `const` arrow functions, because `PAGES` referenc
       "lines": [ { "product": "Reserved compute capacity", "qty": 120, "unit": "vCPU", "kind": "Compute", "amount": 26400.00,
                    "from": "2026-10-01", "to": "2026-10-31", "note": "optional" } ] } ] } ] }
 ```
-- An invoice can have `short` (a short label for the Invoice column), `status: "ended"` and `statusNote`.
+- An invoice can have `short` (a short label for the Invoice column), `status: "ended"` or `"superseded"` and `statusNote`.
+- A contract can also have `term: { from, to }`, `warning`, `schedule: [ { label, from, to, fee, payment?, note? } ]` and `dates: [ { date, from?, label, note? } ]`.
 - `id`, `name` and `match` are required; `nav` (shorter nav label), `related`, `currency`, `fx`, `notes` and `invoices` are optional.
 - A line's `from` / `to` override the invoice's. `months` can be given instead of dates.
 - `kind` groups and colours lines (for example "Full user licences", "Capacity & sandbox").
@@ -366,13 +371,13 @@ The mapping form picks it up automatically.
 
 ## 8. Testing and verification
 
-**Automated (in the source repo):** `projects/it-budget-dashboard/tests/explorer_test.cjs`, a Playwright script with 94 checks that opens the file from disk. Run it with `node tests/explorer_test.cjs`, or `SCREENSHOT_DIR=… node tests/explorer_test.cjs` to also save a screenshot of each page. It checks that:
+**Automated (in the source repo):** `projects/it-budget-dashboard/tests/explorer_test.cjs`, a Playwright script with 100 checks that opens the file from disk. Run it with `node tests/explorer_test.cjs`, or `SCREENSHOT_DIR=… node tests/explorer_test.cjs` to also save a screenshot of each page. It checks that:
 - The sample opens on Overview; there is no Executive benchmarks page, and the nav groups are Analyse, Key contracts, Plan, Data.
 - Every page renders and is marked current in the nav.
 - Overview has no filter bar, shows 15 vendors plus "All other", and its bars open the vendor panel or Line items without leaving a hidden filter.
 - Vendors has no Pareto chart and no filter bar; its table has Renewal and coloured Owner columns but no Lines or Mix; the pie has one slice per owner, opens an owner's vendors, and switches to capability; the long-tail cut and size bands add up.
 - A copy with `data-upload="off"` has no Load CSV button and no Replace / Sample data buttons.
-- Service periods map to 1, 1, 3, 12 and 0.46 months; both sample contracts give the figures in section 2, including the ended invoice and term end; typing an exchange rate updates the comparison and "Use 0.89" restores it; a bar opens the line details; Export CSV gives the annualised lines.
+- Service periods map to 1, 1, 3, 12 and 0.46 months; both sample contracts give the figures in section 2, including the ended and replaced orders, contract end, contract years, key dates and the warning banner (as of 8 Nov 2026); typing an exchange rate updates the comparison and "Use 0.89" restores it; a bar opens the line details; Export CSV gives the annualised lines.
 - No "Contract" category remains, and the bridge reconciles with 6 new lines.
 - Group-by, filter chips and the view switch work.
 - The vendor panel opens, a line panel opens from inside it, and Esc closes the panel.
@@ -472,6 +477,10 @@ Before starting large items (1, 2, 4), propose the approach to the owner in a fe
 ---
 
 ## 13. Change log
+
+**Multi-year contracts (8 Nov 2026), done by Claude, at the owner's request (pages for two more contracts in the owner's build):**
+- Contract pages read order forms as well as invoices: contract term, contract years with yearly fee vs invoiced amount, key dates (deadlines and reporting windows) with a Next key date tile, replaced orders, and a warning banner.
+- Fictional sample extended to cover each of these; 100 checks.
 
 **Vendors page redesign (8 Nov 2026), done by Claude, at the owner's request:**
 - No filter bar. The table drops Lines and Mix by spend type, and adds the renewal date and the owner as a coloured chip.

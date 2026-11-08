@@ -326,6 +326,8 @@ button.band-row:disabled { cursor:default; opacity:.6; }
 .band-bar .hb-track { height:14px; }
 
 /* ---------- key contracts ---------- */
+.kpis.dense { grid-template-columns:repeat(3, minmax(0, 1fr)); }
+@media (max-width:900px) { .kpis.dense { grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); } }
 .ct-cmp { display:grid; grid-template-columns:minmax(80px, 24%) minmax(40px, 1fr) 104px; gap:10px 12px; align-items:center; font-size:13px; }
 .ct-cmp .hb-track { height:20px; }
 .ct-cmp .hb-val { font-weight:600; }
@@ -450,6 +452,7 @@ IT-043,Wide World Revenue AI,Revenue intelligence (AI),Licence,Software,Applicat
 <script type="application/json" id="contracts-json">
 { "contracts": [
   { "id": "contoso", "name": "Contoso Cloud", "match": "^contoso cloud$", "currency": "EUR",
+    "warning": "Sample contract: every figure on this page is fictional.",
     "notes": ["Consumption billing: the run-rate assumes October usage continues for the whole year.",
               "The budget includes a Q4 true-up on the 3-year commitment that is not on this invoice."],
     "invoices": [ { "ref": "INV-C-2026-10", "from": "2026-10-01", "to": "2026-10-31", "vat": 0, "vatLabel": "reverse charge", "total": 56500.00,
@@ -459,9 +462,21 @@ IT-043,Wide World Revenue AI,Revenue intelligence (AI),Licence,Software,Applicat
         { "product": "Object storage & backup", "qty": 400, "unit": "TB", "kind": "Storage", "amount": 6800.00 },
         { "product": "Network egress", "kind": "Network", "amount": 2150.00 },
         { "product": "Managed Kubernetes clusters", "qty": 6, "unit": "clusters", "kind": "Platform", "amount": 7200.00 },
-        { "product": "Enterprise support plan", "qty": 1, "kind": "Support", "amount": 4950.00 } ] } ] },
+        { "product": "Enterprise support plan", "qty": 1, "kind": "Support", "amount": 4950.00 } ] },
+      { "ref": "Quote CQ-2025 (replaced)", "short": "CQ-2025", "from": "2025-10-24", "to": "2026-10-23", "status": "superseded", "statusNote": "Replaced by the 3-year commitment.", "total": 300000.00,
+      "lines": [
+        { "product": "Reserved compute capacity (old rate)", "qty": 100, "unit": "vCPU", "kind": "Compute", "amount": 300000.00 } ] } ] },
   { "id": "fabrikam", "name": "Fabrikam Security", "match": "^fabrikam security$", "currency": "USD",
     "fx": { "to": "EUR", "rate": 0.89, "note": "Illustrative rate for the fictional sample." },
+    "term": { "from": "2026-10-01", "to": "2029-09-30" },
+    "schedule": [
+      { "label": "Year 1", "from": "2026-10-01", "to": "2027-09-30", "fee": 466400, "payment": 400000, "note": "Ramp-up discount on the first invoice." },
+      { "label": "Year 2", "from": "2027-10-01", "to": "2028-09-30", "fee": 466400, "payment": 466400 },
+      { "label": "Year 3", "from": "2028-10-01", "to": "2029-09-30", "fee": 466400, "payment": 532800, "note": "Discount paid back in the last year." } ],
+    "dates": [
+      { "date": "2026-09-15", "label": "Price-protection offer expired" },
+      { "from": "2027-07-03", "date": "2027-08-02", "label": "Report the endpoint count", "note": "Endpoints above 2,100 are billed from the next year." },
+      { "date": "2029-06-30", "label": "Last day to give notice", "note": "90 days before the contract ends." } ],
     "notes": ["Endpoint licences are billed yearly in advance; the SOC service and retainer quarterly.", "The penetration test in the budget is a one-off and is not on these invoices."],
     "invoices": [ { "ref": "FS-Q4-2026", "from": "2026-10-01", "to": "2026-12-31", "vat": 0, "total": 248900.00,
       "lines": [
@@ -1487,7 +1502,7 @@ function renewalLookup() {
   const byContract = new Map();
   for (const c of CONTRACTS) {
     const d = contractData(c);
-    if (d.termEnd != null) for (const r of d.matched) byContract.set(r, { day:d.termEnd + 1, note:`Day after the current term on the ${c.name} invoices, which ends ${fmtDay(d.termEnd)}` });
+    if (d.termEnd != null) for (const r of d.matched) byContract.set(r, { day:d.termEnd + 1, note:d.termGiven ? `Day after the ${c.name} contract ends (${fmtDay(d.termEnd)})` : `Day after the current term on the ${c.name} invoices, which ends ${fmtDay(d.termEnd)}` });
   }
   return (r) => (r.renewal != null ? { day:r.renewal, note:'Renewal date from the budget file' + (r.notice != null ? ` · notice by ${fmtDay(r.deadline)}` : '') } : byContract.get(r) || null);
 }
@@ -1615,7 +1630,9 @@ function pageVendors(recs) {
 // ---------- Key contracts (one page per contract, from its invoice lines) ----------
 // Data: <script type="application/json" id="contracts-json"> { "contracts": [ { id, name, nav?, match, related?, currency?,
 //   fx?:{ to, rate, note }, notes?:[…], invoices:[ { ref, short?, from?, to?, vat?, vatLabel?, total?, status?, statusNote?, lines:[ { product,
-//   qty?, unit?, kind?, from?, to?, months?, amount, status?, note? } ] } ] } ] }. status "ended" = shown but left out of the run-rate. A line's service period (its own, or the invoice's) sets how often it is billed;
+//   qty?, unit?, kind?, from?, to?, months?, amount, status?, note? } ] } ], term?:{ from, to }, warning?, schedule?:[ { label, from, to,
+//   fee, payment?, note? } ], dates?:[ { date, from?, label, note? } ] } ] }. status "ended" (not renewed) or "superseded" (replaced by a
+//   later order) = shown but left out of the run-rate. schedule = the contract years; dates = key dates (a window when "from" is given). A line's service period (its own, or the invoice's) sets how often it is billed;
 //   the annual cost is amount × 12 / months: 1 month ×12, a quarter ×4, a year ×1. "match" is a regular expression tested
 //   against the vendor column to find the budget lines; "related" lists other rows that mention the contract, not counted.
 function readContracts() {
@@ -1639,7 +1656,7 @@ function annualise(l, inv) {
   const amount = +l.amount || 0, qty = +l.qty > 0 ? +l.qty : null;
   const factor = months ? 12 / months : null, annual = factor == null ? null : amount * factor;
   return { ...l, inv, product:l.product || 'Unnamed line', kind:l.kind || 'Other', from, to, months, amount, qty, factor, annual,
-    ended:(l.status || inv.status) === 'ended', endNote:l.statusNote || inv.statusNote || '',
+    ended:['ended', 'superseded'].includes(l.status || inv.status), superseded:(l.status || inv.status) === 'superseded', endNote:l.statusNote || inv.statusNote || '',
     perUnitMonth:qty && months ? amount / qty / months : null, perUnitYear:qty && annual != null ? annual / qty : null };
 }
 const fmtFactor = (f) => (f == null ? '—' : '×' + (Math.abs(f - Math.round(f)) < 0.005 ? Math.round(f) : f.toFixed(2)));
@@ -1673,8 +1690,10 @@ function contractData(c) {
   for (const l of ended) if (!kindColor.has(l.kind)) kindColor.set(l.kind, 'var(--other)');
   // end of the current term: the latest end date among current lines billed for 6 months or more (not monthly or quarterly)
   const long = lines.filter((l) => l.months >= 6 && l.to && isFinite(isoToDay(l.to)));
-  const termEnd = long.length ? Math.max(...long.map((l) => isoToDay(l.to))) : null;
-  return { all, lines, ended, current, endedAnnual:sum(ended, (l) => l.annual), termEnd, matched, related, budget, bc, ic, needFx, rate, rateFrom:!needFx ? null : mine > 0 ? 'mine' : fileRate ? 'file' : null, fileRate,
+  const termGiven = c.term && c.term.to && isFinite(isoToDay(c.term.to));
+  const termEnd = termGiven ? isoToDay(c.term.to) : long.length ? Math.max(...long.map((l) => isoToDay(l.to))) : null;
+  const renewable = ended.filter((l) => !l.superseded), replaced = ended.filter((l) => l.superseded);
+  return { all, lines, ended, renewable, replaced, current, endedAnnual:sum(renewable, (l) => l.annual), termEnd, termGiven:!!termGiven, matched, related, budget, bc, ic, needFx, rate, rateFrom:!needFx ? null : mine > 0 ? 'mine' : fileRate ? 'file' : null, fileRate,
     invoiced:sum(lines, (l) => l.amount), annual, annualB, gap:annualB != null && matched.length ? budget - annualB : null,
     cadence, factor:cadence ? 12 / ms[0] : null, kinds, kindColor, unscaled:lines.filter((l) => l.annual == null) };
 }
@@ -1691,8 +1710,8 @@ function insContract(c) {
   const head = d.cadence === 'annual' ? 'The current annual invoice comes to' : d.cadence ? `The ${d.cadence} invoice of ${fmtIn(d.invoiced, d.ic)} comes to` : `${d.lines.length} current invoice lines come to`;
   return `${head} ${fmtIn(d.annual, d.ic)} a year before VAT` + (d.gap == null ? `; compare with ${bud}.`
     : `, ${fmtMoney(Math.abs(d.gap))} ${d.gap >= 0 ? 'below' : 'above'} ${bud}` + (d.needFx ? ` (at 1 ${d.ic} = ${d.rate} ${d.bc}).` : '.'))
-    + (d.ended.length ? ` ${d.ended.length} line${d.ended.length === 1 ? '' : 's'} from an ended invoice ${d.ended.length === 1 ? 'is' : 'are'} not counted.` : '')
-    + (d.termEnd != null ? ` The current term ends ${fmtDay(d.termEnd)}.` : '');
+    + (d.ended.length ? ` ${d.ended.length} line${d.ended.length === 1 ? '' : 's'} from ended or replaced orders ${d.ended.length === 1 ? 'is' : 'are'} not counted.` : '')
+    + (d.termEnd != null ? ` The ${d.termGiven ? 'contract' : 'current term'} ends ${fmtDay(d.termEnd)}.` : '');
 }
 function invoiceDrawer(c, d, lines) {
   const l0 = lines[0], annual = sum(lines, (l) => l.annual), invoiced = sum(lines, (l) => l.amount);
@@ -1708,11 +1727,49 @@ function invoiceDrawer(c, d, lines) {
         ['Months billed', l.months != null ? +l.months.toFixed(2) : null], ['Invoiced', fmtIn(l.amount, d.ic, 2)],
         ['Scaled to a year', l.factor != null ? `${fmtFactor(l.factor)} = ${fmtIn(l.annual, d.ic, 2)}` : 'No service period, not scaled'],
         ['Per unit per month', l.perUnitMonth != null ? fmtIn(l.perUnitMonth, d.ic, 2) : null], ['Per unit per year', l.perUnitYear != null ? fmtIn(l.perUnitYear, d.ic, 2) : null],
-        ['Status', l.ended ? `Ended, not counted in the run-rate${l.endNote ? '. ' + l.endNote : ''}` : 'Current'],
+        ['Status', l.ended ? `${l.superseded ? 'Replaced by a later order' : 'Ended'}, not counted in the run-rate${l.endNote ? '. ' + l.endNote : ''}` : 'Current'],
         l.note ? ['Note', l.note] : null]))),
     ],
     footer:[btn('Close', 'primary', closeDrawer)],
   });
+}
+// key dates: a single date, or a window ("from" … "date"); status relative to the as-of date
+function keyDates(c, AS) {
+  return (c.dates || []).map((x) => ({ ...x, a:isoToDay(x.from || x.date), b:isoToDay(x.date) })).filter((x) => isFinite(x.a) && isFinite(x.b)).map((x) => {
+    const st = x.b < AS ? { k:'passed', t:tag('Passed', 'gray') } : x.a <= AS ? { k:'open', t:tag(`Open · ${Math.round(x.b - AS)} days left`, 'orange') }
+      : { k:'up', t:tag(`${x.from ? 'Opens in' : 'In'} ${Math.round(x.a - AS)} days`, x.a - AS <= 90 ? 'orange' : 'blue') };
+    return { ...x, st };
+  }).sort((p, q) => (p.st.k === 'open' ? AS : p.a) - (q.st.k === 'open' ? AS : q.a));
+}
+function datesCard(c, AS) {
+  const xs = keyDates(c, AS); if (!xs.length) return null;
+  const n = xs.find((x) => x.st.k !== 'passed'), when = (x) => (x.from ? `${fmtDay(x.a)} – ${fmtDay(x.b)}` : fmtDay(x.b));
+  return card({ title:n ? (n.st.k === 'open' ? `${n.label}: open until ${fmtDay(n.b)}` : `Next: ${n.label}, ${fmtDay(n.a)}`) : 'Key dates', sub:`From the contract · status as of ${fmtDay(AS)}`, flush:true, id:'ct-dates-card',
+    body:dataTable({ id:'ct-dates', rows:[...xs].sort((p, q) => p.a - q.a), rowClass:(x) => (x.st.k === 'passed' ? 'ended' : ''), cols:[
+      { key:'when', label:'Date', render:(x) => h('span', { style:'white-space:nowrap' }, when(x)) },
+      { key:'label', label:'What', cls:'wrap', render:(x) => h('div', {}, h('div', { class:'strong' }, x.label), x.note ? h('div', { class:'muted' }, x.note) : null) },
+      { key:'st', label:'Status', render:(x) => x.st.t }] }) });
+}
+// contract years: yearly fee and, when it differs, what is invoiced in each year
+function scheduleCard(c, d, AS) {
+  const rows = (c.schedule || []).map((x) => ({ ...x, a:isoToDay(x.from), b:isoToDay(x.to) })).filter((x) => isFinite(x.a) && isFinite(x.b)).sort((p, q) => p.a - q.a);
+  if (!rows.length) return null;
+  const pay = rows.some((x) => x.payment != null), amt = (x) => +(x.payment ?? x.fee) || 0, next = rows.find((x) => x.a > AS);
+  const fee = sum(rows, (x) => +x.fee || 0), paid = sum(rows, amt), left = sum(rows.filter((x) => x.a > AS), amt);
+  const off = next && next.payment != null && next.fee ? next.payment / next.fee - 1 : 0;
+  const st = (x) => (x.b < AS ? tag('Past', 'gray') : x.a <= AS ? tag('Current', 'green') : x === next ? tag('Next', 'blue') : tag('Later', 'gray'));
+  const cols = [
+    { key:'label', label:'Year', cls:'strong', render:(x) => h('span', { style:'white-space:nowrap' }, x.label) },
+    { key:'a', label:'Period', render:(x) => h('span', { style:'white-space:nowrap' }, `${fmtDay(x.a)} – ${fmtDay(x.b)}`) },
+    { key:'fee', label:'Yearly fee', num:true, render:(x) => fmtIn(x.fee, d.ic) },
+    pay ? { key:'payment', label:'Invoiced', num:true, render:(x) => fmtIn(amt(x), d.ic) } : null,
+    { key:'st', label:'Status', render:st },
+    { key:'note', label:'Note', cls:'wrap muted', render:(x) => x.note || '' },
+  ].filter(Boolean);
+  return card({ id:'ct-schedule', flush:true,
+    title:next ? `Next invoice: ${fmtIn(amt(next), d.ic)} on ${fmtDay(next.a)}` + (Math.abs(off) > 0.05 ? `, ${fmtPct(Math.abs(off))} ${off > 0 ? 'more' : 'less'} than the yearly fee` : '') : 'Contract years',
+    sub:`${rows.length} contract years · ${fmtIn(fee, d.ic)} in fees · ${fmtIn(left, d.ic)} still to be invoiced after ${fmtDay(AS)}`,
+    body:dataTable({ id:'ct-schedule-table', cols, rows, rowClass:(x) => (x.b < AS ? 'ended' : ''), foot:cols.map((x) => (x.key === 'label' ? 'Total' : x.key === 'fee' ? fmtIn(fee, d.ic) : x.key === 'payment' ? fmtIn(paid, d.ic) : '')) }) });
 }
 function pageContract(c) {
   const d = contractData(c), out = [], has = d.lines.length > 0, any = d.all.length > 0;
@@ -1720,7 +1777,8 @@ function pageContract(c) {
   out.push(h('div', { class:'kpis' },
     kpi({ id:'ct-annual', label:'Annual cost at current run-rate', value:has ? fmtIn(d.annual, d.ic, 0, true) : '—', raw:has ? d.annual : null,
       meta:[h('span', {}, !has ? (any ? 'Every invoice added has ended' : 'No invoice added yet') : d.cadence ? `${fmtFactor(d.factor)} the ${d.cadence} invoice of ${fmtIn(d.invoiced, d.ic, 2)}` : `${d.lines.length} lines, each scaled to 12 months`),
-        d.ended.length ? h('span', {}, `Not counted: ${d.ended.length} ended line${d.ended.length === 1 ? '' : 's'} (${fmtIn(d.endedAnnual, d.ic)} a year if renewed)`) : null],
+        d.ended.length ? h('span', {}, 'Not counted: ' + [d.renewable.length ? `${d.renewable.length} ended line${d.renewable.length === 1 ? '' : 's'} (${fmtIn(d.endedAnnual, d.ic)} a year if renewed)` : null,
+          d.replaced.length ? `${d.replaced.length} line${d.replaced.length === 1 ? '' : 's'} from a replaced order` : null].filter(Boolean).join('; ')) : null],
       hint:'Each invoice line × 12 ÷ months in its service period. Assumes today’s quantities and prices for a full year. Excludes VAT.' }),
     kpi({ id:'ct-budget', label:`Budget${S.opts.label ? ' (' + S.opts.label + ')' : ''}`, value:d.matched.length ? fmtC(d.budget) : '—', raw:d.matched.length ? d.budget : null,
       meta:h('span', { title:budLbl }, d.matched.length ? `${d.matched.length} line${d.matched.length === 1 ? '' : 's'}: ${budLbl}` : 'No matching budget line') }),
@@ -1729,8 +1787,13 @@ function pageContract(c) {
     kpi({ id:'ct-gap', label:d.gap != null && d.gap < 0 ? 'Run-rate over budget' : 'Budget headroom', value:d.gap == null ? '—' : fmtC(Math.abs(d.gap)), raw:d.gap, alert:d.gap != null && d.gap < 0,
       meta:d.gap == null ? h('span', {}, !has ? 'Needs invoice lines' : !d.matched.length ? 'Needs a budget line' : 'Needs an exchange rate')
         : [tag(d.gap >= 0 ? 'Budget covers the run-rate' : 'Run-rate exceeds budget', d.gap >= 0 ? 'green' : 'red'), h('span', {}, `${fmtPct(d.budget ? Math.abs(d.gap) / d.budget : 0, 1)} of budget`)] }),
-    d.termEnd != null ? (() => { const days = Math.round(d.termEnd - asOfDay()); return kpi({ id:'ct-term', label:'Current term ends', value:fmtDay(d.termEnd), raw:dayToISO(d.termEnd),
-      meta:[tag(days < 0 ? `${-days} days ago` : `${days} days left`, days < 0 ? 'red' : days <= 90 ? 'orange' : 'gray'), h('span', {}, `as of ${fmtDay(asOfDay())}`)], hint:'Latest end date among current lines billed for 6 months or more. Check the notice period in the contract.' }); })() : null));
+    d.termEnd != null ? (() => { const days = Math.round(d.termEnd - asOfDay()); return kpi({ id:'ct-term', label:d.termGiven ? 'Contract ends' : 'Current term ends', value:fmtDay(d.termEnd), raw:dayToISO(d.termEnd),
+      meta:[tag(days < 0 ? `${-days} days ago` : `${days} days left`, days < 0 ? 'red' : days <= 90 ? 'orange' : 'gray'), h('span', {}, `as of ${fmtDay(asOfDay())}`)],
+      hint:d.termGiven ? 'End of the contract term in the order form.' : 'Latest end date among current lines billed for 6 months or more. Check the notice period in the contract.' }); })() : null,
+    (() => { const n = keyDates(c, asOfDay()).find((x) => x.st.k !== 'passed'); return n ? kpi({ id:'ct-next', label:'Next key date', value:fmtDay(n.st.k === 'open' ? n.b : n.a), raw:dayToISO(n.st.k === 'open' ? n.b : n.a),
+      meta:[n.st.t, h('span', { title:n.note || n.label }, n.label)] }) : null; })()));
+  if (out[0].childElementCount >= 6) out[0].classList.add('dense');
+  if (c.warning) out.unshift(h('div', { class:'notice warn', id:'ct-warning' }, icon('warn'), h('span', {}, c.warning)));
   if (d.unscaled.length) out.push(h('div', { class:'notice warn' }, icon('warn'), h('span', {}, `${d.unscaled.length} invoice line${d.unscaled.length === 1 ? ' has' : 's have'} no service period, so ${d.unscaled.length === 1 ? 'it is' : 'they are'} not scaled to a year: ${d.unscaled.map((l) => l.product).join(', ')}.`)));
 
   const cards = [];
@@ -1779,11 +1842,12 @@ function pageContract(c) {
       d.related.length ? [h('div', { class:'sub-h' }, 'Related lines (not counted)'), dataTable({ cols:bcols, rows:d.related, onRow:(r) => lineDrawer(r), id:'ct-related-table' })] : null,
     ] }));
   out.push(h('div', { class:'grid g2' }, cards));
+  for (const x of [scheduleCard(c, d, asOfDay()), datesCard(c, asOfDay())]) if (x) out.push(h('div', { class:'grid' }, x));
 
   if (any) {
     const multi = c.invoices.length > 1;
     const cols = [
-      { key:'product', label:'Product', cls:'wrap', render:(l) => h('div', {}, h('div', { class:'sw-label strong' }, h('span', { class:'swatch', style:`background:${d.kindColor.get(l.kind)}` }), l.product), h('div', { class:'muted' }, l.kind), l.ended ? h('div', { style:'margin-top:4px' }, tag(`Ended ${l.to ? fmtDay(isoToDay(l.to)) : ''} · not counted`, 'gray', l.endNote)) : null) },
+      { key:'product', label:'Product', cls:'wrap', render:(l) => h('div', {}, h('div', { class:'sw-label strong' }, h('span', { class:'swatch', style:`background:${d.kindColor.get(l.kind)}` }), l.product), h('div', { class:'muted' }, l.kind), l.ended ? h('div', { style:'margin-top:4px' }, tag(l.superseded ? 'Replaced · not counted' : `Ended ${l.to ? fmtDay(isoToDay(l.to)) : ''} · not counted`, 'gray', l.endNote)) : null) },
       multi ? { key:'ref', label:'Invoice', sortVal:(l) => l.inv.short || l.inv.ref, render:(l) => h('span', { title:l.inv.ref, style:'white-space:nowrap' }, l.inv.short || l.inv.ref) } : null,
       { key:'qty', label:'Quantity', num:true, render:(l) => (l.qty == null ? '—' : `${fmtInt(l.qty)}${l.unit ? ' ' + l.unit : ''}`) },
       { key:'from', label:'Service period', sortVal:(l) => l.from || '', render:(l) => (l.from && l.to ? `${fmtDay(isoToDay(l.from))} – ${fmtDay(isoToDay(l.to))}` : '—') },
@@ -1797,18 +1861,19 @@ function pageContract(c) {
       const lines = sum(inv.lines, (l) => l.amount), net = inv.total != null ? +inv.total - (+inv.vat || 0) : null;
       const vat = inv.vat != null ? ` · VAT ${fmtIn(+inv.vat, d.ic, 2)}${inv.vatLabel ? ' (' + inv.vatLabel + ')' : ''}, not included` : ' · excludes VAT';
       const over = inv.lines.length && inv.lines.every((l) => l.ended);
-      return h('span', { style:'display:block' }, over ? [tag('Ended, not counted', 'gray', inv.statusNote), ' '] : null, `${inv.ref}: `, net == null ? `${fmtIn(lines, d.ic, 2)} in lines` : Math.abs(lines - net) < 0.005 ? tag(`Lines add up to ${fmtIn(net, d.ic, 2)}`, 'green') : tag(`Lines ${fmtIn(lines, d.ic, 2)} ≠ invoice ${fmtIn(net, d.ic, 2)}`, 'red'), vat);
+      return h('span', { style:'display:block' }, over ? [tag(inv.status === 'superseded' ? 'Replaced, not counted' : 'Ended, not counted', 'gray', inv.statusNote), ' '] : null, `${inv.ref}: `, net == null ? `${fmtIn(lines, d.ic, 2)} in lines` : Math.abs(lines - net) < 0.005 ? tag(`Lines add up to ${fmtIn(net, d.ic, 2)}`, 'green') : tag(`Lines ${fmtIn(lines, d.ic, 2)} ≠ invoice ${fmtIn(net, d.ic, 2)}`, 'red'), vat);
     });
     out.push(card({ title:`Invoice lines scaled to a year: ${fmtIn(d.annual, d.ic, 2)}`, sub:`Amounts in ${d.ic || 'invoice currency'}, before VAT · per year = invoiced × 12 ÷ months in the service period · click a row for details`, flush:true, id:'ct-lines-card',
       body:[h('div', { class:'table-bar', style:'justify-content:flex-start' }, checks),
         dataTable({ cols, rows:sortRows(d.lines, cols, S.ui.ctSort).concat(sortRows(d.ended, cols, S.ui.ctSort)), sort:S.ui.ctSort, onSort:sorter('ctSort'), onRow:(l) => invoiceDrawer(c, d, [l]), id:'ct-lines', rowClass:(l) => (l.ended ? 'ended' : ''),
-          foot:cols.map((x, i) => (i === 0 ? `Total (${d.lines.length} current lines${d.ended.length ? `; ${d.ended.length} ended, not counted` : ''})` : x.key === 'amount' ? fmtIn(d.invoiced, '', 2) : x.key === 'annual' ? fmtIn(d.annual, '', 2) : x.key === 'share' ? '100%' : '')) })] }));
+          foot:cols.map((x, i) => (i === 0 ? `Total (${d.lines.length} current lines${d.ended.length ? `; ${d.ended.length} not counted` : ''})` : x.key === 'amount' ? fmtIn(d.invoiced, '', 2) : x.key === 'annual' ? fmtIn(d.annual, '', 2) : x.key === 'share' ? '100%' : '')) })] }));
   }
   const notes = [
     'Each invoice line is scaled to 12 months from its service period: a month ×12, a quarter ×4, a year ×1. This assumes today’s quantities and prices stay the same for the whole year. Amounts exclude VAT.',
     d.needFx ? (d.rate != null ? `The run-rate is converted to ${d.bc} at 1 ${d.ic} = ${d.rate} ${d.bc} (${d.rateFrom === 'mine' ? 'your rate' : 'assumed; replace it with your budget rate'}).` : `Enter an exchange rate to compare the ${d.ic} invoice with the ${d.bc} budget.`) : null,
-    d.ended.length ? `${d.ended.length} line${d.ended.length === 1 ? '' : 's'} from ended invoices ${d.ended.length === 1 ? 'is' : 'are'} shown but not counted. Renewed at the same price, ${d.ended.length === 1 ? 'it' : 'they'} would add ${fmtIn(d.endedAnnual, d.ic)} a year.` : null,
-    d.termEnd != null ? `The current term ends ${fmtDay(d.termEnd)}: the latest end date among current lines billed for 6 months or more.` : null,
+    d.renewable.length ? `${d.renewable.length} line${d.renewable.length === 1 ? '' : 's'} from ended invoices ${d.renewable.length === 1 ? 'is' : 'are'} shown but not counted. Renewed at the same price, ${d.renewable.length === 1 ? 'it' : 'they'} would add ${fmtIn(d.endedAnnual, d.ic)} a year.` : null,
+    d.replaced.length ? `${d.replaced.length} line${d.replaced.length === 1 ? '' : 's'} from an order that was replaced ${d.replaced.length === 1 ? 'is' : 'are'} shown for comparison but not counted.` : null,
+    d.termEnd != null ? (d.termGiven ? `The contract runs ${c.term.from ? fmtDay(isoToDay(c.term.from)) + ' – ' : 'until '}${fmtDay(d.termEnd)}.` : `The current term ends ${fmtDay(d.termEnd)}: the latest end date among current lines billed for 6 months or more.`) : null,
     `The budget is the ${matchText(c, d)}${d.related.length ? `; ${d.related.length} other row${d.related.length === 1 ? '' : 's'} mentioning the contract ${d.related.length === 1 ? 'is' : 'are'} listed as related but not counted` : ''}.`,
     ...(c.notes || []),
   ].filter(Boolean);
@@ -2220,7 +2285,7 @@ function exportContract(c) {
   const d = contractData(c), r2 = (x) => (x == null ? '' : x.toFixed(2));
   const header = ['Contract', 'Invoice', 'Status', 'Product', 'Kind', 'Quantity', 'Unit', 'Service from', 'Service to', 'Months billed', `Invoiced (${d.ic})`, 'Annual factor', `Annual (${d.ic})`, `Per unit per month (${d.ic})`]
     .concat(d.needFx ? [`Annual (${d.bc}, at ${d.rate ?? 'no rate'})`] : []);
-  downloadCsv(header, d.all.map((l) => [c.name, l.inv.ref, l.ended ? 'Ended (not counted)' : 'Current', l.product, l.kind, l.qty ?? '', l.unit || '', l.from || '', l.to || '', l.months == null ? '' : +l.months.toFixed(2), r2(l.amount),
+  downloadCsv(header, d.all.map((l) => [c.name, l.inv.ref, l.superseded ? 'Replaced (not counted)' : l.ended ? 'Ended (not counted)' : 'Current', l.product, l.kind, l.qty ?? '', l.unit || '', l.from || '', l.to || '', l.months == null ? '' : +l.months.toFixed(2), r2(l.amount),
     l.factor == null ? '' : +l.factor.toFixed(4), r2(l.annual), r2(l.perUnitMonth)].concat(d.needFx ? [d.rate != null && l.annual != null ? r2(l.annual * d.rate) : ''] : [])), `contract-${c.id}-annualised.csv`);
 }
 

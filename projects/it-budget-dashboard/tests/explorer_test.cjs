@@ -141,13 +141,14 @@ const PAGES = ['overview', 'breakdown', 'vendors', 'organisation', 'c-contoso', 
   check(await kpiVal('ct-annual') === 678000, 'Contoso: monthly invoice 56,500 × 12 = 678,000 a year');
   check(await kpiVal('ct-budget') === 758000, 'Contoso: budget = the 2 lines whose vendor matches (640,000 + 118,000)');
   check(await kpiVal('ct-gap') === 80000 && await page.locator('[data-kpi="ct-fx"]').count() === 0, 'Contoso: same currency, no exchange rate needed, headroom 80,000');
-  check(await page.locator('#ct-lines tbody tr').count() === 6 && (await page.textContent('#ct-lines-card')).includes('Lines add up'), 'Contoso: 6 invoice lines that add up to the invoice total');
+  check(await page.locator('#ct-lines tbody tr').count() === 7 && await page.locator('#ct-lines tbody tr.ended').count() === 1 && (await page.textContent('#ct-lines-card')).includes('Lines add up'), 'Contoso: 6 current invoice lines that add up to the invoice total, plus 1 from a replaced quote');
+  check(await page.isVisible('#ct-warning') && (await page.textContent('[data-kpi="ct-annual"]')).includes('replaced order'), 'contract notice banner shown; replaced quote left out of the run-rate');
   check((await page.textContent('#page-insight')).includes('monthly invoice'), 'insight names the billing cadence');
   const dl = page.waitForEvent('download');
   await page.click('#export-csv');
   const file = await dl;
   const csv = require('fs').readFileSync(await file.path(), 'utf8');
-  check(file.suggestedFilename() === 'contract-contoso-annualised.csv' && csv.trim().split(/\r?\n/).length === 7 && csv.includes('678000') === false && csv.includes('316800.00'), 'Export CSV: annualised invoice lines (compute 26,400 × 12 = 316,800.00)');
+  check(file.suggestedFilename() === 'contract-contoso-annualised.csv' && csv.trim().split(/\r?\n/).length === 8 && csv.includes('678000') === false && csv.includes('316800.00'), 'Export CSV: annualised invoice lines (compute 26,400 × 12 = 316,800.00)');
   await nav('c-fabrikam');
   check(await kpiVal('ct-annual') === 466400, 'Fabrikam: quarterly invoice 116,600 × 4 = 466,400 USD a year');
   check(Math.abs(await kpiVal('ct-fx') - 415096) < 0.01 && Math.abs(await kpiVal('ct-gap') - 25904) < 0.01, 'Fabrikam: USD invoice converted at the file\'s rate 0.89 = 415,096 EUR; headroom 25,904 vs 441,000');
@@ -160,7 +161,13 @@ const PAGES = ['overview', 'breakdown', 'vendors', 'organisation', 'c-contoso', 
   await page.keyboard.press('Escape');
   check(await page.locator('#ct-lines tbody tr').count() === 4 && await page.locator('#ct-lines tbody tr.ended').count() === 1, 'ended onboarding invoice is listed but greyed out');
   check((await page.textContent('[data-kpi="ct-annual"]')).includes('Not counted: 1 ended line') && await kpiVal('ct-annual') === 466400, 'ended invoice is left out of the run-rate (annual line ×1 + quarterly lines ×4 = 466,400)');
-  check(await page.getAttribute('[data-kpi="ct-term"] .kpi-v', 'data-value') === '2027-09-30', 'current term ends 30 Sep 2027 (latest end of a line billed for 6+ months)');
+  check(await page.getAttribute('[data-kpi="ct-term"] .kpi-v', 'data-value') === '2029-09-30' && (await page.textContent('[data-kpi="ct-term"] .kpi-l')).includes('Contract ends'), 'contract ends 30 Sep 2029 (term from the order)');
+  await S(() => { window.BudgetExplorer.S.opts.asOf = '2026-11-08'; }); await page.evaluate(() => window.BudgetExplorer.go('c-fabrikam')); await page.click('#nav-overview'); await nav('c-fabrikam');
+  check(await page.locator('#ct-schedule-table tbody tr').count() === 3 && (await page.textContent('#ct-schedule .card-t')) === 'Next invoice: US$466,400 on 1 Oct 2027' && (await page.locator('#ct-schedule-table tbody tr').first().textContent()).includes('Current'), 'contract years: 3 rows, year 1 current, next invoice 466,400 on 1 Oct 2027');
+  check((await page.textContent('#ct-schedule .card-s')).includes('US$999,200 still to be invoiced'), 'still to be invoiced after today: 466,400 + 532,800');
+  check(await page.locator('#ct-dates tbody tr').count() === 3 && await page.locator('#ct-dates tbody tr.ended').count() === 1, 'key dates: 3, one passed');
+  check(await page.getAttribute('[data-kpi="ct-next"] .kpi-v', 'data-value') === '2027-07-03' && (await page.textContent('[data-kpi="ct-next"]')).includes('Opens in 237 days'), 'next key date: endpoint-count window opens 3 Jul 2027 (in 237 days)');
+  check((await page.getAttribute('.kpis', 'class')).includes('dense'), '6 KPI tiles use the compact row');
   await page.evaluate(() => window.BudgetExplorer.go('c-contoso')); await page.waitForTimeout(100);
   check(await page.locator('[data-kpi="ct-term"]').count() === 0, 'monthly contract shows no term end');
 
