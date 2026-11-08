@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>IT Budget Explorer</title>
+<title>Corporate IT Budget Tracker</title>
 <meta name="description" content="Explore an IT budget for licences, services and hardware from any CSV, with invoice-based pages for key contracts. Runs entirely in the browser.">
 <style>
 /* =====================================================================
@@ -196,7 +196,6 @@ body.nav-collapsed .nav-foot { display:none; }
 .kpi-l { font-size:12px; color:var(--text-2); display:flex; justify-content:space-between; gap:6px; }
 .kpi-v { font-size:28px; line-height:36px; font-weight:600; margin:4px 0 2px; overflow-wrap:anywhere; }
 .kpi-m { display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:12px; color:var(--text-3); min-height:20px; }
-.kpi .spark { margin-top:auto; padding-top:8px; }
 a.kpi { color:inherit; text-decoration:none; } a.kpi:hover { border-color:var(--border-strong); background:var(--layer-2); }
 
 /* ---------- bars ---------- */
@@ -239,9 +238,6 @@ svg .dot { stroke:var(--layer); stroke-width:1.5; cursor:pointer; }
 svg .dot:hover, svg .dot:focus { stroke:var(--text); outline:none; }
 svg [tabindex]:focus { outline:none; stroke:var(--text); stroke-width:1.5; }
 svg rect[tabindex] { cursor:pointer; }
-svg .band { fill:var(--layer-2); }
-.spark svg { width:100%; height:32px; display:block; }
-.spark .area { fill:var(--primary-weak); } .spark .ln { fill:none; stroke:var(--primary); stroke-width:1.5; }
 
 /* ---------- data table (Carbon-style) ---------- */
 .dt-wrap { overflow:auto; max-height:var(--dt-max, none); border-top:1px solid var(--border); }
@@ -270,18 +266,6 @@ table.dt { border-collapse:separate; border-spacing:0; width:100%; font-size:13p
 .pager { display:flex; align-items:center; gap:8px; justify-content:flex-end; padding:8px 16px; border-top:1px solid var(--border); font-size:13px; color:var(--text-2); flex-wrap:wrap; }
 .pager .select { width:auto; height:28px; }
 
-/* ---------- renewals calendar ---------- */
-.cal { display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:12px; }
-.cal-m { border:1px solid var(--border); border-radius:var(--radius); background:var(--layer); display:flex; flex-direction:column; min-width:0; }
-.cal-m.over { border-color:var(--urg-passed); box-shadow:inset 0 3px 0 var(--urg-passed); }
-.cal-h { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-bottom:1px solid var(--border); background:var(--layer-2); }
-.cal-v { font-size:20px; font-weight:600; padding:8px 12px 2px; }
-.cal-list { list-style:none; margin:0; padding:4px 0 8px; }
-.cal-list button { width:100%; display:flex; gap:8px; justify-content:space-between; align-items:center; border:0; background:none; padding:4px 12px; font-size:12px; text-align:left; }
-.cal-list button:hover { background:var(--layer-hover); }
-.cal-list .nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
-.cal-more { font-size:12px; color:var(--text-3); padding:0 12px 10px; }
-.cal-empty { color:var(--text-3); font-size:12px; padding:8px 12px 12px; }
 
 /* ---------- drawer (Fluent 2 overlay drawer) ---------- */
 .scrim { position:fixed; inset:0; background:var(--scrim); z-index:60; }
@@ -386,7 +370,7 @@ body.dragging::after { content:"Drop CSV files to load"; position:fixed; inset:0
 <div class="shell">
   <header class="topbar">
     <button class="tb-btn" type="button" id="nav-toggle" aria-label="Collapse navigation" title="Collapse navigation"></button>
-    <div class="brand"><span class="brand-mark" aria-hidden="true">IT</span><span>IT Budget Explorer <small>· Licences, services &amp; contracts</small></span></div>
+    <div class="brand"><span class="brand-mark" aria-hidden="true">IT</span><span>Corporate IT Budget Tracker <small>· Licences, services &amp; contracts</small></span></div>
     <div class="dataset" id="dataset" hidden></div>
     <div class="tb-spacer"></div>
     <button class="tb-btn" type="button" id="tb-load" title="Load CSV files"></button>
@@ -500,7 +484,7 @@ IT-043,Wide World Revenue AI,Revenue intelligence (AI),Licence,Software,Applicat
 'use strict';
 
 /* =====================================================================
-   IT Budget Explorer: single file, no dependencies, works from file://
+   Corporate IT Budget Tracker: single file, no dependencies, works from file://
    1 helpers · 2 CSV · 3 profiling & column detection · 4 records
    5 shell (nav, header, filters, drawer) · 6 charts · 7 pages · 8 wiring
    ===================================================================== */
@@ -521,10 +505,10 @@ const ICONS = {
   download:'M12 4v12M7 11l5 5 5-5M4 20h16', moon:'M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z',
   search:'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-5-5', arrow:'M5 12h14M13 6l6 6-6 6',
   invoice:'M6 2h9l5 5v15H6zM14 2v6h6M9 12h8M9 16h8M9 8h2',
-  overview:'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z', breakdown:'M3 20h18M6 20V10M11 20V4M16 20v-7M21 20v-4',
+  breakdown:'M3 20h18M6 20V10M11 20V4M16 20v-7M21 20v-4',
   vendors:'M3 21h18M5 21V8l7-5 7 5v13M9 10h.01M15 10h.01M9 14h.01M15 14h.01M10 21v-4h4v4',
   org:'M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
-  calendar:'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4M7 14h3M7 17h3M14 14h3', cash:'M3 17l6-6 4 4 8-8M15 7h6v6',
+  calendar:'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4M7 14h3M7 17h3M14 14h3',
   compare:'M7 7h13M16 3l4 4-4 4M17 17H4M8 13l-4 4 4 4', table:'M3 4h18v16H3zM3 9h18M3 14h18M9 4v16',
   quality:'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM8.5 12l2.5 2.5 4.5-5',
   source:'M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3',
@@ -840,13 +824,13 @@ const S = {
   loaded:false, files:[], fileInfo:[], headers:[], rows:[], prof:[], map:{}, months:new Array(12).fill(null),
   opts:{ label:'', currency:'', asOf:dayToISO(todayDay()), fyStart:0, dateOrder:'auto', dec:'auto' },
   recs:[], dims:[], colorDim:null, colorMap:new Map(),
-  filters:{}, q:'', flag:null, page:'overview',
+  filters:{}, q:'', flag:null, page:'vendors',
   ui:{ vFn:null, ctSort:{ key:'annual', dir:-1 }, groupBy:null, splitBy:null, bdView:'both', bSort:{ key:'value', dir:-1 }, vSort:{ key:'value', dir:-1 }, oSort:{ key:'value', dir:-1 },
-    cSort:{ key:'value', dir:-1 }, lSort:{ key:null, dir:-1 }, lPage:0, lSize:50, density:'compact', renTab:'timeline', renSeg:'all',
-    rSort:{ key:'deadline', dir:1 }, yoyTab:'increases', ySort:{ key:'d', dir:-1 }, qSort:{ key:'sev', dir:1 }, drawerReturn:null },
+    cSort:{ key:'value', dir:-1 }, lSort:{ key:null, dir:-1 }, lPage:0, lSize:50, density:'compact',
+    yoyTab:'increases', ySort:{ key:'d', dir:-1 }, qSort:{ key:'sev', dir:1 }, drawerReturn:null },
 };
 const sig = () => S.headers.join('\u241f');
-function defaultPage() { return 'overview'; }
+function defaultPage() { return S.map.vendor != null ? 'vendors' : 'breakdown'; } // Vendors is the home page
 const ready = () => S.loaded && S.map.amount != null;
 const hasMonths = () => S.months.filter((c) => c != null).length >= 2;
 const asOfDay = () => isoToDay(S.opts.asOf);
@@ -993,18 +977,13 @@ function vendorAgg(recs) {
 // ================================================================ 5. shell: pages, nav, header, filters, drawer
 const CONTRACTS = readContracts();
 const PAGES = [
-  { id:'overview', label:'Overview', icon:'overview', group:'Analyse', render:pageOverview, insight:insOverview, noFilters:true },
-  { id:'breakdown', label:'Spend breakdown', icon:'breakdown', group:'Analyse', render:pageBreakdown, insight:insBreakdown },
   { id:'vendors', label:'Vendors', icon:'vendors', group:'Analyse', render:pageVendors, insight:insVendors, noFilters:true,
     needs:() => S.map.vendor != null, needsText:'a vendor / supplier column' },
+  { id:'breakdown', label:'Spend breakdown', icon:'breakdown', group:'Analyse', render:pageBreakdown, insight:insBreakdown },
   { id:'organisation', label:'Cost centres & owners', icon:'org', group:'Analyse', render:pageOrganisation, insight:insOrg,
     needs:() => S.map.costcentre != null || S.map.owner != null, needsText:'a cost centre or owner column' },
   ...CONTRACTS.map((c) => ({ id:'c-' + c.id, label:c.nav || c.name, title:c.name, icon:'invoice', group:'Key contracts', contract:c, noFilters:true,
     render:() => pageContract(c), insight:() => insContract(c) })),
-  { id:'renewals', label:'Renewals', icon:'calendar', group:'Plan', render:pageRenewals, insight:insRenewals,
-    needs:() => S.map.renewal != null, needsText:'a renewal or contract end date column' },
-  { id:'cashflow', label:'Cash flow', icon:'cash', group:'Plan', render:pageCashflow, insight:insCashflow,
-    needs:hasMonths, needsText:'monthly columns (Jan … Dec, or 2027-01 … 2027-12)' },
   { id:'yoy', label:'Year over year', icon:'compare', group:'Plan', render:pageYoy, insight:insYoy,
     needs:() => S.map.prior != null, needsText:'a prior-year amount column' },
   { id:'lines', label:'Line items', icon:'table', group:'Data', render:pageLines, insight:insLines },
@@ -1017,10 +996,6 @@ function renderNav() {
   const recs = ready() ? S.recs.filter(matches) : [];
   const badges = {};
   if (ready()) {
-    if (S.map.renewal != null) {
-      const us = recs.map(urgencyOf).filter((u) => u && u.max <= 90);
-      if (us.length) badges.renewals = { n:us.length, red:us.some((u) => u.key === 'passed'), title:`${us.length} notice deadlines within 90 days` };
-    }
     const q = qualityOf(recs);
     if (q.errors + q.warnings) badges.quality = { n:q.errors + q.warnings, red:q.errors > 0, title:`${q.errors} errors, ${q.warnings} warnings` };
   }
@@ -1170,20 +1145,13 @@ function card({ title, sub, actions, body, foot, flush, id, style }) {
     h('div', { class:'card-b' + (flush ? ' flush' : '') }, body),
     foot ? h('footer', { class:'card-f' }, foot) : null);
 }
-function kpi({ id, label: l, value, raw, meta, spark, href, alert, hint }) {
+function kpi({ id, label: l, value, raw, meta, href, alert, hint }) {
   return h(href ? 'a' : 'div', { class:'kpi' + (alert ? ' alert' : ''), 'data-kpi':id, href },
     h('div', { class:'kpi-l' }, h('span', {}, l), hint ? h('span', { title:hint }, icon('info', 14)) : null),
     h('div', { class:'kpi-v', 'data-value':raw }, value),
-    h('div', { class:'kpi-m' }, meta), spark ? h('div', { class:'spark' }, spark) : null);
+    h('div', { class:'kpi-m' }, meta));
 }
 const deltaTag = (d, p) => tag((d > 0 ? '▲ ' : d < 0 ? '▼ ' : '') + fmtSignedPct(p), d > 0 ? 'red' : d < 0 ? 'green' : 'gray', 'Change vs prior year (cost increase shown red)');
-function sparkline(values) {
-  const W = 200, H = 32, max = Math.max(...values, 1), step = W / (values.length - 1);
-  const pts = values.map((v, i) => [i * step, H - 2 - (v / max) * (H - 6)]);
-  const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
-  return s('svg', { viewBox:`0 0 ${W} ${H}`, preserveAspectRatio:'none', 'aria-hidden':'true' },
-    s('path', { class:'area', d:d + ` L${W} ${H} L0 ${H} Z` }), s('path', { class:'ln', d, 'vector-effect':'non-scaling-stroke' }));
-}
 function mixBar(parts, total, withLegend) {
   const items = [...parts.entries()].sort((a, b) => b[1] - a[1]);
   const bar = h('div', { class:'stack tall', role:'img', 'aria-label':items.map(([k, v]) => `${k} ${fmtPct(v / total)}`).join(', ') },
@@ -1278,48 +1246,6 @@ function ring(p) {
     s('circle', { cx:60, cy:60, r, fill:'none', stroke:col, 'stroke-width':12, 'stroke-dasharray':`${c * p} ${c}`, transform:'rotate(-90 60 60)' }),
     s('text', { x:60, y:68, 'text-anchor':'middle' }, fmtPct(p)));
 }
-function timeline(items) {
-  const AS = asOfDay();
-  const pts = items.filter((x) => x.r.renewal != null);
-  if (!pts.length) return h('div', { class:'empty-mini' }, 'No renewal dates in this selection.');
-  const mStart = (d) => { const x = new Date(d * DAY); return Date.UTC(x.getUTCFullYear(), x.getUTCMonth(), 1) / DAY; };
-  const mNext = (d) => { const x = new Date(d * DAY); return Date.UTC(x.getUTCFullYear(), x.getUTCMonth() + 1, 1) / DAY; };
-  const ds = pts.map((p) => p.r.renewal).sort((a, b) => a - b);
-  const lo = Math.min(AS, ds[Math.floor(ds.length * 0.02)]), hi = Math.max(AS + 365, ds[Math.ceil(ds.length * 0.98) - 1]);
-  const d0 = mStart(lo), d1 = mNext(hi);
-  const lanes = S.colorDim != null ? groupBy(pts.map((p) => p.r), S.colorDim).map((g) => g.key) : ['All lines'];
-  const W = 960, ml = 120, mr = 16, mt = 30, mb = 26, laneH = Math.max(48, Math.min(72, 220 / lanes.length)), H = mt + mb + laneH * lanes.length;
-  const x = (d) => ml + (Math.min(Math.max(d, d0), d1) - d0) / (d1 - d0) * (W - ml - mr);
-  const laneY = (r) => mt + laneH * ((S.colorDim != null ? lanes.indexOf(cell(r, S.colorDim)) : 0) + 0.5);
-  const maxV = Math.max(...pts.map((p) => p.r.amount));
-  const rad = (a) => 3.5 + 12 * Math.sqrt(a / maxV);
-  const g = s('svg', { viewBox:`0 0 ${W} ${H}`, role:'img', 'aria-label':`Renewal timeline, ${pts.length} lines` });
-  const months = []; for (let m = d0; m < d1; m = mNext(m)) months.push(m);
-  const every = months.length > 30 ? 6 : months.length > 20 ? 3 : months.length > 14 ? 2 : 1;
-  lanes.forEach((ln, i) => { if (i % 2) g.append(s('rect', { class:'band', x:ml, y:mt + laneH * i, width:W - ml - mr, height:laneH })); });
-  months.forEach((m, i) => {
-    g.append(s('line', { class:'gridline', x1:x(m), x2:x(m), y1:mt, y2:H - mb }));
-    if (i % every === 0) { const dt = new Date(m * DAY); g.append(s('text', { x:x(m) + 3, y:H - 8 }, mname(dt.getUTCMonth()) + (dt.getUTCMonth() === 0 || i === 0 ? ' ' + String(dt.getUTCFullYear()).slice(2) : ''))); }
-  });
-  lanes.forEach((ln, i) => g.append(s('text', { x:4, y:mt + laneH * (i + 0.5) + 4, style:'fill:var(--text-2)' }, ln.length > 17 ? ln.slice(0, 16) + '…' : ln)));
-  g.append(s('line', { class:'today', x1:x(AS), x2:x(AS), y1:mt - 18, y2:H - mb }));
-  g.append(s('text', { class:'today-label', x:x(AS) + 4, y:mt - 10 }, 'As of ' + new Date(AS * DAY).toLocaleDateString(LOCALE, { day:'numeric', month:'short', timeZone:'UTC' })));
-  const placed = [], step = Math.min(12, laneH / 6), offs = [0, -1, 1, -2, 2, -3, 3].map((k) => k * step);
-  [...pts].sort((a, b) => b.r.amount - a.r.amount).forEach(({ r, u }) => {
-    const cx = x(r.renewal), rr = rad(r.amount), base = laneY(r);
-    let cy = base;
-    for (const o of offs) { cy = base + o; if (!placed.some((q) => Math.hypot(q.cx - cx, q.cy - cy) < q.r + rr - 3)) break; }
-    placed.push({ cx, cy, r:rr });
-    const dot = s('circle', { class:'dot', cx, cy, r:rr, tabindex:0, style:`fill:${cv(u.color)}`, 'aria-label':`${r.vendor || r.item}: renews ${fmtDay(r.renewal)}, ${fmtMoney(r.amount)}`,
-      onclick:() => lineDrawer(r), onkeydown:(e) => { if (e.key === 'Enter') lineDrawer(r); } });
-    withTip(dot, () => [[r.vendor, r.item].filter(Boolean).join(': ') || `Row ${r.i + 1}`, fmtMoney(r.amount),
-      `Renews ${fmtDay(r.renewal)}` + (r.auto ? ' · auto-renews' : r.auto === false ? ' · no auto-renew' : ''),
-      r.notice != null ? `Notice by ${fmtDay(r.deadline)} (${r.notice} days)` : null,
-      `${u.label}: ${u.days < 0 ? -u.days + ' days ago' : 'in ' + u.days + ' days'}`, 'Click for details']);
-    g.append(dot);
-  });
-  return g;
-}
 function sortRows(rows, cols, sort) {
   const c = cols.find((x) => x.key === sort.key); if (!c) return rows;
   const val = c.sortVal || ((r) => r[c.key]);
@@ -1352,7 +1278,6 @@ function emptyState(iconName, title, text, action) {
   return h('div', { class:'card' }, h('div', { class:'empty-state' }, h('div', { class:'hero-icon' }, icon(iconName, 28)), h('h2', {}, title), h('p', {}, text), action || null));
 }
 function monthOrder() { return Array.from({ length:12 }, (_, k) => (S.opts.fyStart + k) % 12); }
-function monthVal(r, m) { return r.monthly ? r.monthly[m] : r.amount / 12; }
 function swatchLabel(k) { return h('span', { class:'sw-label' }, h('span', { class:'swatch', style:`background:${colorOf(k)}` }), k); }
 function heatCell(v, max) {
   return v ? h('span', { class:'heat' }, h('i', { style:`opacity:${(0.06 + 0.36 * v / max).toFixed(3)}` }), h('span', {}, fmtMoney(v))) : h('span', { class:'muted' }, '—');
@@ -1369,85 +1294,6 @@ function rgtClass(raw) {
   if (/grow|expan|scale/.test(v)) return 'grow';
   if (/\brun\b|operat|maint|sustain|keep the lights|\bktlo\b|\brtb\b/.test(v)) return 'run';
   return 'none';
-}
-
-// ---------- Overview ----------
-function insOverview(recs) {
-  const t = sum(recs, (r) => r.amount), b = S.map.prior != null ? computeBridge(recs) : null;
-  const v = S.map.vendor != null ? new Set(recs.filter((r) => r.amount).map((r) => r.vendor)).size : null;
-  return `${fmtMoney(t)} across ${fmtInt(recs.length)} lines` + (v != null ? ` and ${v} vendors` : '') + (b && b.prior ? `, ${fmtSignedPct((t - b.prior) / b.prior)} vs prior year.` : '.');
-}
-function pageOverview(recs) {
-  const total = sum(recs, (r) => r.amount);
-  const tiles = [];
-  const b = S.map.prior != null ? computeBridge(recs) : null;
-  const monthly = hasMonths() ? monthOrder().map((m) => sum(recs, (r) => monthVal(r, m))) : null;
-  tiles.push(kpi({ id:'total', label:`Total ${label()}`, value:fmtC(total), raw:total,
-    meta:[b && b.prior ? deltaTag(total - b.prior, (total - b.prior) / b.prior) : null, h('span', {}, fmtMoney(total))], spark:monthly ? sparkline(monthly) : null }));
-  if (S.map.vendor != null) {
-    const g = vendorAgg(recs).filter((v) => v.value > 0);
-    tiles.push(kpi({ id:'vendors', label:'Vendors', value:fmtInt(g.length), href:'#/vendors', meta:h('span', {}, `Top 5 = ${fmtPct(total ? sum(g.slice(0, 5), (v) => v.value) / total : 0)} of spend`) }));
-  } else tiles.push(kpi({ id:'lines', label:'Budget lines', value:fmtInt(recs.length), href:'#/lines', meta:h('span', {}, `${fmtC(recs.length ? total / recs.length : 0)} average per line`) }));
-  if (S.map.renewal != null) {
-    const us = recs.map((r) => ({ r, u:urgencyOf(r) })).filter((x) => x.u && x.u.max <= 90), od = us.filter((x) => x.u.key === 'passed').length;
-    tiles.push(kpi({ id:'renewals', label:'Notice deadlines ≤ 90 days', value:fmtInt(us.length), href:'#/renewals', alert:od > 0,
-      meta:[od ? tag(`${od} overdue`, 'red') : tag('None overdue', 'green'), h('span', {}, `${fmtC(sum(us, (x) => x.r.amount))} of spend`)], hint:'Deadline = renewal date minus notice period' }));
-  }
-  if (b) tiles.push(kpi({ id:'new', label:'New spend vs prior year', value:fmtC(b.added), href:'#/yoy', meta:h('span', {}, `${b.newCount} lines with no prior-year spend`) }));
-  const q = qualityOf(recs);
-  tiles.push(kpi({ id:'quality', label:'Data quality', value:fmtPct(q.score), href:'#/quality',
-    meta:[q.errors ? tag(`${q.errors} errors`, 'red') : tag('No errors', 'green'), h('span', {}, `${q.warnings} warnings`)], hint:'Share of spend in rows without errors or warnings' }));
-
-  const cards = [];
-  const dept = ['capability', 'costcentre', 'owner'].map((k) => S.map[k]).find((ci) => ci != null && S.dims.includes(ci));
-  if (S.colorDim == null && dept != null && total) {
-    const g = groupBy(recs, dept), cols = rankColors(dept);
-    cards.push(card({ title:`${g[0].key} is the largest ${low(dept)} at ${fmtPct(g[0].value / total)}`, sub:`Spend by ${low(dept)} · click a bar to list its lines`, id:'ov-dept',
-      body:[h('div', { class:'stack tall', role:'img', 'aria-label':g.map((x) => `${x.key} ${fmtPct(x.value / total)}`).join(', ') }, g.map((x) => h('span', { style:`width:${Math.max(0, x.value / total * 100)}%;background:${cols.get(x.key)}`, title:`${x.key}: ${fmtMoney(x.value)}` }))),
-        h('div', { style:'margin-top:12px' }, hbarList(g, { total, limit:15, onClick:(k) => setFilter(dept, k), colorFn:(k) => cols.get(k) || 'var(--other)', hint:'Click to list its lines.' }))],
-      foot:linkTo('breakdown', 'Open spend breakdown') }));
-  }
-  if (S.colorDim != null && total) {
-    const g = groupBy(recs, S.colorDim);
-    cards.push(card({ title:`${g[0].key} is the largest ${low(S.colorDim)} at ${fmtPct(g[0].value / total)}`, sub:`Spend by ${low(S.colorDim)} · click a bar to list its lines`,
-      body:[mixBar(new Map(g.map((x) => [x.key, x.value])), total, false), h('div', { style:'margin-top:12px' }, hbarList(g, { total, onClick:(k) => setFilter(S.colorDim, k), colorFn:colorOf, hint:'Click to list its lines.' }))],
-      foot:linkTo('breakdown', 'Open spend breakdown') }));
-  }
-  if (S.map.vendor != null) {
-    const g = vendorAgg(recs).filter((v) => v.value > 0);
-    cards.push(card({ title:g.length && total ? `${g[0].key} is the largest vendor at ${fmtPct(g[0].value / total)}` : 'Top vendors', sub:`Top ${Math.min(15, g.length)} vendors by spend · click a bar for details`, id:'ov-vendors',
-      body:hbarList(g, { total, limit:15, onClick:(k) => vendorDrawer(g.find((v) => v.key === k)), hint:'Click for details.' }), foot:linkTo('vendors', 'All vendors') }));
-  } else if (S.dims.length) {
-    const ci = S.dims.find((d) => d !== S.colorDim) ?? S.dims[0];
-    cards.push(card({ title:`Spend by ${low(ci)}`, body:hbarList(groupBy(recs, ci), { total, limit:15, onClick:(k) => setFilter(ci, k), hint:'Click to list its lines.' }), foot:linkTo('breakdown', 'Open spend breakdown') }));
-  }
-  if (S.map.renewal != null) {
-    const due = recs.map((r) => ({ r, u:urgencyOf(r) })).filter((x) => x.u && x.u.max <= 90).sort((a, b) => a.u.days - b.u.days).slice(0, 6);
-    cards.push(card({ title:'Act on these notice deadlines first', sub:'Overdue or due within 90 days · click a row for details', flush:true,
-      body:dataTable({ cols:[
-        { key:'s', label:'Status', render:(x) => urgTag(x.u) },
-        { key:'n', label:'Line', render:(x) => h('div', {}, h('div', { class:'strong' }, x.r.item || `Row ${x.r.i + 1}`), x.r.vendor ? h('div', { class:'muted' }, x.r.vendor) : null) },
-        { key:'a', label:label(), num:true, render:(x) => fmtMoney(x.r.amount) },
-        { key:'d', label:'Deadline', num:true, render:(x) => fmtDay(x.r.deadline) }],
-      rows:due, onRow:(x) => lineDrawer(x.r), empty:'Nothing due in the next 90 days.' }),
-      foot:linkTo('renewals', 'Open renewals') }));
-  }
-  if (monthly) {
-    const keys = S.colorDim != null ? [...S.colorMap.keys()] : [null];
-    const series = keys.map((k) => ({ key:k || label(), color:k ? colorOf(k) : 'var(--bar)', values:monthOrder().map((m) => sum(recs.filter((r) => k == null || cell(r, S.colorDim) === k), (r) => monthVal(r, m))) }));
-    cards.push(card({ title:'Monthly cash flow', sub:`${label()} by month${S.colorDim != null ? ' and ' + low(S.colorDim) : ''}`,
-      body:h('div', { class:'chart small' }, columnChart({ labels:monthOrder().map(mname), series, height:330, compact:true })), foot:linkTo('cashflow', 'Open cash flow') }));
-  }
-  if (b && b.prior) {
-    cards.push(card({ title:`${fmtSignedPct((b.next - b.prior) / b.prior)} vs prior year`, sub:'Bridge from prior year to this budget',
-      body:h('div', { class:'chart small' }, waterfall(bridgeSteps(b), { height:300, compact:true })), foot:linkTo('yoy', 'Open year over year') }));
-  }
-  const top = q.res.filter((x) => x.n && x.sev !== 'info').slice(0, 5);
-  cards.push(card({ title:top.length ? `${top.length} data check${top.length === 1 ? ' needs' : 's need'} attention` : 'All data checks passed', sub:'Errors and warnings · click a row to see the lines', flush:true,
-    body:dataTable({ cols:[{ key:'sev', label:'Severity', render:(x) => tag(SEV[x.sev].label, SEV[x.sev].tag) }, { key:'lbl', label:'Check' }, { key:'n', label:'Rows', num:true }],
-      rows:top, onRow:(x) => { S.flag = x.k; go('lines'); }, empty:'No errors or warnings.' }),
-    foot:linkTo('quality', 'Open data quality') }));
-  return [h('div', { class:'kpis' }, tiles), h('div', { class:'grid g2' }, cards), footer()];
 }
 
 // ---------- Spend breakdown (analytical list page: chart + table, switchable) ----------
@@ -1954,89 +1800,6 @@ function pageOrganisation(recs) {
   return out;
 }
 
-// ---------- Renewals ----------
-function insRenewals(recs) {
-  const us = recs.map((r) => ({ r, u:urgencyOf(r) })).filter((x) => x.u && x.u.max <= 90);
-  const od = us.filter((x) => x.u.key === 'passed');
-  return `${us.length} notice deadlines in the next 90 days worth ${fmtC(sum(us, (x) => x.r.amount))}` + (od.length ? `, including ${od.length} already overdue.` : '.');
-}
-function pageRenewals(recs) {
-  const items = recs.map((r) => ({ r, u:urgencyOf(r) })).filter((x) => x.u);
-  const count = (k) => items.filter((x) => x.u.key === k).length;
-  const segs = [['all', 'All', items.length], ...URGENCY.map((u) => [u.key, u.label, count(u.key)])];
-  const sel = S.ui.renSeg === 'all' ? items : items.filter((x) => x.u.key === S.ui.renSeg);
-  const toolbar = h('div', { style:'display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px' },
-    segmented(segs, S.ui.renSeg, (k) => { S.ui.renSeg = k; render(); }, 'Urgency', 'ren-seg'),
-    h('span', { class:'card-s' }, `${S.map.notice != null ? 'Deadline = renewal date − notice period' : 'No notice-period column: deadline = renewal date'} · as of ${fmtDay(asOfDay())}`));
-  const t = tabs([['timeline', 'Timeline'], ['calendar', 'Calendar'], ['list', 'List']], S.ui.renTab, (k) => { S.ui.renTab = k; render(); }, 'ren-tabs');
-  let body;
-  if (S.ui.renTab === 'timeline') {
-    body = card({ title:'Renewal timeline', sub:`${sel.length} lines · dot size = ${label()}, colour = notice urgency · click a dot for details`,
-      body:[h('div', { class:'legend' }, URGENCY.map((u) => h('span', {}, h('span', { class:'dot-sw', style:`background:${cv(u.color)}` }), u.label))), h('div', { class:'chart', id:'ren-timeline' }, timeline(sel))] });
-  } else if (S.ui.renTab === 'calendar') {
-    const start = new Date(asOfDay() * DAY);
-    const months = Array.from({ length:12 }, (_, k) => Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + k, 1) / DAY);
-    const end = Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 12, 1) / DAY;
-    const overdue = sel.filter((x) => x.u.key === 'passed');
-    const later = sel.filter((x) => x.u.key !== 'passed' && x.r.deadline >= end);
-    const box = (title, list, over) => {
-      list = [...list].sort((a, b) => a.r.deadline - b.r.deadline);
-      return h('div', { class:'cal-m' + (over && list.length ? ' over' : '') },
-        h('div', { class:'cal-h' }, h('b', {}, title), list.length ? tag(`${list.length} line${list.length > 1 ? 's' : ''}`, over ? 'red' : 'gray') : null),
-        list.length ? [h('div', { class:'cal-v' }, fmtC(sum(list, (x) => x.r.amount))),
-          h('ul', { class:'cal-list' }, list.slice(0, 5).map((x) => h('li', {}, h('button', { type:'button', onclick:() => lineDrawer(x.r), title:[x.r.vendor, x.r.item].filter(Boolean).join(' · ') },
-            h('span', { class:'dot-sw', style:`background:${cv(x.u.color)}` }), h('span', { class:'nm' }, x.r.vendor || x.r.item || `Row ${x.r.i + 1}`), h('span', {}, fmtC(x.r.amount)))))),
-          list.length > 5 ? h('div', { class:'cal-more' }, `+${list.length - 5} more`) : null] : h('div', { class:'cal-empty' }, 'No deadlines'));
-    };
-    const inMonth = (m, i) => sel.filter((x) => x.u.key !== 'passed' && x.r.deadline >= m && x.r.deadline < (months[i + 1] ?? end));
-    body = card({ title:'Notice deadlines by month', sub:'Grouped by the month in which notice must be given · click a line for details', body:h('div', { class:'cal', id:'ren-cal' },
-      overdue.length ? box('Overdue', overdue, true) : null,
-      months.map((m, i) => box(new Date(m * DAY).toLocaleDateString(LOCALE, { month:'long', year:'numeric', timeZone:'UTC' }), inMonth(m, i), false)),
-      later.length ? box('Later', later, false) : null) });
-  } else {
-    const cols = [
-      { key:'deadline', label:'Notice deadline', sortVal:(x) => x.r.deadline, render:(x) => fmtDay(x.r.deadline) },
-      { key:'status', label:'Status', sortVal:(x) => x.u.days, render:(x) => urgTag(x.u) },
-      S.map.vendor != null ? { key:'vendor', label:'Vendor', sortVal:(x) => x.r.vendor, render:(x) => x.r.vendor } : null,
-      { key:'item', label:'Line', cls:'wrap', sortVal:(x) => x.r.item, render:(x) => x.r.item || `Row ${x.r.i + 1}` },
-      { key:'amount', label:label(), num:true, cls:'strong', sortVal:(x) => x.r.amount, render:(x) => fmtMoney(x.r.amount) },
-      { key:'renewal', label:'Renewal', sortVal:(x) => x.r.renewal, render:(x) => fmtDay(x.r.renewal) },
-      S.map.notice != null ? { key:'notice', label:'Notice', num:true, sortVal:(x) => x.r.notice, render:(x) => (x.r.notice != null ? `${x.r.notice} d` : '—') } : null,
-      S.map.auto != null ? { key:'auto', label:'Auto-renews', sortVal:(x) => String(x.r.auto), render:(x) => (x.r.auto == null ? '—' : x.r.auto ? tag('Yes', 'purple') : 'No') } : null,
-      S.map.owner != null ? { key:'owner', label:'Owner', sortVal:(x) => x.r.owner, render:(x) => x.r.owner || tag('No owner', 'yellow') } : null,
-    ].filter(Boolean);
-    body = card({ title:`${sel.length} renewals`, sub:'Click a row for details', flush:true,
-      body:dataTable({ cols, rows:sortRows(sel, cols, S.ui.rSort), sort:S.ui.rSort, onSort:sorter('rSort'), onRow:(x) => lineDrawer(x.r), maxHeight:'620px', id:'ren-list',
-        foot:cols.map((c, i) => (i === 0 ? `Total (${sel.length})` : c.key === 'amount' ? fmtMoney(sum(sel, (x) => x.r.amount)) : '')) }) });
-  }
-  return [toolbar, t, body];
-}
-
-// ---------- Cash flow ----------
-function insCashflow(recs) {
-  const order = monthOrder(), tot = order.map((m) => sum(recs, (r) => monthVal(r, m))), t = tot.reduce((a, b) => a + b, 0);
-  const i = tot.indexOf(Math.max(...tot));
-  return t ? `Peak month is ${mname(order[i])} at ${fmtC(tot[i])} (${fmtPct(tot[i] / t)} of the year); the first half carries ${fmtPct(tot.slice(0, 6).reduce((a, b) => a + b, 0) / t)}.` : 'No matching spend.';
-}
-function pageCashflow(recs) {
-  const order = monthOrder(), keys = S.colorDim != null ? [...S.colorMap.keys()] : [null];
-  const series = keys.map((k) => ({ key:k || label(), color:k ? colorOf(k) : 'var(--bar)', values:order.map((m) => sum(recs.filter((r) => k == null || cell(r, S.colorDim) === k), (r) => monthVal(r, m))) }));
-  const total = sum(recs, (r) => r.amount), even = sum(recs.filter((r) => !r.monthly), (r) => r.amount);
-  const out = [];
-  if (even && total) out.push(h('div', { class:'notice' }, icon('info'), h('span', {}, `${fmtPct(even / total)} of this spend has no monthly figures in the file and is spread evenly across 12 months.`)));
-  out.push(h('div', { class:'grid' }, card({ title:'Monthly cash flow', sub:`Stacked by ${S.colorDim != null ? low(S.colorDim) : 'total'} · line = cumulative share of the year (right axis) · hover for values`,
-    body:[h('div', { class:'legend' }, S.colorDim != null ? keys.map((k) => h('span', {}, h('span', { class:'swatch', style:`background:${colorOf(k)}` }), k)) : null, h('span', {}, h('span', { style:'display:inline-block;width:16px;border-top:2px solid var(--text)' }), 'Cumulative %')),
-      h('div', { class:'chart' }, columnChart({ labels:order.map(mname), series, cumulative:true, height:320 }))] })));
-  const q = [0, 1, 2, 3].map((k) => order.slice(k * 3, k * 3 + 3));
-  const rows = series.map((sr) => ({ key:sr.key, q:q.map((ms) => ms.reduce((a, m) => a + sr.values[order.indexOf(m)], 0)), total:sr.values.reduce((a, b) => a + b, 0) }));
-  const cols = [{ key:'key', label:S.colorDim != null ? hdr(S.colorDim) : '', cls:'strong', render:(r) => (S.colorDim != null ? swatchLabel(r.key) : r.key) },
-    ...q.map((ms, k) => ({ key:'q' + k, label:`Q${k + 1} (${mname(ms[0])}–${mname(ms[2])})`, num:true, render:(r) => fmtMoney(r.q[k]) })),
-    { key:'total', label:'Year', num:true, cls:'strong', render:(r) => fmtMoney(r.total) }];
-  out.push(card({ title:'Quarterly summary', sub:`Quarters follow a fiscal year starting in ${mname(S.opts.fyStart)} (change it on Data source & columns)`, flush:true,
-    body:dataTable({ cols, rows, foot:['Total', ...q.map((_, k) => fmtMoney(sum(rows, (r) => r.q[k]))), fmtMoney(sum(rows, (r) => r.total))] }) }));
-  return out;
-}
-
 // ---------- Year over year ----------
 function insYoy(recs) {
   const b = computeBridge(recs), d = b.next - b.prior;
@@ -2149,7 +1912,7 @@ function mappingForm() {
   });
   const found = S.months.map((ci, m) => (ci == null ? null : `${mname(m)} ← ${S.headers[ci]}`)).filter(Boolean);
   return h('div', {}, h('div', { class:'map-cols' }, cols),
-    h('p', { class:'helper', style:'white-space:normal;margin-top:16px' }, h('b', {}, 'Monthly columns: '), found.length >= 2 ? `${found.length} detected (${found.join(', ')}).` : 'none detected. Headers like Jan, Feb … or 2027-01 enable Cash flow.'));
+    h('p', { class:'helper', style:'white-space:normal;margin-top:16px' }, h('b', {}, 'Monthly columns: '), found.length >= 2 ? `${found.length} detected (${found.join(', ')}).` : 'none detected. Headers like Jan, Feb … or 2027-01 add a monthly chart to each line’s details.'));
 }
 function settingsForm() {
   const f = (lbl, el) => [h('label', { for:el.id }, lbl), el];
@@ -2172,11 +1935,10 @@ function readForms() {
 // ---------- landing, unavailable, footer ----------
 function landing() {
   const feats = [
-    ['overview', 'Overview & breakdowns', 'Headline figures and spend by any column, as chart, table or both.', 'Needs: an amount column'],
-    ['vendors', 'Vendors', 'Ranked vendor list and a detail panel per vendor with lines, renewals and owners.', 'Needs: a vendor column'],
+    ['vendors', 'Vendors', 'The home page: spend by department, vendor size bands, renewal dates and owners, with a detail panel per vendor.', 'Needs: a vendor column'],
+    ['breakdown', 'Spend breakdown', 'Spend by any column, as chart, table or both.', 'Needs: an amount column'],
     ['invoice', 'Key contracts', 'A page per major contract: invoice lines scaled to a full year and compared with the budget.', 'Needs: invoice lines in the contracts block'],
-    ['calendar', 'Renewals', 'Timeline, monthly calendar and a list of notice deadlines.', 'Needs: a renewal date (+ notice period)'],
-    ['cash', 'Cash flow & year over year', 'Monthly phasing, quarterly view and a prior-year bridge.', 'Needs: monthly / prior-year columns'],
+    ['compare', 'Year over year', 'A bridge from the prior year to this budget, with the biggest increases and decreases.', 'Needs: a prior-year amount column'],
   ];
   return h('div', { class:'landing' },
     h('div', { class:'hero' }, h('div', { class:'hero-icon' }, icon('upload', 28)),
@@ -2212,7 +1974,7 @@ function render() {
     content.append(...[].concat(avail ? page.render(recs) : unavailable(page)));
   }
   $('main').replaceChildren(content);
-  document.title = S.loaded ? `${page.label} · IT Budget Explorer` : 'IT Budget Explorer';
+  document.title = S.loaded ? `${page.label} · Corporate IT Budget Tracker` : 'Corporate IT Budget Tracker';
   if (aeId) {
     const el = $(aeId);
     if (el && el !== document.activeElement) { el.focus({ preventScroll:true }); if (caret != null && el.setSelectionRange) try { el.setSelectionRange(caret, caret); } catch (e) { /* not a text input */ } }
@@ -2350,7 +2112,7 @@ route();
 if ($('sample-csv').dataset.autoload === 'true') loadSample();
 
 // for automated tests and DevTools
-window.BudgetExplorer = { S, parseCSV, parseNum, parseDate, guessMapping, computeBridge, loadSample, go, CONTRACTS, contractData, periodMonths, UPLOAD };
+window.BudgetTracker = { S, parseCSV, parseNum, parseDate, guessMapping, computeBridge, loadSample, go, CONTRACTS, contractData, periodMonths, UPLOAD };
 })();
 </script>
 </body>
