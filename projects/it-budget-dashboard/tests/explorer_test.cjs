@@ -10,7 +10,7 @@ const EX = (f) => path.join(ROOT, 'data', ...f.split('/'));
 const shots = process.env.SCREENSHOT_DIR;
 let failures = 0;
 const check = (c, msg) => { console.log((c ? '  ok   ' : '  FAIL ') + msg); if (!c) failures++; };
-const PAGES = ['strategy', 'overview', 'breakdown', 'vendors', 'organisation', 'renewals', 'cashflow', 'yoy', 'lines', 'quality', 'source'];
+const PAGES = ['overview', 'breakdown', 'vendors', 'organisation', 'c-contoso', 'c-fabrikam', 'renewals', 'cashflow', 'yoy', 'lines', 'quality', 'source'];
 
 (async () => {
   const browser = await chromium.launch();
@@ -45,39 +45,20 @@ const PAGES = ['strategy', 'overview', 'breakdown', 'vendors', 'organisation', '
   check(await page.locator('.feature').count() === 5, 'landing lists 5 feature areas');
   await shot('00-landing', false);
 
-  console.log('Sample data: lands on Executive benchmarks');
+  console.log('Sample data: lands on Overview');
   await page.click('#landing-sample');
-  await page.waitForFunction(() => location.hash === '#/strategy');
-  check(await mapped('capability') === 'business_capability' && await mapped('spend_cat') === 'spend_category', 'capability and spend-type columns detected');
-  check(await kpiVal('bench-total') === 5817000, 'IT spend in scope = 5,817,000 (43 lines)');
-  check(await page.textContent('[data-kpi="bench-rev"] .kpi-v') === '—', 'no revenue entered → no % of revenue shown (no invented defaults)');
-  check((await page.textContent('#page-insight')).includes('enter company revenue and headcount'), 'insight asks for company figures');
-  await page.fill('#co-rev', '100000000'); await page.press('#co-rev', 'Tab'); await page.waitForTimeout(100);
-  await page.fill('#co-fte', '500'); await page.press('#co-fte', 'Tab'); await page.waitForTimeout(100);
-  check(Math.abs(await kpiVal('bench-rev') - 0.05817) < 1e-9, '% of revenue = 5.8% after entering revenue 100m');
-  check(Math.abs(await kpiVal('bench-fte') - 11634) < 1e-6, 'per FTE = 11,634 after entering 500 FTE');
-  check(await page.evaluate(() => document.activeElement && document.activeElement.id) === 'co-other', 'Tab after editing moves focus to the next field (not lost on re-render)');
-  await page.fill('#co-other', '2183000'); await page.press('#co-other', 'Tab'); await page.waitForTimeout(100);
-  check(await kpiVal('bench-total') === 8000000, 'other IT spend is added: 5,817,000 + 2,183,000 = 8,000,000');
-  check(Math.abs(await kpiVal('bench-transform') - 300000 / 5817000) < 1e-9, 'Transform share = 300k / 5.817m');
-  const rgt = await page.locator('#rgt-table tbody tr').allTextContents();
-  check(rgt.length === 3 && rgt[0].includes('Run') && rgt[0].includes('64.8%') && rgt[1].includes('30.0%') && rgt[2].includes('5.2%'), 'Run / Grow / Transform = 64.8% / 30.0% / 5.2%');
-  await page.locator('#rgt-table tbody tr').nth(2).click();
-  check(await page.locator('#chips .chip').count() === 1 && await kpiVal('bench-total') === 300000, 'clicking Transform filters to 300k and drops other IT spend');
-  await page.click('#filter-reset');
-  check(await page.locator('#cap-table tbody tr').count() === 4, '4 business capabilities listed');
-  await shot('01-strategy');
+  await page.waitForFunction(() => location.hash === '#/overview');
+  check(await total() === 5817000, 'overview total = 5,817,000 (43 lines)');
+  check(await page.locator('#nav-strategy').count() === 0 && !(await page.textContent('#sidenav')).includes('benchmark'), 'no Executive benchmarks page in the navigation');
+  check(JSON.stringify(await page.locator('#sidenav .nav-h').allTextContents()) === JSON.stringify(['Analyse', 'Key contracts', 'Plan', 'Data']), 'navigation groups: Analyse, Key contracts, Plan, Data');
 
   console.log('Sample data: every page renders');
-  check(await total().catch(() => null) === null, '(overview tile not on this page)');
   for (const [i, id] of PAGES.entries()) {
     await nav(id);
     const title = await page.textContent('.page-t');
     check(await page.getAttribute(`#nav-${id}`, 'aria-current') === 'page' && title.length > 0, `${id}: "${title}" renders and is marked current`);
-    if (id !== 'strategy') await shot(`${String(i + 1).padStart(2, '0')}-${id}`);
+    await shot(`${String(i + 1).padStart(2, '0')}-${id}`);
   }
-  await nav('overview');
-  check(await total() === 5817000, 'overview total = 5,817,000');
   const br = await S(() => window.BudgetExplorer.computeBridge(window.BudgetExplorer.S.recs));
   check(br.added === 680000 && br.newCount === 6, 'bridge: 6 new lines worth 680,000 (blank or zero prior year)');
   check(Math.abs(br.prior + br.added + br.increases - br.decreases - br.removed - br.next) < 0.01, 'bridge reconciles');
@@ -95,6 +76,8 @@ const PAGES = ['strategy', 'overview', 'breakdown', 'vendors', 'organisation', '
   await page.click('#bd-view [data-k="both"]');
 
   await nav('vendors');
+  check(await page.locator('svg[aria-label="Vendor Pareto chart"]').count() === 0 && await page.locator('#vendor-table').count() === 1, 'Vendors: Pareto chart removed, ranked table kept');
+  check(!(await page.textContent('#page-insight')).includes('80%'), 'Vendors insight no longer quotes the Pareto 80% figure');
   await page.locator('#vendor-table tbody tr').first().click();
   check(await page.isVisible('#drawer') && (await page.textContent('#drawer-title')) === 'Northwind Software', 'vendor row opens the side panel');
   await page.waitForTimeout(300);
@@ -125,6 +108,32 @@ const PAGES = ['strategy', 'overview', 'breakdown', 'vendors', 'organisation', '
   await page.click('#l-next');
   check(await page.locator('#table-lines tbody tr').count() === 18, 'second page → 18 rows');
 
+  console.log('Key contracts (fictional invoices in the sample)');
+  const pm = await S(() => { const f = window.BudgetExplorer.periodMonths; return [f('2026-08-17', '2026-09-16'), f('2026-08-01', '2026-08-31'), f('2026-10-01', '2026-12-31'), f('2026-01-01', '2026-12-31'), +f('2026-03-01', '2026-03-14').toFixed(2)]; });
+  check(JSON.stringify(pm) === '[1,1,3,12,0.46]', `service periods → months: 17th–16th = 1, calendar month = 1, quarter = 3, year = 12, 14 days = 0.46 (${JSON.stringify(pm)})`);
+  await nav('c-contoso');
+  check(await page.textContent('.page-t') === 'Contoso Cloud' && await page.locator('#filter-reset').count() === 0, 'contract page has its own title and no filter bar');
+  check(await kpiVal('ct-annual') === 678000, 'Contoso: monthly invoice 56,500 × 12 = 678,000 a year');
+  check(await kpiVal('ct-budget') === 758000, 'Contoso: budget = the 2 lines whose vendor matches (640,000 + 118,000)');
+  check(await kpiVal('ct-gap') === 80000 && await page.locator('[data-kpi="ct-fx"]').count() === 0, 'Contoso: same currency, no exchange rate needed, headroom 80,000');
+  check(await page.locator('#ct-lines tbody tr').count() === 6 && (await page.textContent('#ct-lines-card')).includes('Lines add up'), 'Contoso: 6 invoice lines that add up to the invoice total');
+  check((await page.textContent('#page-insight')).includes('monthly invoice'), 'insight names the billing cadence');
+  const dl = page.waitForEvent('download');
+  await page.click('#export-csv');
+  const file = await dl;
+  const csv = require('fs').readFileSync(await file.path(), 'utf8');
+  check(file.suggestedFilename() === 'contract-contoso-annualised.csv' && csv.trim().split(/\r?\n/).length === 7 && csv.includes('678000') === false && csv.includes('316800.00'), 'Export CSV: annualised invoice lines (compute 26,400 × 12 = 316,800.00)');
+  await nav('c-fabrikam');
+  check(await kpiVal('ct-annual') === 466400, 'Fabrikam: quarterly invoice 116,600 × 4 = 466,400 USD a year');
+  check(Math.abs(await kpiVal('ct-fx') - 415096) < 0.01 && Math.abs(await kpiVal('ct-gap') - 25904) < 0.01, 'Fabrikam: USD invoice converted at the file\'s rate 0.89 = 415,096 EUR; headroom 25,904 vs 441,000');
+  await page.fill('#ct-fx-rate', '0.95'); await page.press('#ct-fx-rate', 'Tab'); await page.waitForTimeout(100);
+  check(Math.abs(await kpiVal('ct-gap') + 2080) < 0.01 && (await page.getAttribute('[data-kpi="ct-gap"]', 'class')).includes('alert'), 'typing your own rate (0.95) updates the comparison: 2,080 over budget, shown as an alert');
+  await page.click('#ct-fx-reset');
+  check(Math.abs(await kpiVal('ct-gap') - 25904) < 0.01, '"Use 0.89" restores the file\'s rate');
+  await page.locator('#ct-bars button').first().click();
+  check((await page.textContent('#drawer-title')) === 'Managed SOC service (24×7)', 'clicking the largest bar opens the invoice line details');
+  await page.keyboard.press('Escape');
+
   console.log('Encoding');
   await loadFile(EX('examples/utf8-names.csv'), 'utf8-names.csv');
   check(JSON.stringify(await S(() => window.BudgetExplorer.S.rows.map((r) => r[2]))) === '["Zürich","Genève","Malmö"]', 'UTF-8 names (Zürich, Genève, Malmö) are read correctly');
@@ -145,15 +154,15 @@ const PAGES = ['strategy', 'overview', 'breakdown', 'vendors', 'organisation', '
 
   console.log('Hand-cleaned sheet (amount first, capability, tool names, reviewer notes)');
   await loadFile(EX('examples/cleaned-sheet.csv'), 'cleaned-sheet.csv');
-  await page.waitForFunction(() => location.hash === '#/strategy');
-  check(await mapped('amount') === 'Sum of Total in USD' && await mapped('capability') === 'Capability' && await mapped('vendor') === 'Vendor', 'amount / capability / vendor detected; opens on Executive benchmarks');
-  check(await S(() => window.BudgetExplorer.S.recs.reduce((a, r) => a + r.amount, 0)) === 110720, 'total 110,720 (company-wide "other IT spend" typed earlier is kept separately)');
+  await page.waitForFunction(() => location.hash === '#/overview');
+  check(await mapped('amount') === 'Sum of Total in USD' && await mapped('capability') === 'Capability' && await mapped('vendor') === 'Vendor', 'amount / capability / vendor detected; opens on Overview');
+  check(await total() === 110720, 'total 110,720');
   const f2 = await S(() => { const c = {}; for (const r of window.BudgetExplorer.S.recs) for (const f of r.flags) c[f] = (c[f] || 0) + 1; return c; });
   check(f2.open_question === 2 && f2.vendor_placeholder === 1 && f2.unclassified_value === 1, `reviewer notes flagged: "unclear" + "double?" = 2 open questions, "Varied" vendor, "Unknown" capability (${JSON.stringify(f2)})`);
 
   console.log('EU finance export');
   await loadFile(EX('examples/finance-export-eu.csv'), 'finance-export-eu.csv');
-  check(await total() === 5517000, 'lands on Overview (no strategy columns) with total 5,517,000');
+  check(await total() === 5517000, 'total 5,517,000');
   check(await mapped('amount') === 'Budget FY2027' && await mapped('prior') === 'Budget FY2026', 'amount / prior = Budget FY2027 / FY2026');
   check(await mapped('renewal') === 'Contract end', 'renewal → Contract end');
   check(await S(() => window.BudgetExplorer.S.months.filter((c) => c != null).length) === 12, '12 month columns');
@@ -164,9 +173,11 @@ const PAGES = ['strategy', 'overview', 'breakdown', 'vendors', 'organisation', '
   check((await page.getAttribute('#nav-renewals', 'class')).includes('muted'), 'renewals nav item muted (no date column)');
   await nav('renewals');
   check(await page.isVisible('#goto-source'), 'renewals page explains what is missing and links to mapping');
-  await nav('strategy');
-  check(await page.locator('.empty-state').count() === 2, 'benchmarks page explains the missing spend-type and capability columns');
-  await shot('31-minimal-strategy');
+  await nav('c-contoso');
+  check(await kpiVal('ct-budget') === 758000 && await page.textContent('[data-kpi="ct-gap"] .kpi-v') === '—' && (await page.textContent('[data-kpi="ct-gap"]')).includes('Needs an exchange rate'), 'EUR invoice vs USD budget with no rate: asks for an exchange rate instead of guessing');
+  await nav('c-fabrikam');
+  check(Math.abs(await kpiVal('ct-gap') + 25400) < 0.01 && (await page.textContent('[data-kpi="ct-gap"] .kpi-l')).includes('over budget'), 'USD invoice vs USD budget: 466,400 run-rate is 25,400 over the 441,000 budget');
+  await shot('31-minimal-contract');
 
   console.log('Mapping');
   await loadFile(EX('sample-budget.csv'), 'sample-budget.csv');
@@ -184,10 +195,16 @@ const PAGES = ['strategy', 'overview', 'breakdown', 'vendors', 'organisation', '
 
   console.log('Layout');
   await page.evaluate(() => window.BudgetExplorer.loadSample());
-  await page.waitForFunction(() => location.hash === '#/strategy');
+  await page.waitForFunction(() => location.hash === '#/overview');
   await page.setViewportSize({ width:390, height:844 });
-  const over = await S(() => Math.max(document.documentElement.scrollWidth - document.documentElement.clientWidth, document.querySelector('#main').scrollWidth - document.querySelector('#main').clientWidth));
-  check(over <= 0, `no horizontal scroll at 390px on benchmarks (overflow ${over}px)`);
+  const overflow = () => S(() => Math.max(document.documentElement.scrollWidth - document.documentElement.clientWidth, document.querySelector('#main').scrollWidth - document.querySelector('#main').clientWidth));
+  let over = await overflow();
+  check(over <= 0, `no horizontal scroll at 390px on Overview (overflow ${over}px)`);
+  await page.evaluate(() => window.BudgetExplorer.go('c-fabrikam')); await page.waitForTimeout(100);
+  over = await overflow();
+  check(over <= 0, `no horizontal scroll at 390px on a contract page (overflow ${over}px)`);
+  if (shots) await page.screenshot({ path:path.join(shots, 'ex-41-phone-contract.png'), fullPage:true });
+  await page.evaluate(() => window.BudgetExplorer.go('overview')); await page.waitForTimeout(100);
   if (shots) await page.screenshot({ path:path.join(shots, 'ex-40-phone.png') });
   await page.click('#nav-toggle');
   await page.waitForTimeout(300);
@@ -195,7 +212,8 @@ const PAGES = ['strategy', 'overview', 'breakdown', 'vendors', 'organisation', '
   await page.keyboard.press('Escape');
   await page.setViewportSize({ width:1440, height:900 });
   await page.emulateMedia({ colorScheme:'dark' });
-  await shot('42-dark-strategy');
+  await page.evaluate(() => window.BudgetExplorer.go('c-contoso')); await page.waitForTimeout(100);
+  await shot('42-dark-contract');
 
   check(errors.length === 0, 'no console errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   await browser.close();

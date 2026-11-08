@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>IT Budget Explorer</title>
-<meta name="description" content="Explore an IT budget for licences, services and hardware from any CSV. Includes Executive Benchmarks. Runs entirely in the browser.">
+<meta name="description" content="Explore an IT budget for licences, services and hardware from any CSV, with invoice-based pages for key contracts. Runs entirely in the browser.">
 <style>
 /* =====================================================================
    Design tokens. Structure follows IBM Carbon (UI shell, data table,
@@ -218,20 +218,6 @@ button.hb-name { background:none; border:0; padding:0; text-align:left; color:va
 .empty-mini { color:var(--text-3); font-size:13px; padding:12px 0; }
 @media (max-width:640px) { .hb { grid-template-columns:minmax(80px, 38%) 1fr 84px; } .hb-pct { display:none; } }
 
-/* ---------- executive benchmarks ---------- */
-.co-strip { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px 16px; align-items:start; }
-.co-strip .helper { white-space:normal; }
-@media (max-width:760px) { .co-strip { grid-template-columns:1fr; } }
-.targets { margin-top:14px; border-top:1px solid var(--border); padding-top:10px; }
-.targets > summary { cursor:pointer; color:var(--link); font-size:13px; }
-.target-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-top:10px; }
-.rgt { display:grid; grid-template-columns:56px minmax(0, 1fr); gap:8px 12px; align-items:center; padding:4px 16px 14px; font-size:12px; color:var(--text-2); }
-.rgt-bar { display:flex; height:24px; overflow:hidden; background:var(--layer-2); border-radius:2px; }
-.rgt-bar.target { height:10px; }
-.rgt-seg { height:100%; display:flex; align-items:center; justify-content:center; color:var(--rgt-ink); font-size:11px; font-weight:600; overflow:hidden; white-space:nowrap; min-width:0; }
-.rgt-seg.none { color:var(--text); }
-#cap-table td, #cap-table th { padding-left:10px; padding-right:10px; }
-
 /* ---------- charts ---------- */
 .chart { width:100%; overflow-x:auto; }
 .chart svg { display:block; width:100%; height:auto; min-width:560px; }
@@ -314,6 +300,20 @@ dl.kv dt, dl.kv dd { padding:6px 0; border-bottom:1px solid var(--border); margi
 dl.kv dt { color:var(--text-2); padding-right:12px; }
 dl.kv dd { overflow-wrap:anywhere; }
 
+/* ---------- key contracts ---------- */
+.ct-cmp { display:grid; grid-template-columns:minmax(80px, 24%) minmax(40px, 1fr) 104px; gap:10px 12px; align-items:center; font-size:13px; }
+.ct-cmp .hb-track { height:20px; }
+.ct-cmp .hb-val { font-weight:600; }
+.ct-gap { margin-top:10px; font-size:13px; color:var(--text-2); }
+.ct-fx { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin-top:16px; padding-top:12px; border-top:1px solid var(--border); }
+.ct-fx .fb-field { width:220px; }
+.ct-fx .helper { white-space:normal; }
+.ct-notes { margin:0; padding-left:18px; font-size:13px; color:var(--text-2); }
+.ct-notes li + li { margin-top:6px; }
+.ct-bars .hb { grid-template-columns:minmax(110px, 42%) minmax(40px, 1fr) 92px 42px; }
+@media (max-width:640px) { .ct-bars .hb { grid-template-columns:minmax(80px, 42%) 1fr 84px; } }
+.sub-h { font-size:13px; font-weight:600; margin:16px 16px 8px; }
+
 /* ---------- landing / empty states ---------- */
 .landing { max-width:980px; margin:24px auto; }
 .hero { background:var(--layer); border:1px dashed var(--border-strong); border-radius:var(--radius); padding:40px 32px; text-align:center; }
@@ -357,7 +357,7 @@ body.dragging::after { content:"Drop CSV files to load"; position:fixed; inset:0
 <div class="shell">
   <header class="topbar">
     <button class="tb-btn" type="button" id="nav-toggle" aria-label="Collapse navigation" title="Collapse navigation"></button>
-    <div class="brand"><span class="brand-mark" aria-hidden="true">IT</span><span>IT Budget Explorer <small>· Operational &amp; Strategic Benchmarks</small></span></div>
+    <div class="brand"><span class="brand-mark" aria-hidden="true">IT</span><span>IT Budget Explorer <small>· Licences, services &amp; contracts</small></span></div>
     <div class="dataset" id="dataset" hidden></div>
     <div class="tb-spacer"></div>
     <button class="tb-btn" type="button" id="tb-load" title="Load CSV files"></button>
@@ -417,6 +417,32 @@ IT-040,Litware Collaboration,Legacy phone system maintenance,Service,Hardware ma
 IT-041,Tailspin Networks,Legacy firewall support,Service,Hardware maintenance,Security,IT-Security,CISO,Enterprise IT,Run,0,EUR,OPEX,,,,,,Annual,,,22000,,,,,,,,,,,,,Cancelled: not renewing.
 IT-042,Southridge AI,Enterprise AI search & governance,Service,Cloud services,Application,IT-Apps,CIO Office,Enterprise IT,Transform,180000,EUR,OPEX,2026-09-30,2027-09-29,2027-09-30,N,30,Annual,,,0,0,0,0,0,0,0,0,0,180000,0,0,0,Strategic deployment for contextual knowledge search.
 IT-043,Wide World Revenue AI,Revenue intelligence (AI),Licence,Software,Application,IT-Apps,Head of Applications,Commercial,Transform,120000,EUR,OPEX,2026-08-15,2027-08-14,2027-08-15,N,30,Annual,,,0,0,0,0,0,0,0,0,120000,0,0,0,0,Sales intelligence.</script>
+<!-- Key contracts: one page per contract, built from its invoice lines. Each line is scaled to a full year
+     from its service period (1 month ×12, a quarter ×4, a year ×1) and compared with the budget lines whose
+     vendor matches "match". The contracts below are FICTIONAL, to go with the fictional sample data. -->
+<script type="application/json" id="contracts-json">
+{ "contracts": [
+  { "id": "contoso", "name": "Contoso Cloud", "match": "^contoso cloud$", "currency": "EUR",
+    "notes": ["Consumption billing: the run-rate assumes October usage continues for the whole year.",
+              "The budget includes a Q4 true-up on the 3-year commitment that is not on this invoice."],
+    "invoices": [ { "ref": "INV-C-2026-10", "from": "2026-10-01", "to": "2026-10-31", "vat": 0, "vatLabel": "reverse charge", "total": 56500.00,
+      "lines": [
+        { "product": "Reserved compute capacity", "qty": 120, "unit": "vCPU", "kind": "Compute", "amount": 26400.00 },
+        { "product": "Block storage", "qty": 180, "unit": "TB", "kind": "Storage", "amount": 9000.00 },
+        { "product": "Object storage & backup", "qty": 400, "unit": "TB", "kind": "Storage", "amount": 6800.00 },
+        { "product": "Network egress", "kind": "Network", "amount": 2150.00 },
+        { "product": "Managed Kubernetes clusters", "qty": 6, "unit": "clusters", "kind": "Platform", "amount": 7200.00 },
+        { "product": "Enterprise support plan", "qty": 1, "kind": "Support", "amount": 4950.00 } ] } ] },
+  { "id": "fabrikam", "name": "Fabrikam Security", "match": "^fabrikam security$", "currency": "USD",
+    "fx": { "to": "EUR", "rate": 0.89, "note": "Illustrative rate for the fictional sample." },
+    "notes": ["The penetration test in the budget is a one-off and is not on this quarterly invoice."],
+    "invoices": [ { "ref": "FS-Q4-2026", "from": "2026-10-01", "to": "2026-12-31", "vat": 0, "total": 116600.00,
+      "lines": [
+        { "product": "Endpoint detection & response", "qty": 2100, "unit": "endpoints", "kind": "Licences", "amount": 44100.00 },
+        { "product": "Managed SOC service (24×7)", "qty": 1, "kind": "Services", "amount": 66000.00 },
+        { "product": "Incident response retainer", "qty": 40, "unit": "hours", "kind": "Services", "amount": 6500.00 } ] } ] }
+] }
+</script>
 <script>
 (function () {
 'use strict';
@@ -442,7 +468,7 @@ const ICONS = {
   menu:'M3 6h18M3 12h18M3 18h18', close:'M6 6l12 12M18 6L6 18', upload:'M12 16V4M7 9l5-5 5 5M4 20h16',
   download:'M12 4v12M7 11l5 5 5-5M4 20h16', moon:'M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z',
   search:'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-5-5', arrow:'M5 12h14M13 6l6 6-6 6',
-  benchmark:'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12a1 1 0 1 0 0-2 1 1 0 0 0 0 2z',
+  invoice:'M6 2h9l5 5v15H6zM14 2v6h6M9 12h8M9 16h8M9 8h2',
   overview:'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z', breakdown:'M3 20h18M6 20V10M11 20V4M16 20v-7M21 20v-4',
   vendors:'M3 21h18M5 21V8l7-5 7 5v13M9 10h.01M15 10h.01M9 14h.01M15 14h.01M10 21v-4h4v4',
   org:'M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
@@ -525,18 +551,6 @@ function withTip(el, fn) {
 }
 let toastTimer;
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 3500); }
-
-// Executive benchmark targets are the user's own assumptions. These defaults are illustrative
-// placeholders, NOT published benchmarks: replace them with figures from a benchmark source the
-// company subscribes to (e.g. Gartner IT Key Metrics, Avasant / Computer Economics). Percentages are
-// stored as whole numbers (6 = 6%). Company figures are kept in localStorage only, never in the file.
-const TARGET_DEFAULTS = { pctRev:6, perFte:14000, run:65, grow:20, transform:15 };
-const RGT = [
-  { key:'run', label:'Run', note:'operate and maintain', color:'var(--run)' },
-  { key:'grow', label:'Grow', note:'scale and expand', color:'var(--grow)' },
-  { key:'transform', label:'Transform', note:'new capabilities', color:'var(--transform)' },
-  { key:'none', label:'Unclassified', note:'blank or unrecognised', color:'var(--other)' },
-];
 
 // ================================================================ 2. CSV
 function detectDelimiter(text) {
@@ -708,8 +722,8 @@ const ROLES = [
   { key:'pool', label:'Cost pool / spend type', type:'text', re:/cost[\s_-]*pool|pool|spend[\s_-]*type|cost[\s_-]*type|expense[\s_-]*type|account/i },
   { key:'costcentre', label:'Cost centre / department', type:'text', help:'Enables Cost centres & owners.', re:/cost[\s_-]*cent|department|dept|business[\s_-]*unit|\bbu\b|division|team|function/i },
   { key:'owner', label:'Owner', type:'text', re:/owner|holder|manager|responsible|accountable|contact/i },
-  { key:'capability', label:'Business capability', type:'text', help:'Groups spend by capability on Executive benchmarks.', re:/capabilit|domain|function/i },
-  { key:'spend_cat', label:'Spend type (Run / Grow / Transform)', type:'text', help:'Enables the Run / Grow / Transform split.', re:/run.*grow|spend[\s_-]*(cat|type)|transform|investment[\s_-]*(type|class)|\brgt\b/i },
+  { key:'capability', label:'Business capability', type:'text', help:'Filter and group spend by capability.', re:/capabilit|domain|function/i },
+  { key:'spend_cat', label:'Spend type (Run / Grow / Transform)', type:'text', help:'Run, Grow and Transform keep the same colours on every page.', re:/run.*grow|spend[\s_-]*(cat|type)|transform|investment[\s_-]*(type|class)|\brgt\b/i },
   { key:'capex', label:'CAPEX / OPEX', type:'text', re:/capex|opex/i },
   { key:'renewal', label:'Renewal / end date', type:'date', help:'Enables Renewals.', re:[/renew/i, /expir/i, /end[\s_-]*date|contract[\s_-]*end|term[\s_-]*end|\bend\b|due/i] },
   { key:'notice', label:'Notice period (days)', type:'number', help:'Deadline = renewal − notice.', re:/notice/i },
@@ -760,23 +774,25 @@ function guessCurrency(prof, rows, ci) {
   if (/£|\bGBP\b/i.test(t)) return 'GBP';
   if (/\$|\bUSD\b/i.test(t)) return 'USD';
   const m = t.match(/\b(CHF|SEK|NOK|DKK|INR|AUD|CAD|JPY)\b/i);
-  return m ? m[1].toUpperCase() : '';
+  if (m) return m[1].toUpperCase();
+  // otherwise a "Currency" column holding one ISO code for every row
+  const cc = prof.find((p) => /^(currency|curr|ccy)$/i.test(p.header.trim()));
+  const codes = cc ? [...new Set(rows.map((r) => (r[cc.ci] || '').trim().toUpperCase()).filter(Boolean))] : [];
+  return codes.length === 1 && /^[A-Z]{3}$/.test(codes[0]) ? codes[0] : '';
 }
 
 // ================================================================ state
 const S = {
   loaded:false, files:[], fileInfo:[], headers:[], rows:[], prof:[], map:{}, months:new Array(12).fill(null),
   opts:{ label:'', currency:'', asOf:dayToISO(todayDay()), fyStart:0, dateOrder:'auto', dec:'auto' },
-  company:{ rev:null, fte:null, otherIt:null, t:{ ...TARGET_DEFAULTS } },
   recs:[], dims:[], colorDim:null, colorMap:new Map(),
-  filters:{}, q:'', flag:null, page:'strategy',
-  ui:{ groupBy:null, splitBy:null, bdView:'both', bSort:{ key:'value', dir:-1 }, vSort:{ key:'value', dir:-1 }, oSort:{ key:'value', dir:-1 },
+  filters:{}, q:'', flag:null, page:'overview',
+  ui:{ ctSort:{ key:'annual', dir:-1 }, groupBy:null, splitBy:null, bdView:'both', bSort:{ key:'value', dir:-1 }, vSort:{ key:'value', dir:-1 }, oSort:{ key:'value', dir:-1 },
     cSort:{ key:'value', dir:-1 }, lSort:{ key:null, dir:-1 }, lPage:0, lSize:50, density:'compact', renTab:'timeline', renSeg:'all',
     rSort:{ key:'deadline', dir:1 }, yoyTab:'increases', ySort:{ key:'d', dir:-1 }, qSort:{ key:'sev', dir:1 }, drawerReturn:null },
 };
 const sig = () => S.headers.join('\u241f');
-{ const c = store.get('company'); if (c) S.company = { ...S.company, ...c, t:{ ...TARGET_DEFAULTS, ...(c.t || {}) } }; }
-function defaultPage() { return ready() && (S.map.spend_cat != null || S.map.capability != null) ? 'strategy' : 'overview'; }
+function defaultPage() { return 'overview'; }
 const ready = () => S.loaded && S.map.amount != null;
 const hasMonths = () => S.months.filter((c) => c != null).length >= 2;
 const asOfDay = () => isoToDay(S.opts.asOf);
@@ -863,7 +879,7 @@ function computeDims() {
   S.colorDim = [S.map.category, S.map.capability, S.map.spend_cat, S.map.pool, S.map.capex, ...S.dims].find(small) ?? null;
   S.colorMap = new Map();
   if (S.colorDim != null) groupBy(S.recs, S.colorDim).forEach((g, i) => S.colorMap.set(g.key, PALETTE[i % PALETTE.length]));
-  // a Run / Grow / Transform column always uses the same three colours as Executive benchmarks
+  // a Run / Grow / Transform column always uses the same three colours (--run, --grow, --transform)
   if (S.colorDim != null && S.colorDim === S.map.spend_cat) for (const k of S.colorMap.keys()) S.colorMap.set(k, { run:'--run', grow:'--grow', transform:'--transform', none:'--other' }[rgtClass(k)]);
   const saved = store.get('ui:' + sig()) || {};
   const g = [S.map.capability, S.map.pool, S.map.category, ...S.dims].find((ci) => ci != null && S.dims.includes(ci));
@@ -921,14 +937,16 @@ function vendorAgg(recs) {
 }
 
 // ================================================================ 5. shell: pages, nav, header, filters, drawer
+const CONTRACTS = readContracts();
 const PAGES = [
-  { id:'strategy', label:'Executive benchmarks', icon:'benchmark', group:'Analyse', render:pageStrategy, insight:insStrategy },
   { id:'overview', label:'Overview', icon:'overview', group:'Analyse', render:pageOverview, insight:insOverview },
   { id:'breakdown', label:'Spend breakdown', icon:'breakdown', group:'Analyse', render:pageBreakdown, insight:insBreakdown },
   { id:'vendors', label:'Vendors', icon:'vendors', group:'Analyse', render:pageVendors, insight:insVendors,
     needs:() => S.map.vendor != null, needsText:'a vendor / supplier column' },
   { id:'organisation', label:'Cost centres & owners', icon:'org', group:'Analyse', render:pageOrganisation, insight:insOrg,
     needs:() => S.map.costcentre != null || S.map.owner != null, needsText:'a cost centre or owner column' },
+  ...CONTRACTS.map((c) => ({ id:'c-' + c.id, label:c.nav || c.name, title:c.name, icon:'invoice', group:'Key contracts', contract:c, noFilters:true,
+    render:() => pageContract(c), insight:() => insContract(c) })),
   { id:'renewals', label:'Renewals', icon:'calendar', group:'Plan', render:pageRenewals, insight:insRenewals,
     needs:() => S.map.renewal != null, needsText:'a renewal or contract end date column' },
   { id:'cashflow', label:'Cash flow', icon:'cash', group:'Plan', render:pageCashflow, insight:insCashflow,
@@ -974,11 +992,12 @@ function renderTopbar() {
 }
 function pageHeader(page, recs, avail = true) {
   const actions = [];
-  if (ready() && page.id !== 'source') actions.push(btn('Export CSV', 'secondary', () => exportCsv(recs), 'download', { title:'Export the filtered rows', id:'export-csv' }));
+  if (ready() && page.contract) { if (page.contract.invoices.some((v) => v.lines.length)) actions.push(btn('Export CSV', 'secondary', () => exportContract(page.contract), 'download', { title:'Export the invoice lines, scaled to a year', id:'export-csv' })); }
+  else if (ready() && page.id !== 'source') actions.push(btn('Export CSV', 'secondary', () => exportCsv(recs), 'download', { title:'Export the filtered rows', id:'export-csv' }));
   return h('div', {},
-    h('nav', { class:'crumbs', 'aria-label':'Breadcrumb' }, h('a', { href:'#/' + defaultPage() }, 'IT budget'), '/', h('span', {}, page.group), '/', h('span', { 'aria-current':'page' }, page.label)),
+    h('nav', { class:'crumbs', 'aria-label':'Breadcrumb' }, h('a', { href:'#/' + defaultPage() }, 'IT budget'), '/', h('span', {}, page.group), '/', h('span', { 'aria-current':'page' }, page.title || page.label)),
     h('div', { class:'page-head' },
-      h('div', {}, h('h1', { class:'page-t' }, page.label), h('p', { class:'page-s', id:'page-insight' }, !ready() ? '' : !avail ? `Needs ${page.needsText}.` : page.insight ? page.insight(recs) : '')),
+      h('div', {}, h('h1', { class:'page-t' }, page.title || page.label), h('p', { class:'page-s', id:'page-insight' }, !ready() ? '' : !avail ? `Needs ${page.needsText}.` : page.insight ? page.insight(recs) : '')),
       actions.length ? h('div', { class:'page-a' }, actions) : null));
 }
 
@@ -1195,33 +1214,6 @@ function bridgeSteps(b) {
     { label:'Removed', v:-b.removed, note:`${b.removedCount} lines budgeted at 0` }, { label:label(), v:b.next, total:true },
   ];
 }
-function pareto(groups, total) {
-  const top = groups.slice(0, 30), W = 960, H = 290, ml = 64, mr = 52, mt = 30, mb = 26;
-  const { max, ticks } = niceTicks(Math.max(...top.map((g) => g.value)) * 1.1);
-  const bw = (W - ml - mr) / top.length, y = (v) => H - mb - v / max * (H - mt - mb), y2 = (p) => H - mb - p * (H - mt - mb);
-  const g = s('svg', { viewBox:`0 0 ${W} ${H}`, role:'img', 'aria-label':'Vendor Pareto chart' });
-  axisY(g, { ticks, y, x0:ml, x1:W - mr });
-  [0, .25, .5, .75, 1].forEach((p) => g.append(s('text', { x:W - mr + 6, y:y2(p) + 4 }, Math.round(p * 100) + '%')));
-  g.append(s('line', { class:'ref', x1:ml, x2:W - mr, y1:y2(0.8), y2:y2(0.8) }));
-  let acc = 0, k80 = null;
-  const pts = top.map((v, i) => {
-    acc += v.value; const cum = acc;
-    const inCore = k80 == null; if (k80 == null && acc / total >= 0.8) k80 = i;
-    const x0 = ml + i * bw + bw * 0.15, w = bw * 0.7;
-    const rect = s('rect', { x:x0, y:y(v.value), width:w, height:Math.max(0, y(0) - y(v.value)), style:`fill:${inCore ? 'var(--bar)' : 'var(--other)'}`, tabindex:0 });
-    withTip(rect, () => [`#${i + 1} ${v.key}`, fmtMoney(v.value), `${fmtPct(v.value / total, 1)} of spend · cumulative ${fmtPct(cum / total, 1)}`, 'Click for details']);
-    rect.addEventListener('click', () => vendorDrawer(v));
-    rect.addEventListener('keydown', (e) => { if (e.key === 'Enter') vendorDrawer(v); });
-    g.append(rect);
-    if (i < 10 || i % 5 === 4) g.append(s('text', { x:x0 + w / 2, y:H - 8, 'text-anchor':'middle' }, i + 1));
-    return [x0 + w / 2, y2(cum / total)];
-  });
-  g.append(s('path', { class:'line', d:pts.map((p, i) => (i ? 'L' : 'M') + p[0] + ' ' + p[1]).join(' ') }));
-  pts.forEach((p) => g.append(s('circle', { class:'line-pt', cx:p[0], cy:p[1], r:3 })));
-  if (k80 != null) g.append(s('text', { class:'today-label', x:Math.min(pts[k80][0] + 10, W - mr - 160), y:y2(0.8) + 16 }, `${k80 + 1} vendors = 80% of spend`));
-  g.append(s('text', { x:ml, y:14 }, 'Vendors ranked by spend (rank shown below) · line = cumulative share (right axis)'));
-  return { svg:g, k80:k80 == null ? null : k80 + 1 };
-}
 function ring(p) {
   const r = 46, c = 2 * Math.PI * r, col = p >= 0.95 ? 'var(--down)' : p >= 0.8 ? 'var(--urg-60)' : 'var(--up)';
   return s('svg', { class:'ring', viewBox:'0 0 120 120', width:140, height:140, role:'img', 'aria-label':`${fmtPct(p)} of spend passes all checks` },
@@ -1313,121 +1305,13 @@ function heatCell(v, max) {
 
 // Page subtitles state the main finding (Carbon: "titles should state the insight").
 
-// ---------- Executive benchmarks ----------
-function rgtOf(r) { return rgtClass(r.row[S.map.spend_cat]); }
+// Run / Grow / Transform: a spend-type column keeps the same three colours on every page
 function rgtClass(raw) {
   const v = String(raw || '').toLowerCase();
   if (/transform|innovat|change the business|\bctb\b/.test(v)) return 'transform';
   if (/grow|expan|scale/.test(v)) return 'grow';
   if (/\brun\b|operat|maint|sustain|keep the lights|\bktlo\b|\brtb\b/.test(v)) return 'run';
   return 'none';
-}
-function rgtSplit(recs) {
-  const m = { run:0, grow:0, transform:0, none:0 }, vals = { run:new Set(), grow:new Set(), transform:new Set(), none:new Set() };
-  for (const r of recs) { const k = rgtOf(r); m[k] += r.amount; vals[k].add(cell(r, S.map.spend_cat)); }
-  return { m, vals, classified:m.run + m.grow + m.transform, all:m.run + m.grow + m.transform + m.none };
-}
-function companyFigures(recs) {
-  const C = S.company, inFile = sum(recs, (r) => r.amount);
-  const filtered = Object.keys(S.filters).length > 0 || !!S.q || !!S.flag;
-  const other = filtered ? 0 : C.otherIt || 0;
-  const it = inFile + other;
-  return { inFile, other, it, filtered, pctRev:C.rev ? it / C.rev : null, perFte:C.fte ? it / C.fte : null };
-}
-function vsTarget(actual, target) {
-  if (actual == null || !target) return null;
-  const d = actual / target - 1;
-  if (Math.abs(d) <= 0.1) return tag('Near target', 'green', 'Within ±10% of your target');
-  return d > 0 ? tag(`${fmtPct(d)} above target`, d > 0.25 ? 'red' : 'yellow') : tag(`${fmtPct(-d)} below target`, 'blue');
-}
-const fmtPp = (x) => (x > 0 ? '+' : x < 0 ? '−' : '') + Math.abs(x * 100).toFixed(1) + ' pp';
-function numInput(id, value, onSet, extra = {}) {
-  return h('input', { class:'input', id, type:'number', min:0, step:'any', value:value ?? '', ...extra,
-    onchange:(e) => { const v = e.target.value === '' ? null : +e.target.value; onSet(Number.isFinite(v) && v >= 0 ? v : null); store.set('company', S.company); setTimeout(render, 0); } });
-}
-function insStrategy(recs) {
-  const f = companyFigures(recs), T = S.company.t, parts = [];
-  if (f.pctRev != null) parts.push(`IT spend is ${fmtPct(f.pctRev, 1)} of revenue (target ${T.pctRev}%)`);
-  if (f.perFte != null) parts.push(`${fmtMoney(f.perFte)} per FTE (target ${fmtMoney(T.perFte)})`);
-  if (S.map.spend_cat != null) { const x = rgtSplit(recs); if (x.classified) parts.push(`${fmtPct(x.m.transform / x.classified, 1)} of classified spend goes to Transform (target ${T.transform}%)`); }
-  if (f.pctRev == null || f.perFte == null) parts.push(`enter company ${f.pctRev == null && f.perFte == null ? 'revenue and headcount' : f.pctRev == null ? 'revenue' : 'headcount'} to compare IT spend with your targets`);
-  const s = parts.join(' · ');
-  return s.charAt(0).toUpperCase() + s.slice(1) + '.';
-}
-function pageStrategy(recs) {
-  const C = S.company, T = C.t, f = companyFigures(recs), cur = S.opts.currency ? ` (${S.opts.currency})` : '';
-  const field = (lbl, input, help) => h('label', { class:'fb-field' }, h('span', { class:'fb-l' }, lbl), input, help ? h('span', { class:'helper' }, help) : null);
-  const out = [];
-  if (f.filtered) out.push(h('div', { class:'notice' }, icon('info'), h('span', {}, 'Filters are active: these figures use the filtered spend only, and other IT spend is left out.')));
-  else if (!C.otherIt) out.push(h('div', { class:'notice' }, icon('info'), h('span', {}, `This file holds ${fmtMoney(f.inFile)} of budget lines. Benchmarks usually cover total IT spend, including internal IT staff, so add other IT spend below for a like-for-like comparison.`)));
-
-  out.push(card({ title:'Company figures', sub:'Used for unit economics. Stored only in this browser, never in the file.', style:'margin-bottom:16px',
-    body:[h('div', { class:'co-strip' },
-      field(`Annual revenue${cur}`, numInput('co-rev', C.rev, (v) => { C.rev = v; }, { placeholder:'e.g. 150000000' }), C.rev ? `= ${fmtMoney(C.rev)}` : null),
-      field('Company headcount (FTE)', numInput('co-fte', C.fte, (v) => { C.fte = v; }, { placeholder:'e.g. 800' }), C.fte ? `= ${fmtInt(C.fte)} FTE` : null),
-      field(`Other IT spend not in this file${cur}`, numInput('co-other', C.otherIt, (v) => { C.otherIt = v; }, { placeholder:'e.g. 2500000' }), (C.otherIt ? `= ${fmtMoney(C.otherIt)} · ` : '') + 'For example internal IT staff, so the comparison covers total IT spend.')),
-    h('details', { class:'targets', open:!!S.ui.targetsOpen, ontoggle:(e) => { S.ui.targetsOpen = e.target.open; } },
-      h('summary', { id:'co-targets' }, 'Benchmark targets (your assumptions)'),
-      h('p', { class:'helper', style:'white-space:normal' }, 'The defaults are illustrative placeholders, not published benchmarks. Replace them with figures for your industry and company size from your own benchmark source, such as Gartner IT Key Metrics or Avasant (Computer Economics).'),
-      h('div', { class:'target-grid' },
-        field('IT spend, % of revenue', numInput('co-t-pct', T.pctRev, (v) => { T.pctRev = v ?? TARGET_DEFAULTS.pctRev; })),
-        field(`IT spend per FTE${cur}`, numInput('co-t-fte', T.perFte, (v) => { T.perFte = v ?? TARGET_DEFAULTS.perFte; })),
-        field('Run, %', numInput('co-t-run', T.run, (v) => { T.run = v ?? TARGET_DEFAULTS.run; })),
-        field('Grow, %', numInput('co-t-grow', T.grow, (v) => { T.grow = v ?? TARGET_DEFAULTS.grow; })),
-        field('Transform, %', numInput('co-t-transform', T.transform, (v) => { T.transform = v ?? TARGET_DEFAULTS.transform; }))),
-      h('div', { style:'margin-top:10px' }, btn('Reset targets to defaults', 'ghost sm', () => { C.t = { ...TARGET_DEFAULTS }; store.set('company', S.company); render(); }, null, { id:'co-t-reset' })))] }));
-
-  const x = S.map.spend_cat != null ? rgtSplit(recs) : null;
-  const tiles = [
-    kpi({ id:'bench-total', label:'IT spend in scope', value:fmtC(f.it), raw:f.it, meta:h('span', {}, f.other ? `${fmtC(f.inFile)} in file + ${fmtC(f.other)} other` : `${fmtInt(recs.length)} lines in file`) }),
-    kpi({ id:'bench-rev', label:'IT spend as % of revenue', value:f.pctRev != null ? fmtPct(f.pctRev, 1) : '—', raw:f.pctRev,
-      meta:f.pctRev != null ? [vsTarget(f.pctRev * 100, T.pctRev), h('span', {}, `Target ${T.pctRev}%`)] : h('span', {}, 'Enter annual revenue above') }),
-    kpi({ id:'bench-fte', label:'IT spend per FTE', value:f.perFte != null ? fmtMoney(f.perFte) : '—', raw:f.perFte,
-      meta:f.perFte != null ? [vsTarget(f.perFte, T.perFte), h('span', {}, `Target ${fmtMoney(T.perFte)}`)] : h('span', {}, 'Enter headcount above') }),
-  ];
-  if (x && x.classified) tiles.push(kpi({ id:'bench-transform', label:'Transform share', value:fmtPct(x.m.transform / x.classified, 1), raw:x.m.transform / x.classified,
-    meta:[tag(`${fmtPp(x.m.transform / x.classified - T.transform / 100)} vs target`, 'gray'), h('span', {}, `Target ${T.transform}%`)], hint:'Share of classified spend; unclassified lines are left out' }));
-  out.push(h('div', { class:'kpis' }, tiles));
-
-  const cards = [];
-  if (x) {
-    const base = x.classified || 1, tSum = (T.run + T.grow + T.transform) || 1;
-    const seg = (g, v, total, withLabel) => (v > 0 ? h('div', { class:'rgt-seg' + (g.key === 'none' ? ' none' : ''), style:`width:${v / total * 100}%;background:${g.color}`, title:`${g.label}: ${fmtPct(v / total, 1)}` }, withLabel && v / total >= 0.2 ? `${g.label} ${fmtPct(v / total)}` : withLabel && v / total >= 0.06 ? fmtPct(v / total) : '') : null);
-    const rows = RGT.filter((g) => g.key !== 'none' || x.m.none).map((g) => ({ ...g, v:x.m[g.key], share:g.key === 'none' ? null : x.m[g.key] / base, target:g.key === 'none' ? null : T[g.key] / 100, values:[...x.vals[g.key]] }));
-    const cols = [
-      { key:'label', label:'Spend type', render:(g) => h('span', { class:'sw-label' }, h('span', { class:'swatch', style:`background:${g.color}` }), h('b', {}, g.label), h('span', { class:'muted' }, g.note)) },
-      { key:'v', label:label(), num:true, render:(g) => fmtMoney(g.v) },
-      { key:'share', label:'Actual', num:true, render:(g) => (g.share == null ? h('span', { class:'muted' }, 'not compared') : fmtPct(g.share, 1)) },
-      { key:'target', label:'Target', num:true, render:(g) => (g.target == null ? '—' : fmtPct(g.target)) },
-      { key:'diff', label:'Difference', num:true, render:(g) => (g.share == null ? '—' : fmtPp(g.share - g.target)) },
-    ];
-    cards.push(card({ title:x.classified ? `Run takes ${fmtPct(x.m.run / base)} of classified spend (target ${T.run}%)` : 'Run vs Grow vs Transform',
-      sub:`From the “${hdr(S.map.spend_cat)}” column · targets are your assumptions · click a row to filter`, flush:true,
-      body:[h('div', { class:'rgt' },
-        h('span', {}, 'Actual'), h('div', { class:'rgt-bar', role:'img', 'aria-label':rows.map((g) => `${g.label} ${fmtPct(x.all ? g.v / x.all : 0)}`).join(', ') }, RGT.map((g) => seg(g, x.m[g.key], x.all || 1, true))),
-        h('span', {}, 'Target'), h('div', { class:'rgt-bar target', role:'img', 'aria-label':`Target: Run ${T.run}%, Grow ${T.grow}%, Transform ${T.transform}%` }, RGT.slice(0, 3).map((g) => seg(g, T[g.key], tSum, false)))),
-      dataTable({ cols, rows, id:'rgt-table', onRow:(g) => { if (g.values.length === 1) setFilter(S.map.spend_cat, g.values[0]); else toast(`${g.label} combines ${g.values.length} values; use the filter bar to pick one.`); } })] }));
-  } else {
-    cards.push(emptyState('compare', 'Run / Grow / Transform needs a spend-type column', 'Map a column holding values such as Run, Grow and Transform on Data source & columns.', h('a', { class:'btn primary', href:'#/source' }, icon('source'), 'Map columns')));
-  }
-  if (S.map.capability != null) {
-    const caps = groupBy(recs, S.map.capability), total = sum(recs, (r) => r.amount);
-    const cols = [
-      { key:'key', label:hdr(S.map.capability), cls:'strong' },
-      { key:'value', label:label(), num:true, render:(g) => fmtMoney(g.value) },
-      { key:'share', label:'Share', num:true, sortVal:(g) => g.value, render:(g) => fmtPct(total ? g.value / total : 0, 1) },
-      x ? { key:'mix', label:'Spend type mix', sortable:false, cls:'mix', render:(g) => { const y = rgtSplit(g.recs); return y.all ? h('span', { class:'stack mini', style:'width:72px' }, RGT.map((r) => (y.m[r.key] > 0 ? h('span', { style:`width:${y.m[r.key] / y.all * 100}%;background:${r.color}`, title:`${r.label}: ${fmtMoney(y.m[r.key])}` }) : null))) : ''; } } : null,
-      S.map.prior != null ? { key:'chg', label:'vs prior', num:true, sortVal:(g) => (g.prior ? (g.value - g.prior) / g.prior : null), render:(g) => (g.prior ? h('span', { style:`color:${g.value > g.prior ? 'var(--up)' : 'var(--down)'}` }, fmtSignedPct((g.value - g.prior) / g.prior)) : '—') } : null,
-    ].filter(Boolean);
-    S.ui.capSort = S.ui.capSort || { key:'value', dir:-1 };
-    cards.push(card({ title:caps.length && total ? `${caps[0].key} takes ${fmtPct(caps[0].value / total)} of spend` : 'Spend by business capability', sub:'Click a row to filter', flush:true,
-      body:dataTable({ cols, rows:sortRows(caps, cols, S.ui.capSort), sort:S.ui.capSort, onSort:sorter('capSort'), onRow:(g) => setFilter(S.map.capability, g.key), id:'cap-table',
-        foot:cols.map((c, i) => (i === 0 ? 'Total' : c.key === 'value' ? fmtMoney(total) : c.key === 'share' ? '100%' : '')) }) }));
-  } else {
-    cards.push(emptyState('compare', 'Capability view needs a business-capability column', 'Map a column such as “Business capability” or “Domain” on Data source & columns.', h('a', { class:'btn primary', href:'#/source' }, icon('source'), 'Map columns')));
-  }
-  out.push(h('div', { class:'grid g2' }, cards), footer());
-  return out;
 }
 
 // ---------- Overview ----------
@@ -1563,18 +1447,12 @@ function pageBreakdown(recs) {
 function insVendors(recs) {
   const g = vendorAgg(recs).filter((v) => v.value > 0), t = sum(g, (v) => v.value);
   if (!t) return 'No matching spend.';
-  let acc = 0, k = 0; for (const v of g) { acc += v.value; k++; if (acc / t >= 0.8) break; }
-  return `${g.length} vendors. The top 5 account for ${fmtPct(sum(g.slice(0, 5), (v) => v.value) / t)} of spend; ${k} vendors make up 80%.`;
+  const top = (n) => fmtPct(sum(g.slice(0, n), (v) => v.value) / t);
+  return `${g.length} vendors. The top 5 account for ${top(5)} of spend and the top 10 for ${top(10)}.`;
 }
 function pageVendors(recs) {
   const all = vendorAgg(recs), total = sum(all, (v) => v.value);
-  const pos = all.filter((v) => v.value > 0);
   const out = [];
-  if (pos.length) {
-    const p = pareto(pos, total);
-    out.push(h('div', { class:'grid' }, card({ title:p.k80 ? `${p.k80} of ${pos.length} vendors make up 80% of spend` : 'Vendor concentration',
-      sub:'Pareto view: bars = vendor spend ranked (blue = the vendors that make up 80%), line = cumulative share · click a bar for details', body:h('div', { class:'chart' }, p.svg) })));
-  }
   const cols = [
     { key:'rank', label:'#', num:true, sortVal:(v) => -v.value, render:(v) => all.indexOf(v) + 1 },
     { key:'key', label:'Vendor', cls:'strong wrap' },
@@ -1590,6 +1468,193 @@ function pageVendors(recs) {
   out.push(card({ title:'All vendors', sub:'Click a vendor to open its lines, renewals and owners', flush:true,
     body:dataTable({ cols, rows:sortRows(all, cols, S.ui.vSort), sort:S.ui.vSort, onSort:sorter('vSort'), onRow:(v) => vendorDrawer(v), maxHeight:'620px', id:'vendor-table',
       foot:cols.map((c, i) => (i === 1 ? `Total (${all.length})` : c.key === 'value' ? fmtMoney(total) : c.key === 'count' ? fmtInt(recs.length) : '')) }) }));
+  return out;
+}
+
+// ---------- Key contracts (one page per contract, from its invoice lines) ----------
+// Data: <script type="application/json" id="contracts-json"> { "contracts": [ { id, name, nav?, match, related?, currency?,
+//   fx?:{ to, rate, note }, notes?:[…], invoices:[ { ref, from?, to?, vat?, vatLabel?, total?, lines:[ { product, qty?, unit?, kind?,
+//   from?, to?, months?, amount } ] } ] } ] }. A line's service period (its own, or the invoice's) sets how often it is billed;
+//   the annual cost is amount × 12 / months: 1 month ×12, a quarter ×4, a year ×1. "match" is a regular expression tested
+//   against the vendor column to find the budget lines; "related" lists other rows that mention the contract, not counted.
+function readContracts() {
+  const el = $('contracts-json');
+  let j = null;
+  try { j = el && el.textContent.trim() ? JSON.parse(el.textContent) : null; } catch (e) { console.warn('contracts-json is not valid JSON: ' + e.message); }
+  const list = Array.isArray(j) ? j : (j && j.contracts) || [];
+  return list.filter((c) => c && c.id && c.name).map((c) => ({ ...c, id:String(c.id).toLowerCase().replace(/[^a-z0-9-]+/g, '-'),
+    invoices:(c.invoices || []).map((inv, k) => { const v = { ...inv, ref:inv.ref || `Invoice ${k + 1}` }; v.lines = (inv.lines || []).map((l) => annualise(l, v)); return v; }) }));
+}
+// months covered by a service period, both dates included; within 10% of a whole number of months counts as that number
+function periodMonths(from, to) {
+  const a = from ? isoToDay(from) : NaN, b = to ? isoToDay(to) : NaN;
+  if (!isFinite(a) || !isFinite(b) || b < a) return null;
+  const m = (b - a + 1) / (365.25 / 12), r = Math.round(m);
+  return r >= 1 && Math.abs(m - r) <= 0.1 * r ? r : m;
+}
+function annualise(l, inv) {
+  const from = l.from || inv.from, to = l.to || inv.to;
+  const months = +l.months > 0 ? +l.months : periodMonths(from, to);
+  const amount = +l.amount || 0, qty = +l.qty > 0 ? +l.qty : null;
+  const factor = months ? 12 / months : null, annual = factor == null ? null : amount * factor;
+  return { ...l, inv, product:l.product || 'Unnamed line', kind:l.kind || 'Other', from, to, months, amount, qty, factor, annual,
+    perUnitMonth:qty && months ? amount / qty / months : null, perUnitYear:qty && annual != null ? annual / qty : null };
+}
+const fmtFactor = (f) => (f == null ? '—' : '×' + (Math.abs(f - Math.round(f)) < 0.005 ? Math.round(f) : f.toFixed(2)));
+const curFmt = new Map();
+function fmtIn(x, code, dp = 0, compact = false) {
+  if (x == null || !isFinite(x)) return '—';
+  const k = [code, dp, compact].join('|');
+  if (!curFmt.has(k)) {
+    const o = compact ? { notation:'compact', maximumFractionDigits:1 } : { minimumFractionDigits:dp, maximumFractionDigits:dp };
+    try { curFmt.set(k, new Intl.NumberFormat(LOCALE, code ? { style:'currency', currency:code, ...o } : o)); } catch (e) { curFmt.set(k, new Intl.NumberFormat(LOCALE, o)); }
+  }
+  return curFmt.get(k).format(x);
+}
+function contractData(c) {
+  const lines = c.invoices.flatMap((inv) => inv.lines);
+  const re = (src) => { try { return src ? new RegExp(src, 'i') : null; } catch (e) { return null; } };
+  const mRe = re(c.match), rRe = re(c.related), recs = ready() ? S.recs : [];
+  const matched = mRe ? recs.filter((r) => mRe.test(S.map.vendor != null ? r.vendor : r.row.join(' '))) : [];
+  const related = rRe ? recs.filter((r) => !matched.includes(r) && rRe.test(r.row.join(' '))) : [];
+  const bc = S.opts.currency, ic = c.currency || bc, needFx = !!(bc && ic && bc !== ic);
+  const mine = needFx ? store.get(`fx:${ic}:${bc}`) : null;
+  const fileRate = needFx && c.fx && c.fx.to === bc && c.fx.rate > 0 ? +c.fx.rate : null;
+  const rate = !needFx ? 1 : mine > 0 ? mine : fileRate;
+  const annual = sum(lines, (l) => l.annual), budget = sum(matched, (r) => r.amount);
+  const annualB = lines.length && rate != null ? annual * rate : null;
+  const ms = [...new Set(lines.map((l) => l.months))];
+  const cadence = c.invoices.length === 1 && ms.length === 1 && ms[0] ? ({ 1:'monthly', 3:'quarterly', 6:'half-yearly', 12:'annual' }[ms[0]] || `${+ms[0].toFixed(1)}-month`) : null;
+  const kinds = [...lines.reduce((m, l) => m.set(l.kind, (m.get(l.kind) || 0) + (l.annual || 0)), new Map())].sort((a, b) => b[1] - a[1]);
+  const kindColor = new Map(kinds.map(([k], i) => [k, cv(PALETTE[i % PALETTE.length])]));
+  return { lines, matched, related, budget, bc, ic, needFx, rate, rateFrom:!needFx ? null : mine > 0 ? 'mine' : fileRate ? 'file' : null, fileRate,
+    invoiced:sum(lines, (l) => l.amount), annual, annualB, gap:annualB != null && matched.length ? budget - annualB : null,
+    cadence, factor:cadence ? 12 / ms[0] : null, kinds, kindColor, unscaled:lines.filter((l) => l.annual == null) };
+}
+// "rows for vendor “X”" when lines matched, otherwise the pattern itself
+function matchText(c, d) {
+  const names = [...new Set(d.matched.map((r) => r.vendor || r.item))];
+  return names.length ? `rows for ${S.map.vendor != null ? 'vendor ' : ''}${names.map((n) => `“${n}”`).join(', ')}` : `rows whose vendor matches “${c.match || '—'}”`;
+}
+function insContract(c) {
+  const d = contractData(c);
+  const bud = d.matched.length ? `the ${fmtMoney(d.budget)} budget` : 'the budget (no matching budget line found)';
+  if (!d.lines.length) return `No invoice added yet. ${d.matched.length ? `Budget: ${fmtMoney(d.budget)} in ${d.matched.length} line${d.matched.length === 1 ? '' : 's'}.` : 'No matching budget line found.'}`;
+  const head = d.cadence ? `The ${d.cadence} invoice of ${fmtIn(d.invoiced, d.ic)} comes to` : `${d.lines.length} invoice lines come to`;
+  return `${head} ${fmtIn(d.annual, d.ic)} a year at current quantities` + (d.gap == null ? `; compare with ${bud}.`
+    : `, ${fmtMoney(Math.abs(d.gap))} ${d.gap >= 0 ? 'below' : 'above'} ${bud}` + (d.needFx ? ` (at 1 ${d.ic} = ${d.rate} ${d.bc}).` : '.'));
+}
+function invoiceDrawer(c, d, lines) {
+  const l0 = lines[0], annual = sum(lines, (l) => l.annual), invoiced = sum(lines, (l) => l.amount);
+  openDrawer({
+    title:l0.product,
+    sub:[l0.kind, lines.length === 1 ? l0.inv.ref : `${lines.length} invoice lines`, `${fmtPct(d.annual ? annual / d.annual : 0, 1)} of the annual cost`].join(' · '),
+    body:[
+      h('div', { class:'stats' }, stat('Invoiced', fmtIn(invoiced, d.ic, 2)), stat('Per year', fmtIn(annual, d.ic)),
+        d.needFx && d.rate != null ? stat(`Per year in ${d.bc}`, fmtMoney(annual * d.rate)) : null),
+      lines.map((l) => dsec(lines.length === 1 ? 'Invoice line' : l.inv.ref, kv([
+        ['Invoice', l.inv.ref], ['Quantity', l.qty != null ? `${fmtInt(l.qty)}${l.unit ? ' ' + l.unit : ''}` : null],
+        ['Service period', l.from && l.to ? `${fmtDay(isoToDay(l.from))} – ${fmtDay(isoToDay(l.to))}` : null],
+        ['Months billed', l.months != null ? +l.months.toFixed(2) : null], ['Invoiced', fmtIn(l.amount, d.ic, 2)],
+        ['Scaled to a year', l.factor != null ? `${fmtFactor(l.factor)} = ${fmtIn(l.annual, d.ic, 2)}` : 'No service period, not scaled'],
+        ['Per unit per month', l.perUnitMonth != null ? fmtIn(l.perUnitMonth, d.ic, 2) : null], ['Per unit per year', l.perUnitYear != null ? fmtIn(l.perUnitYear, d.ic, 2) : null],
+        l.note ? ['Note', l.note] : null]))),
+    ],
+    footer:[btn('Close', 'primary', closeDrawer)],
+  });
+}
+function pageContract(c) {
+  const d = contractData(c), out = [], has = d.lines.length > 0;
+  const budLbl = d.matched.length ? [...new Set(d.matched.map((r) => r.vendor || r.item))].join(', ') : '';
+  out.push(h('div', { class:'kpis' },
+    kpi({ id:'ct-annual', label:'Annual cost at current run-rate', value:has ? fmtIn(d.annual, d.ic, 0, true) : '—', raw:has ? d.annual : null,
+      meta:h('span', {}, !has ? 'No invoice added yet' : d.cadence ? `${fmtFactor(d.factor)} the ${d.cadence} invoice of ${fmtIn(d.invoiced, d.ic, 2)}` : `${d.lines.length} lines, each scaled to 12 months`),
+      hint:'Each invoice line × 12 ÷ months in its service period. Assumes today’s quantities and prices for a full year. Excludes VAT.' }),
+    kpi({ id:'ct-budget', label:`Budget${S.opts.label ? ' (' + S.opts.label + ')' : ''}`, value:d.matched.length ? fmtC(d.budget) : '—', raw:d.matched.length ? d.budget : null,
+      meta:h('span', { title:budLbl }, d.matched.length ? `${d.matched.length} line${d.matched.length === 1 ? '' : 's'}: ${budLbl}` : 'No matching budget line') }),
+    d.needFx ? kpi({ id:'ct-fx', label:`Run-rate in ${d.bc}`, value:d.annualB != null ? fmtC(d.annualB) : '—', raw:d.annualB,
+      meta:h('span', {}, d.rate == null ? 'Enter an exchange rate below' : `At 1 ${d.ic} = ${d.rate} ${d.bc}${d.rateFrom === 'mine' ? ' (your rate)' : ' (assumed)'}`) }) : null,
+    kpi({ id:'ct-gap', label:d.gap != null && d.gap < 0 ? 'Run-rate over budget' : 'Budget headroom', value:d.gap == null ? '—' : fmtC(Math.abs(d.gap)), raw:d.gap, alert:d.gap != null && d.gap < 0,
+      meta:d.gap == null ? h('span', {}, !has ? 'Needs invoice lines' : !d.matched.length ? 'Needs a budget line' : 'Needs an exchange rate')
+        : [tag(d.gap >= 0 ? 'Budget covers the run-rate' : 'Run-rate exceeds budget', d.gap >= 0 ? 'green' : 'red'), h('span', {}, `${fmtPct(d.budget ? Math.abs(d.gap) / d.budget : 0, 1)} of budget`)] })));
+  if (d.unscaled.length) out.push(h('div', { class:'notice warn' }, icon('warn'), h('span', {}, `${d.unscaled.length} invoice line${d.unscaled.length === 1 ? ' has' : 's have'} no service period, so ${d.unscaled.length === 1 ? 'it is' : 'they are'} not scaled to a year: ${d.unscaled.map((l) => l.product).join(', ')}.`)));
+
+  const cards = [];
+  if (has) {
+    const groups = [...d.lines.reduce((m, l) => { const g = m.get(l.product) || { key:l.product, kind:l.kind, value:0, lines:[] }; g.value += l.annual || 0; g.lines.push(l); return m.set(l.product, g); }, new Map()).values()].sort((a, b) => b.value - a.value);
+    const max = Math.max(...groups.map((g) => g.value), 1), [k0, v0] = d.kinds[0];
+    cards.push(card({ title:d.kinds.length > 1 ? `${k0}: ${fmtPct(d.annual ? v0 / d.annual : 0)} of the annual cost` : `${groups[0].key}: ${fmtPct(d.annual ? groups[0].value / d.annual : 0)} of the annual cost`,
+      sub:`Per year in ${d.ic || 'invoice currency'}, by product · click a bar for details`,
+      body:[
+        h('div', { class:'stack tall', role:'img', 'aria-label':d.kinds.map(([k, v]) => `${k} ${fmtPct(v / (d.annual || 1))}`).join(', ') }, d.kinds.map(([k, v]) => h('span', { style:`width:${Math.max(0, v / (d.annual || 1) * 100)}%;background:${d.kindColor.get(k)}`, title:`${k}: ${fmtIn(v, d.ic)} a year` }))),
+        h('div', { class:'legend', style:'margin-top:8px' }, d.kinds.map(([k, v]) => h('span', {}, h('span', { class:'swatch', style:`background:${d.kindColor.get(k)}` }), `${k} `, h('b', {}, fmtIn(v, d.ic, 0, true)), ` ${fmtPct(v / (d.annual || 1))}`))),
+        h('div', { class:'hbars ct-bars', id:'ct-bars' }, groups.map((g) => h('button', { type:'button', class:'hb', title:`${g.key}: open details`, onclick:() => invoiceDrawer(c, d, g.lines) },
+          h('span', { class:'hb-name', title:g.key }, g.key), h('span', { class:'hb-track' }, h('span', { class:'hb-fill', style:`width:${Math.max(0, g.value / max * 100)}%;background:${d.kindColor.get(g.kind)}` })),
+          h('span', { class:'hb-val' }, fmtIn(g.value, d.ic)), h('span', { class:'hb-pct' }, fmtPct(d.annual ? g.value / d.annual : 0))))),
+      ] }));
+  } else {
+    cards.push(emptyState('invoice', `No invoice added for ${c.name} yet`, 'Add the invoice lines (product, quantity, service period and amount) to the contracts block in this file. This page then scales them to a full year and compares them with the budget.'));
+  }
+
+  // budget vs run-rate, exchange rate, and the budget lines behind the comparison
+  const bcols = [
+    { key:'n', label:'Budget line', render:(r) => h('div', {}, h('div', { class:'strong' }, r.vendor || r.item || `Row ${r.i + 1}`), r.item && r.item !== r.vendor ? h('div', { class:'muted' }, r.item) : null) },
+    S.map.capability != null ? { key:'cap', label:hdr(S.map.capability), render:(r) => cell(r, S.map.capability) } : null,
+    { key:'a', label:label(), num:true, render:(r) => fmtMoney(r.amount) },
+  ].filter(Boolean);
+  const cmpMax = Math.max(d.budget, d.annualB || 0, 1);
+  const bar = (lbl, v, color, id) => [h('span', { class:'hb-name' }, lbl), h('span', { class:'hb-track' }, h('span', { class:'hb-fill', style:`width:${v == null ? 0 : Math.max(0, v / cmpMax * 100)}%;background:${color}` })), h('span', { class:'hb-val', id }, v == null ? '—' : fmtMoney(v))];
+  const fxIn = d.needFx ? h('div', { class:'ct-fx' },
+    h('label', { class:'fb-field' }, h('span', { class:'fb-l' }, `Exchange rate: 1 ${d.ic} = … ${d.bc}`),
+      h('input', { class:'input', id:'ct-fx-rate', type:'number', min:0, step:'0.0001', value:d.rate ?? '', placeholder:'e.g. 1.10',
+        onchange:(e) => { const v = +e.target.value; store.set(`fx:${d.ic}:${d.bc}`, e.target.value !== '' && v > 0 ? v : null); setTimeout(render, 0); } })),
+    h('p', { class:'helper', style:'margin:0;flex:1;min-width:200px' }, d.rateFrom === 'mine' ? 'Your rate, saved in this browser only.' : d.rateFrom === 'file' ? `Assumed rate from this file${c.fx && c.fx.note ? ': ' + c.fx.note : '.'} Type your budget rate to replace it.` : 'Type the rate your budget uses.'),
+    d.rateFrom === 'mine' && d.fileRate ? btn(`Use ${d.fileRate}`, 'ghost sm', () => { store.set(`fx:${d.ic}:${d.bc}`, null); render(); }, null, { id:'ct-fx-reset' }) : null) : null;
+  cards.push(card({ title:d.gap == null ? 'Budget vs run-rate' : d.gap >= 0 ? `The budget covers the run-rate with ${fmtC(d.gap)} to spare` : `The run-rate is ${fmtC(-d.gap)} over budget`,
+    sub:`In ${d.bc || 'budget currency'} · budget = ${matchText(c, d)} · click a line for details`, flush:true,
+    body:[
+      h('div', { style:'padding:0 16px 4px' },
+        h('div', { class:'ct-cmp', role:'img', 'aria-label':`Budget ${fmtMoney(d.budget)}, run-rate ${fmtMoney(d.annualB)}` },
+          bar('Budget', d.matched.length ? d.budget : null, 'var(--bar)', 'ct-cmp-budget'), bar('Run-rate', d.annualB, 'var(--c3)', 'ct-cmp-run')),
+        d.gap != null ? h('p', { class:'ct-gap' }, d.gap >= 0 ? `${fmtPct(d.gap / (d.budget || 1), 1)} of the budget is not on ${has && c.invoices.length === 1 ? 'this invoice' : 'these invoices'}: for example partner services, growth in quantities or price rises.` : 'At today’s quantities the contract costs more than budgeted.') : null,
+        fxIn),
+      h('div', { class:'sub-h' }, 'Budget lines'),
+      dataTable({ cols:bcols, rows:d.matched, onRow:(r) => lineDrawer(r), empty:`No row’s vendor matches “${c.match || ''}”.`, id:'ct-budget-table', foot:d.matched.length > 1 ? bcols.map((x, i) => (i === 0 ? 'Total' : x.key === 'a' ? fmtMoney(d.budget) : '')) : null }),
+      d.related.length ? [h('div', { class:'sub-h' }, 'Related lines (not counted)'), dataTable({ cols:bcols, rows:d.related, onRow:(r) => lineDrawer(r), id:'ct-related-table' })] : null,
+    ] }));
+  out.push(h('div', { class:'grid g2' }, cards));
+
+  if (has) {
+    const multi = c.invoices.length > 1;
+    const cols = [
+      { key:'product', label:'Product', cls:'wrap', render:(l) => h('div', {}, h('div', { class:'sw-label strong' }, h('span', { class:'swatch', style:`background:${d.kindColor.get(l.kind)}` }), l.product), h('div', { class:'muted' }, l.kind)) },
+      multi ? { key:'ref', label:'Invoice', sortVal:(l) => l.inv.ref, render:(l) => l.inv.ref } : null,
+      { key:'qty', label:'Quantity', num:true, render:(l) => (l.qty == null ? '—' : `${fmtInt(l.qty)}${l.unit ? ' ' + l.unit : ''}`) },
+      { key:'from', label:'Service period', sortVal:(l) => l.from || '', render:(l) => (l.from && l.to ? `${fmtDay(isoToDay(l.from))} – ${fmtDay(isoToDay(l.to))}` : '—') },
+      { key:'amount', label:`Invoiced (${d.ic})`, num:true, render:(l) => fmtIn(l.amount, '', 2) },
+      { key:'factor', label:'To a year', num:true, render:(l) => fmtFactor(l.factor) },
+      { key:'annual', label:`Per year (${d.ic})`, num:true, cls:'strong', render:(l) => fmtIn(l.annual, '', 2) },
+      { key:'perUnitMonth', label:'Per unit / month', num:true, render:(l) => fmtIn(l.perUnitMonth, '', 2) },
+      { key:'share', label:'Share', num:true, sortVal:(l) => l.annual, render:(l) => fmtPct(d.annual && l.annual != null ? l.annual / d.annual : null, 1) },
+    ].filter(Boolean);
+    const checks = c.invoices.map((inv) => {
+      const lines = sum(inv.lines, (l) => l.amount), net = inv.total != null ? +inv.total - (+inv.vat || 0) : null;
+      const vat = inv.vat != null ? ` · VAT ${fmtIn(+inv.vat, d.ic, 2)}${inv.vatLabel ? ' (' + inv.vatLabel + ')' : ''}, not included` : ' · excludes VAT';
+      return h('span', {}, `${inv.ref}: `, net == null ? `${fmtIn(lines, d.ic, 2)} in lines` : Math.abs(lines - net) < 0.005 ? tag(`Lines add up to ${fmtIn(net, d.ic, 2)}`, 'green') : tag(`Lines ${fmtIn(lines, d.ic, 2)} ≠ invoice ${fmtIn(net, d.ic, 2)}`, 'red'), vat);
+    });
+    out.push(card({ title:`Invoice lines scaled to a year: ${fmtIn(d.annual, d.ic, 2)}`, sub:'Amount × 12 ÷ months in the service period · click a row for details', flush:true, id:'ct-lines-card',
+      body:[h('div', { class:'table-bar', style:'justify-content:flex-start' }, checks),
+        dataTable({ cols, rows:sortRows(d.lines, cols, S.ui.ctSort), sort:S.ui.ctSort, onSort:sorter('ctSort'), onRow:(l) => invoiceDrawer(c, d, [l]), id:'ct-lines',
+          foot:cols.map((x, i) => (i === 0 ? `Total (${d.lines.length} lines)` : x.key === 'amount' ? fmtIn(d.invoiced, '', 2) : x.key === 'annual' ? fmtIn(d.annual, '', 2) : x.key === 'share' ? '100%' : '')) })] }));
+  }
+  const notes = [
+    'Each invoice line is scaled to 12 months from its service period: a month ×12, a quarter ×4, a year ×1. This assumes today’s quantities and prices stay the same for the whole year. Amounts exclude VAT.',
+    d.needFx ? (d.rate != null ? `The run-rate is converted to ${d.bc} at 1 ${d.ic} = ${d.rate} ${d.bc} (${d.rateFrom === 'mine' ? 'your rate' : 'assumed; replace it with your budget rate'}).` : `Enter an exchange rate to compare the ${d.ic} invoice with the ${d.bc} budget.`) : null,
+    `The budget is the ${matchText(c, d)}${d.related.length ? `; ${d.related.length} other row${d.related.length === 1 ? '' : 's'} mentioning the contract ${d.related.length === 1 ? 'is' : 'are'} listed as related but not counted` : ''}.`,
+    ...(c.notes || []),
+  ].filter(Boolean);
+  out.push(card({ title:'How these figures are calculated', body:h('ul', { class:'ct-notes' }, notes.map((n) => h('li', {}, n))) }));
+  out.push(h('p', { class:'foot' }, `Invoice lines: contracts block in this file · budget: ${S.files.join(', ')}, column “${colName('amount')}”${S.opts.currency ? ' in ' + S.opts.currency : ''}.`));
   return out;
 }
 
@@ -1858,9 +1923,9 @@ function readForms() {
 // ---------- landing, unavailable, footer ----------
 function landing() {
   const feats = [
-    ['benchmark', 'Executive benchmarks', 'IT spend vs revenue and headcount, Run / Grow / Transform and capabilities, against your own targets.', 'Needs: spend type and/or capability columns'],
     ['overview', 'Overview & breakdowns', 'Headline figures and spend by any column, as chart, table or both.', 'Needs: an amount column'],
-    ['vendors', 'Vendors', 'Concentration (Pareto) and a detail panel per vendor with lines and owners.', 'Needs: a vendor column'],
+    ['vendors', 'Vendors', 'Ranked vendor list and a detail panel per vendor with lines, renewals and owners.', 'Needs: a vendor column'],
+    ['invoice', 'Key contracts', 'A page per major contract: invoice lines scaled to a full year and compared with the budget.', 'Needs: invoice lines in the contracts block'],
     ['calendar', 'Renewals', 'Timeline, monthly calendar and a list of notice deadlines.', 'Needs: a renewal date (+ notice period)'],
     ['cash', 'Cash flow & year over year', 'Monthly phasing, quarterly view and a prior-year bridge.', 'Needs: monthly / prior-year columns'],
   ];
@@ -1984,12 +2049,20 @@ function loadSample() {
   load([{ name:el.dataset.name || 'sample-budget.csv (fictional)', encoding:'Embedded', ...parseCSV(el.textContent.trim()) }], { label:el.dataset.label });
 }
 function openPicker() { $('file-input').click(); }
-function exportCsv(recs) {
-  const esc = (x) => (/[",\n;]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x);
-  const out = [S.headers.map(esc).join(',')].concat(recs.map((r) => r.row.map((x) => esc(x ?? '')).join(',')));
-  const a = h('a', { href:URL.createObjectURL(new Blob(['\ufeff' + out.join('\r\n')], { type:'text/csv;charset=utf-8' })), download:'budget-filtered.csv' });
+function downloadCsv(header, rows, name) {
+  const esc = (x) => { x = x == null ? '' : String(x); return /[",\n;]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x; };
+  const out = [header.map(esc).join(',')].concat(rows.map((r) => r.map(esc).join(',')));
+  const a = h('a', { href:URL.createObjectURL(new Blob(['\ufeff' + out.join('\r\n')], { type:'text/csv;charset=utf-8' })), download:name });
   document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-  toast(`Exported ${fmtInt(recs.length)} rows.`);
+  toast(`Exported ${fmtInt(rows.length)} rows.`);
+}
+function exportCsv(recs) { downloadCsv(S.headers, recs.map((r) => r.row), 'budget-filtered.csv'); }
+function exportContract(c) {
+  const d = contractData(c), r2 = (x) => (x == null ? '' : x.toFixed(2));
+  const header = ['Contract', 'Invoice', 'Product', 'Kind', 'Quantity', 'Unit', 'Service from', 'Service to', 'Months billed', `Invoiced (${d.ic})`, 'Annual factor', `Annual (${d.ic})`, `Per unit per month (${d.ic})`]
+    .concat(d.needFx ? [`Annual (${d.bc}, at ${d.rate ?? 'no rate'})`] : []);
+  downloadCsv(header, d.lines.map((l) => [c.name, l.inv.ref, l.product, l.kind, l.qty ?? '', l.unit || '', l.from || '', l.to || '', l.months == null ? '' : +l.months.toFixed(2), r2(l.amount),
+    l.factor == null ? '' : +l.factor.toFixed(4), r2(l.annual), r2(l.perUnitMonth)].concat(d.needFx ? [d.rate != null && l.annual != null ? r2(l.annual * d.rate) : ''] : [])), `contract-${c.id}-annualised.csv`);
 }
 
 // ---------- wiring ----------
@@ -2025,7 +2098,7 @@ route();
 if ($('sample-csv').dataset.autoload === 'true') loadSample();
 
 // for automated tests and DevTools
-window.BudgetExplorer = { S, parseCSV, parseNum, parseDate, guessMapping, computeBridge, loadSample, go };
+window.BudgetExplorer = { S, parseCSV, parseNum, parseDate, guessMapping, computeBridge, loadSample, go, CONTRACTS, contractData, periodMonths };
 })();
 </script>
 </body>
