@@ -232,7 +232,8 @@ S = {
   - It must always reconcile exactly.
 - **Data-quality score** = share of |spend| in rows with no *error* or *warning* flags. Info flags don't count. The checks are in `CHECKS` as `[key, label, severity]`, including:
   - **placeholder vendor:** "Dummy", TBD, TBC, unknown, various, n/a (warning)
-  - **open question in the text:** "need to update", "check with", "to be confirmed", TBC (info)
+  - **open question in the text:** "need to update", "check with", "to be confirmed", TBC, "unclear", "duplicate", or a cell ending in "?" (warning)
+  - **unclassified value:** "Unknown", TBD, n/a, "Varied" in a classification column such as capability, category or owner (warning)
   - **zero amount** (info)
 - **Monthly phasing:** rows with month columns use them. Rows without them are spread evenly over 12 months, and the share of spend this affects is always stated.
 - **Fiscal year start** (`opts.fyStart`) reorders months on Cash flow and the Overview chart, and defines Q1–Q4.

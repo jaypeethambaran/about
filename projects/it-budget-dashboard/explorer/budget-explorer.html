@@ -704,7 +704,7 @@ const ROLES = [
   { key:'prior', label:'Prior-year amount', type:'number', help:'Enables Year over year.' },
   { key:'vendor', label:'Vendor / supplier', type:'text', help:'Enables Vendors.', re:/vendor|supplier|publisher|provider|manufacturer|partner|company|contractor/i },
   { key:'item', label:'Product / service', type:'text', help:'Names each line.', re:/product|service|description|item|application|software|title|name|detail/i },
-  { key:'category', label:'Category', type:'text', help:'Colours used across charts.', re:/categor|^type$|^line[\s_-]*type|class|kind|licen[cs]e[\s_-]*type/i },
+  { key:'category', label:'Category', type:'text', help:'Colours used across charts.', re:/categor|^type$|^line[\s_-]*type|^(class|classification|kind)$|licen[cs]e[\s_-]*type/i },
   { key:'pool', label:'Cost pool / spend type', type:'text', re:/cost[\s_-]*pool|pool|spend[\s_-]*type|cost[\s_-]*type|expense[\s_-]*type|account/i },
   { key:'costcentre', label:'Cost centre / department', type:'text', help:'Enables Cost centres & owners.', re:/cost[\s_-]*cent|department|dept|business[\s_-]*unit|\bbu\b|division|team|function/i },
   { key:'owner', label:'Owner', type:'text', re:/owner|holder|manager|responsible|accountable|contact/i },
@@ -802,8 +802,9 @@ const CHECKS = [
   ['amount_neg', 'Negative amount (credit?)', 'info'],
   ['vendor_placeholder', 'Placeholder vendor (e.g. “Dummy”, TBD): real supplier not yet assigned', 'warning'],
   ['phasing_missing', 'No monthly figures (spread evenly)', 'info'],
-  ['open_question', 'Open question noted in the text (e.g. “check with”, “need to update”)', 'info'],
+  ['open_question', 'Open question noted in the text (e.g. “check with”, “unclear”, “double?”)', 'warning'],
   ['amount_zero', 'Zero amount (saving, cancelled or not yet priced?)', 'info'],
+  ['unclassified_value', 'Unclassified: “Unknown” (or similar) in a classification column', 'warning'],
 ];
 const SEV = { error:{ label:'Error', tag:'red' }, warning:{ label:'Warning', tag:'yellow' }, info:{ label:'Info', tag:'blue' } };
 function buildRecords() {
@@ -839,8 +840,9 @@ function buildRecords() {
     if (map.costcentre != null && !rec.costcentre && amount) flags.add('no_cc');
     if (renewal != null && renewal < AS && amount > 0) flags.add('renewal_passed');
     if (auto && renewal != null && notice == null && map.notice != null) flags.add('auto_no_notice');
-    if (map.vendor != null && /\b(dummy|tbd|tbc|unknown|various|placeholder)\b|^(misc\.?|n\/?a|-)$/i.test(rec.vendor)) flags.add('vendor_placeholder');
-    if (/\b(need to update|needs? updat|check with|to be confirmed|to confirm|tbc)\b/i.test(row.join(' '))) flags.add('open_question');
+    if (map.vendor != null && /\b(dummy|tbd|tbc|unknown|various|varied|placeholder)\b|^(misc\.?|n\/?a|-)$/i.test(rec.vendor)) flags.add('vendor_placeholder');
+    if (/\b(need to update|needs? updat|check with|to be confirmed|to confirm|tbc|unclear|duplicate)\b/i.test(row.join(' ')) || row.some((x) => /\?\s*$/.test(x))) flags.add('open_question');
+    if (['capability', 'category', 'pool', 'costcentre', 'owner'].some((k) => map[k] != null && /^(unknown|unassigned|unclassified|tbd|tbc|n\/?a|varied|various|misc\.?)$/i.test(row[map[k]].trim()))) flags.add('unclassified_value');
     if (amount === 0 && !flags.has('amount_blank') && !flags.has('amount_bad')) flags.add('amount_zero');
     if (map.id != null && rec.id) ids.set(rec.id, (ids.get(rec.id) || 0) + 1);
     return rec;
@@ -861,6 +863,8 @@ function computeDims() {
   S.colorDim = [S.map.category, S.map.capability, S.map.spend_cat, S.map.pool, S.map.capex, ...S.dims].find(small) ?? null;
   S.colorMap = new Map();
   if (S.colorDim != null) groupBy(S.recs, S.colorDim).forEach((g, i) => S.colorMap.set(g.key, PALETTE[i % PALETTE.length]));
+  // a Run / Grow / Transform column always uses the same three colours as Executive benchmarks
+  if (S.colorDim != null && S.colorDim === S.map.spend_cat) for (const k of S.colorMap.keys()) S.colorMap.set(k, { run:'--run', grow:'--grow', transform:'--transform', none:'--other' }[rgtClass(k)]);
   const saved = store.get('ui:' + sig()) || {};
   const g = [S.map.capability, S.map.pool, S.map.category, ...S.dims].find((ci) => ci != null && S.dims.includes(ci));
   S.ui.groupBy = S.dims.includes(saved.groupBy) ? saved.groupBy : (g ?? null);

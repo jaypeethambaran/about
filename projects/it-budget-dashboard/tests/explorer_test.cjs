@@ -143,6 +143,14 @@ const PAGES = ['strategy', 'overview', 'breakdown', 'vendors', 'organisation', '
   check((await page.textContent('#file-table')).includes('Yes'), 'Data source confirms the lines add up to the file\'s grand total');
   await shot('32-pivot-source', false);
 
+  console.log('Hand-cleaned sheet (amount first, capability, tool names, reviewer notes)');
+  await loadFile(EX('examples/cleaned-sheet.csv'), 'cleaned-sheet.csv');
+  await page.waitForFunction(() => location.hash === '#/strategy');
+  check(await mapped('amount') === 'Sum of Total in USD' && await mapped('capability') === 'Capability' && await mapped('vendor') === 'Vendor', 'amount / capability / vendor detected; opens on Executive benchmarks');
+  check(await S(() => window.BudgetExplorer.S.recs.reduce((a, r) => a + r.amount, 0)) === 110720, 'total 110,720 (company-wide "other IT spend" typed earlier is kept separately)');
+  const f2 = await S(() => { const c = {}; for (const r of window.BudgetExplorer.S.recs) for (const f of r.flags) c[f] = (c[f] || 0) + 1; return c; });
+  check(f2.open_question === 2 && f2.vendor_placeholder === 1 && f2.unclassified_value === 1, `reviewer notes flagged: "unclear" + "double?" = 2 open questions, "Varied" vendor, "Unknown" capability (${JSON.stringify(f2)})`);
+
   console.log('EU finance export');
   await loadFile(EX('examples/finance-export-eu.csv'), 'finance-export-eu.csv');
   check(await total() === 5517000, 'lands on Overview (no strategy columns) with total 5,517,000');
