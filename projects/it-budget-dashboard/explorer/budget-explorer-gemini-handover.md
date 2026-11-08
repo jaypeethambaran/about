@@ -1,8 +1,8 @@
-# IT Budget Explorer: handover for a Gemini agent
+# IT Budget Explorer (operational and strategic): handover for a Gemini agent
 
 You are taking over a working prototype. This document explains what it is, how it is built and what it must keep doing, so you can improve it without breaking anything. Read it end to end before changing code.
 
-**The artifact:** `budget-explorer.html`, one self-contained file of about 1,800 lines and 140 KB, holding HTML, CSS and JavaScript. Open it in a browser and it runs. There is no build step, server, package manager or internet connection involved.
+**The artifact:** `budget-explorer.html`, one self-contained file of about 1,950 lines and 160 KB, holding HTML, CSS and JavaScript. Open it in a browser and it runs. There is no build step, server, package manager or internet connection involved.
 
 ---
 
@@ -10,9 +10,11 @@ You are taking over a working prototype. This document explains what it is, how 
 
 | | |
 |---|---|
-| **What it is** | A browser app for exploring next year's **corporate IT budget for licences, services and contracts** |
+| **What it is** | A browser app for next year's **corporate IT budget**. It combines **operational budgeting** (vendors, renewals, cash flow, year over year) with **strategic benchmarking** (IT spend vs revenue and headcount, Run / Grow / Transform, business capabilities). |
+| **Primary goal** | Show leadership that corporate IT (commercial, G&A, ERP) scales efficiently, and move the conversation from line-item costs to **investment in business capabilities** |
 | **Input** | One or more **CSV files with any column layout**. The app detects what each column means, and the user can correct it. |
-| **Users** | IT leadership, IT finance and budget owners. CIO/CFO-level readers want the summary, budget owners want line detail. |
+| **Users** | CFO, CIO and IT finance at a fast-growing life sciences / SaaS company, plus budget owners. Executives start on **Executive benchmarks**; budget owners want line detail. |
+| **Taxonomy** | "Contract" is a procurement vehicle, not a technology category. Lines are categorised as **Hardware, Licence (software) or Service**. |
 | **Phase** | **UI prototype.** The owner is getting feedback on the interface before moving it into the company's GitLab, most likely served as a static site on GitLab Pages with access control. |
 | **Data sensitivity** | Real budgets and contract values are confidential. The app must never send data anywhere. |
 
@@ -22,13 +24,14 @@ You are taking over a working prototype. This document explains what it is, how 
 2. The owner asked for **sub-pages with a side panel** and **external best-practice references**.
 3. The current version answers that with an enterprise app frame based on public design systems (section 6).
 4. **The owner's focus is the UI** and **accepting any CSV**. Keep both central.
+5. A previous Gemini session added **Executive benchmarks** (company revenue and headcount, Run / Grow / Transform, business capabilities) and the Hardware / Licence / Service taxonomy. Claude then integrated it with fixes (see the change log in section 13).
 
 ---
 
 ## 2. Quick start
 
 1. Open `budget-explorer.html` in Chrome, Edge or Firefox. Opening it straight from disk (`file://`) works.
-2. Select **Use sample data**. This loads a fictional 41-line budget embedded in the file.
+2. Select **Use sample data**. This loads a fictional 43-line budget embedded in the file, which opens on **Executive benchmarks**.
 3. Click through every page in the left side panel. Click bars, table rows and timeline dots to open the details panel on the right.
 4. Load a real CSV with **Load CSV** in the top bar, or drag files onto the window.
 
@@ -38,11 +41,14 @@ Set **Data source & columns → Urgency as of = 2026-11-07** first, because rene
 
 | Check | Expected |
 |---|---|
-| Total budget (Overview tile) | **5,517,000** across **41** lines and **20** vendors |
-| Change vs prior year | **+5.8%** (prior-year total **5,214,500**) |
-| New spend | **380,000** from 4 lines with no prior-year figure |
-| Category split | Licence 2,245,000 (41%) · Service 1,712,000 (31%) · Contract 1,560,000 (28%) |
-| Vendor concentration | Top 5 = 56% of spend; **10 vendors = 80%** |
+| Total budget (Overview tile; "IT spend in scope" on Executive benchmarks before other spend is added) | **5,817,000** across **43** lines and **23** vendors |
+| Change vs prior year | **+11.6%** (prior-year total **5,214,500**) |
+| Year-over-year bridge | 5,214,500 + **680,000 new (6 lines)** + 493,500 increases − 208,000 decreases − 63,000 removed (2 lines) = 5,817,000 |
+| Category split | Service 2,962,000 · Licence 2,365,000 · Hardware 490,000 (no "Contract" category) |
+| Run / Grow / Transform | Run 3,771,000 (**64.8%**) · Grow 1,746,000 (**30.0%**) · Transform 300,000 (**5.2%**) |
+| Business capabilities | Enterprise IT 80.6% · ERP & Supply Chain 11.6% · Commercial 5.0% · G&A 2.8% |
+| Benchmarks worked example | Enter revenue **100,000,000**, headcount **500** and other IT spend **2,183,000**: IT spend in scope **8,000,000**, **8.0%** of revenue, **16,000** per FTE |
+| Vendor concentration | Top 5 = 49% of spend; **12 vendors = 80%** |
 | Notice deadlines within 90 days | **18**, of which **7 overdue** |
 | Data quality | 97% score, 0 errors, **5 warnings** (3 no owner, 1 no cost centre, 1 renewal date passed) |
 | Monthly columns detected | 12 (Jan…Dec) |
@@ -51,7 +57,8 @@ Set **Data source & columns → Urgency as of = 2026-11-07** first, because rene
 
 Repo: `jaypeethambaran/about`, branch `claude/cloud-environment-setup-6a26xz`, folder `projects/it-budget-dashboard/data/`.
 
-- **`sample-budget.csv`:** the same data as the embedded sample. Snake_case headers (`line_id, vendor, product_or_service, category, cost_pool, tower, cost_centre, owner, annual_budget, currency, capex_opex, contract_start, contract_end, renewal_date, auto_renew, notice_period_days, billing_frequency, licence_qty, unit_price, prior_year_budget, jan … dec, notes`).
+- **`sample-budget-explorer.csv`:** exactly the embedded sample (43 lines, with `business_capability` and `spend_category` columns).
+- **`sample-budget.csv`:** the original 41-line sample (old Licence / Service / Contract taxonomy, no strategy columns; total 5,517,000). The tests still use it for column-remapping checks. Snake_case headers (`line_id, vendor, product_or_service, category, cost_pool, tower, cost_centre, owner, annual_budget, currency, capex_opex, contract_start, contract_end, renewal_date, auto_renew, notice_period_days, billing_frequency, licence_qty, unit_price, prior_year_budget, jan … dec, notes`).
 - **`examples/finance-export-eu.csv`:** the same budget as a European finance export. It has a title row above the header, `;` delimiters, `1.234,50` numbers, `dd.mm.yyyy` dates, and different headers:
   ```
   IT budget export - generated 01.11.2026
@@ -64,7 +71,8 @@ Repo: `jaypeethambaran/about`, branch `claude/cloud-environment-setup-6a26xz`, f
   Vendor,Item,Annual Cost
   Northwind Software,Office productivity suite,"$486,000.00"
   ```
-  Expected: total 5,517,000 over 39 rows and currency USD. Renewals, Cash flow, Year over year and Cost centres show an explanation page instead of charts.
+  Expected: total 5,517,000 over 39 rows and currency USD. It opens on Overview. Renewals, Cash flow, Year over year and Cost centres show an explanation page instead of charts, and Executive benchmarks explains the missing spend-type and capability columns.
+- **`examples/utf8-names.csv`:** non-ASCII names (Zürich, Genève, Malmö) and `€` amounts. They must display exactly as written; total 6,000.
 
 ---
 
@@ -72,7 +80,7 @@ Repo: `jaypeethambaran/about`, branch `claude/cloud-environment-setup-6a26xz`, f
 
 1. **One file, no dependencies.** No CDNs, npm packages, chart libraries, web fonts, analytics or `fetch()` to any URL. The company network may block them, and the data is confidential. Draw charts with hand-built SVG or HTML, as the existing code does.
 2. **Works from `file://`.** Don't rely on a server, service workers or ES module imports from other files.
-3. **Data never leaves the browser.** `localStorage` holds only UI preferences and column mappings (prefix `itbx2:`), never row data.
+3. **Data never leaves the browser.** `localStorage` holds only UI preferences, column mappings and the company figures and targets typed on Executive benchmarks (prefix `itbx2:`), never row data.
 4. **Any CSV must still load.** Column detection must stay heuristic and forgiving, and the user must always be able to override it on **Data source & columns**.
 5. **Light and dark themes** must both stay correct. All colours come from CSS custom properties on `:root`.
 6. **Phone width (390 px): no horizontal page scroll.** Wide tables and charts scroll inside their own container.
@@ -84,7 +92,12 @@ Repo: `jaypeethambaran/about`, branch `claude/cloud-environment-setup-6a26xz`, f
    - Colour is never the only signal; urgency tags carry text.
 8. **Numbers are shown as entered.** There is no VAT, FX or inflation adjustment unless the user asks for it, and the footer says so.
 9. **Keep the embedded sample.** The block `<script type="text/plain" id="sample-csv">…</script>` holds the fictional sample CSV. Don't reformat or remove it. All vendor names in it are fictional.
-10. **Keep `window.BudgetExplorer`.** It is the hook used by automated tests: `{ S, parseCSV, parseNum, parseDate, guessMapping, computeBridge, loadSample, go }`.
+10. **Benchmark targets are the user's assumptions.**
+    - Never label default targets as Gartner, TBM or any other source without a citation the owner has provided.
+    - Never invent company revenue or headcount: when they're blank, show "—" and ask for them.
+11. **Write invisible characters as escapes.** A previous round of edits silently turned `'\ufffd'` into `''`, which broke UTF-8 detection for every file. Use `\ufffd`, `\u00a0` and `\u241f` in source, never the literal characters.
+12. **Sample data stays fictional, including vendor names.** Don't use real companies (a previous round added three; they were renamed).
+13. **Keep `window.BudgetExplorer`.** It is the hook used by automated tests: `{ S, parseCSV, parseNum, parseDate, guessMapping, computeBridge, loadSample, go }`.
 
 ---
 
@@ -115,6 +128,7 @@ Repo: `jaypeethambaran/about`, branch `claude/cloud-environment-setup-6a26xz`, f
    - `buildRecords()` turns rows into records with parsed numbers, dates and quality flags.
    - `computeDims()` chooses which text columns can be grouped and filtered, and which one drives colour.
    - Aggregation helpers: `groupBy`, `urgencyOf`, `computeBridge`, `qualityOf` and `vendorAgg`.
+   - Before section 2: `TARGET_DEFAULTS` (illustrative benchmark targets) and `RGT` (Run / Grow / Transform classes and colours).
 5. **App frame:**
    - The `PAGES` registry, `renderNav`, `renderTopbar` and `pageHeader`.
    - Filters: `matches`, `setFilter`, `filterBar`.
@@ -123,7 +137,7 @@ Repo: `jaypeethambaran/about`, branch `claude/cloud-environment-setup-6a26xz`, f
    - Layout: `card`, `kpi`, `dataTable` with `sortRows`, `segmented`, `tabs`, `emptyState`, `heatCell`.
    - Bars: `hbarList`, `mixBar`.
    - SVG charts: `sparkline`, `columnChart` (stacked, with an optional cumulative line), `waterfall`, `pareto`, `ring` and `timeline`.
-7. **Pages:** one `pageX(recs)` function per page, plus `insX(recs)` for the one-line finding in each page header.
+7. **Pages:** one `pageX(recs)` function per page, plus `insX(recs)` for the one-line finding in each page header. Executive benchmarks also uses `rgtOf`, `rgtSplit`, `companyFigures`, `vsTarget` and `numInput`.
 8. **Rendering, routing and loading:**
    - `render()`, `route()` and `go(id)`.
    - Applying settings: `apply()`.
@@ -150,6 +164,7 @@ S = {
   dims, colorDim, colorMap,                      // groupable columns, colour column, value -> palette var
   filters: { [ci]: value }, q, flag,             // global filters, search text, data-quality check filter
   page,                                          // current page id
+  company: { rev, fte, otherIt, t:{ pctRev, perFte, run, grow, transform } },  // company figures + targets; localStorage 'itbx2:company', not per file
   ui: { groupBy, splitBy, bdView, *Sort, lPage, lSize, density, renTab, renSeg, yoyTab, drawerReturn }
 }
 ```
@@ -168,6 +183,8 @@ S = {
 | `pool` | Cost pool / spend type | cost pool, spend type, cost type, account |
 | `costcentre` | Cost centre / department | cost centre/center, department, business unit, team |
 | `owner` | Budget owner | owner, holder, manager, responsible |
+| `capability` | Business capability | capabilit, domain, function (cost centre is matched first, so "Function" goes there) |
+| `spend_cat` | Spend type: Run / Grow / Transform | run…grow, spend category / type, transform, investment type, RGT |
 | `capex` | CAPEX / OPEX | capex, opex |
 | `renewal` | Renewal or end date (date column) | Tried in order: renew → expir → end date / contract end / due |
 | `notice` | Notice period in days | notice |
@@ -190,6 +207,21 @@ S = {
 - **Data-quality score** = share of |spend| in rows with no *error* or *warning* flags. Info flags don't count. The checks are in `CHECKS` as `[key, label, severity]`.
 - **Monthly phasing:** rows with month columns use them. Rows without them are spread evenly over 12 months, and the share of spend this affects is always stated.
 - **Fiscal year start** (`opts.fyStart`) reorders months on Cash flow and the Overview chart, and defines Q1–Q4.
+- **New spend:** a blank **or zero** prior-year figure counts as new in the bridge, the Year over year tabs and the vendor table.
+- **Run / Grow / Transform classification** (`rgtOf`), applied to the spend-type value, case-insensitive:
+  - *transform*, *innovat*, *change the business*, *CTB* → Transform
+  - *grow*, *expan*, *scale* → Grow
+  - *run*, *operat*, *maint*, *sustain*, *keep the lights on*, *KTLO*, *RTB* → Run
+  - anything else, including blank → **Unclassified**, shown separately and left out of the % comparison
+- **Unit economics:**
+  - IT spend in scope = budget in the file + "other IT spend not in this file" (for example internal staff).
+  - % of revenue = in scope ÷ revenue; per FTE = in scope ÷ headcount.
+  - When any filter is active, other IT spend is left out and a notice says so.
+- **Target status tags:**
+  - within ±10% of target → "Near target" (green)
+  - above → yellow, or red beyond +25%
+  - below → blue (neutral, because low spend isn't automatically good)
+  - Run / Grow / Transform differences are shown in percentage points, without a colour judgement.
 
 ---
 
@@ -199,6 +231,7 @@ Each entry is `{ id, label, icon, group, render, insight, needs?, needsText?, no
 
 | Group | Page | Shows | Needs |
 |---|---|---|---|
+| Analyse | **Executive benchmarks** | Company figures form (revenue, headcount, other IT spend) and editable targets; KPI tiles for IT spend in scope, % of revenue, per FTE and Transform share; Run / Grow / Transform actual vs target bars and table; business-capability table with Run / Grow / Transform mix and change vs prior year. **The landing page when the file has a spend-type or capability column**; otherwise Overview is. | amount (spend type / capability for the lower cards) |
 | Analyse | **Overview** | KPI tiles (total with trend line and change vs prior year, vendors, 90-day deadlines, new spend, quality score), then cards for category mix, top vendors, the first deadlines to act on, monthly cash flow, a mini bridge and data checks. Each card links to its page. | amount |
 | Analyse | **Spend breakdown** | **Group by** any column, **Split by** another, and a **View** switch (Chart / Table / Chart + table). Stacked bars plus a cross-table with shaded cells. Clicking filters. | amount |
 | Analyse | **Vendors** | Pareto chart (ranked bars, cumulative line, 80% marker) and a vendor table with rank, lines, share, change, category mix, next deadline and owner. A row opens the **vendor details panel**. | vendor |
@@ -239,7 +272,7 @@ The look follows public enterprise design systems. Keep it consistent with them.
 | Surfaces | `--bg`, `--layer`, `--layer-2`, `--layer-hover`, `--selected`, `--border`, `--border-strong` |
 | Text | `--text`, `--text-2`, `--text-3` |
 | Accent | `--primary`, `--primary-weak`, `--link` |
-| Data colours | `--bar` (single series), `--other`, `--c1…--c8` (categories), `--up` / `--down` (cost increase red, decrease green) |
+| Data colours | `--bar` (single series), `--other`, `--c1…--c8` (categories), `--up` / `--down` (cost increase red, decrease green), `--run` / `--grow` / `--transform` with `--rgt-ink` for labels on them |
 | Urgency | `--urg-passed`, `--urg-30`, `--urg-60`, `--urg-90`, `--urg-later` |
 | Tags | `--tag-{red,orange,yellow,green,blue,gray,purple}{-bg}` |
 
@@ -282,28 +315,33 @@ The mapping form picks it up automatically.
 
 ## 8. Testing and verification
 
-**Automated (in the source repo):** `projects/it-budget-dashboard/tests/explorer_test.cjs`, a Playwright script that opens the file from disk. Run it with `node tests/explorer_test.cjs`, or `SCREENSHOT_DIR=… node tests/explorer_test.cjs` to also save a screenshot of each page. It checks that:
+**Automated (in the source repo):** `projects/it-budget-dashboard/tests/explorer_test.cjs`, a Playwright script with 57 checks that opens the file from disk. Run it with `node tests/explorer_test.cjs`, or `SCREENSHOT_DIR=… node tests/explorer_test.cjs` to also save a screenshot of each page. It checks that:
+- The sample opens on Executive benchmarks.
+- Entering revenue, headcount and other IT spend gives the worked example in section 2.
+- Tab moves focus to the next field after a re-render.
+- Run / Grow / Transform is 64.8 / 30.0 / 5.2%, and clicking a row filters.
 - Every page renders and is marked current in the nav.
-- Totals match the expected numbers.
+- No "Contract" category remains, and the bridge reconciles with 6 new lines.
 - Group-by, filter chips and the view switch work.
 - The vendor panel opens, a line panel opens from inside it, and Esc closes the panel.
 - The renewal urgency filter and the calendar work.
 - "View rows" filters Line items, and pagination works.
+- UTF-8 names stay intact.
 - The EU and minimal CSVs load with the expected column detection.
-- Remapping the amount column changes the total (5,214,500) and re-detect restores it.
+- Remapping the amount column changes the total, and re-detect restores it.
 - There's no horizontal scroll at 390 px, and the phone menu opens.
 - There are no console errors.
 
 If you can't run it, do the manual checklist below after every change.
 
 **Manual checklist:**
-1. Sample data loads, and the Overview numbers match section 2.
+1. Sample data loads on Executive benchmarks. Enter the worked-example figures and check every number in section 2.
 2. Visit every nav item, and check the browser console shows no errors.
 3. Clicking a vendor bar adds a filter chip, and all pages respect it. **Clear filters** resets them.
 4. A Vendors row opens the panel. Clicking a line inside opens line details. Esc closes the panel, and focus returns to where it was.
 5. Renewals: each urgency segment and each tab (Timeline, Calendar, List) shows matching counts.
 6. Data source: changing the amount column to `prior_year_budget` and selecting **Apply** gives total 5,214,500. **Re-detect columns** followed by **Apply** restores it.
-7. Load the EU and minimal CSVs; check against section 2.
+7. Load the EU, minimal and UTF-8 CSVs; check against section 2.
 8. Toggle dark mode with the moon icon; check the 390 px phone width.
 
 **Invariants that must always hold:**
@@ -326,24 +364,30 @@ If you can't run it, do the manual checklist below after every change.
 - **"As of" defaults to today and isn't saved**, so overdue counts change day by day.
 - **The Pareto chart shows the top 30 vendors**, and the breakdown chart the top 15 groups (the table shows all).
 - Export always uses commas and UTF-8 with a BOM.
-- Year over year treats a blank prior-year figure as new spend, which may be wrong for incomplete data. It's stated on the page.
+- Year over year treats a blank or zero prior-year figure as new spend, which may be wrong for incomplete data. It's stated on the page.
+- **Benchmarks:**
+  - There's one set of targets for every file, with no industry or size presets.
+  - Revenue and other IT spend are assumed to be in the budget's currency.
+  - Unclassified spend is left out of the Run / Grow / Transform comparison.
+  - The default targets (6% of revenue, 14,000 per FTE, 65 / 20 / 15) are placeholders, not researched values.
 
 ---
 
 ## 10. Suggested backlog (highest value first)
 
-1. **Saved views and shareable state:** put filters, group/split and tab state in the URL hash. Add "Save view" (named, stored in `localStorage`) to a "Views" group in the side panel.
-2. **Excel (.xlsx) import** without libraries.
-3. **Column chooser and grouping on Line items** (show/hide and reorder columns, group rows by a column with subtotals), plus a sticky first column.
-4. **Budget vs actuals:** allow a second CSV of actuals by month, and add a Variance page showing actual vs phased budget and forecast to year end.
-5. **Licence utilisation:** an optional `licences used` column, showing cost of unused seats and price per active user on Vendors.
-6. **Contract actions on Renewals:** "Give notice / Renew / Renegotiate" status per line, kept in `localStorage`, with CSV export of the action list.
-7. **Print / PDF executive pack:** a print stylesheet producing a two-page summary (Overview + top renewals).
-8. **Performance:** cache aggregates per filter state; virtualise the Line items table for 50k rows.
-9. **Accessibility:** focus trap in the drawer; text alternatives (a data table) for each SVG chart; a high-contrast check.
-10. **Multi-currency** with an FX rate table and a stated rate date.
-11. **User-chosen colour column** and per-category colour overrides.
-12. **Localisation:** number and date display locale is fixed to `en-GB`; make it a setting.
+1. **Benchmark sources:** let the owner enter their benchmark source and date next to the targets (shown in the footer), and add optional peer quartiles (25th / median / 75th) so the KPI tiles show a position, not just above or below.
+2. **Saved views and shareable state:** put filters, group/split and tab state in the URL hash. Add "Save view" (named, stored in `localStorage`) to a "Views" group in the side panel.
+3. **Excel (.xlsx) import** without libraries.
+4. **Column chooser and grouping on Line items** (show/hide and reorder columns, group rows by a column with subtotals), plus a sticky first column.
+5. **Budget vs actuals:** allow a second CSV of actuals by month, and add a Variance page showing actual vs phased budget and forecast to year end.
+6. **Licence utilisation:** an optional `licences used` column, showing cost of unused seats and price per active user on Vendors.
+7. **Contract actions on Renewals:** "Give notice / Renew / Renegotiate" status per line, kept in `localStorage`, with CSV export of the action list.
+8. **Print / PDF executive pack:** a print stylesheet producing a two-page summary (Overview + top renewals).
+9. **Performance:** cache aggregates per filter state; virtualise the Line items table for 50k rows.
+10. **Accessibility:** focus trap in the drawer; text alternatives (a data table) for each SVG chart; a high-contrast check.
+11. **Multi-currency** with an FX rate table and a stated rate date.
+12. **User-chosen colour column** and per-category colour overrides.
+13. **Localisation:** number and date display locale is fixed to `en-GB`; make it a setting.
 
 Before starting large items (1, 2, 4), propose the approach to the owner in a few sentences and wait for agreement.
 
@@ -371,3 +415,30 @@ Before starting large items (1, 2, 4), propose the approach to the owner in a fe
 | Pareto | Ranked bar chart with a cumulative-share line, used to show vendor concentration |
 | Phasing | How the annual amount is spread across months (cash timing) |
 | CAPEX / OPEX | Capital vs operating expenditure |
+
+---
+
+## 13. Change log
+
+**Integration of the Gemini rework (8 Nov 2026), done by Claude.** Kept from Gemini:
+- The Executive benchmarks page.
+- The `capability` and `spend_cat` column roles.
+- The Hardware / Licence / Service taxonomy and benchmark-first landing.
+- The extra sample columns and Transform lines.
+
+Fixed:
+- **UTF-8 detection was broken for every file.** `text.includes('')` was always true, so `€` and `ü` turned into mojibake. It's now `'\ufffd'`.
+- **Real vendor names in the sample** (three) were replaced with fictional ones.
+- **Invented company figures:** revenue 150,000,000 and 800 FTE were used whenever the user entered nothing. Inputs now start blank.
+- **Targets attributed to "Gartner / TBM" without a source** are now editable assumptions with a clear caveat.
+  - Public data points to an older Gartner-based split of about 70 / 20 / 10, and Gartner now advises balance over fixed ratios.
+  - Revenue and per-FTE ratios live in paywalled Gartner and Avasant studies.
+- **Like-for-like comparison:** benchmarks compare total IT spend, but the file holds only external spend, so "other IT spend not in this file" was added.
+- **Unclassified spend** was being counted as Run. It's now shown separately.
+- **Changing revenue reset all filters** (it called `apply()`), and the inputs had no ids, so focus was lost. It now re-renders after focus moves, and inputs have stable ids.
+- **The Executive benchmarks page opened for every file.** It now opens only when the file has a spend-type or capability column.
+- **A blank or zero prior-year figure** is now new spend in the bridge. The two Transform lines were wrongly counted as increases.
+- **The `.stack-seg` CSS class was reused**, changing the Spend breakdown chart. The class was renamed to `.rgt-*`.
+- **The "Cash flow & year over year" feature card**, accidentally removed from the landing page, was restored.
+- Revenue and headcount moved off the Data source settings so there's one place to enter them.
+- New tests cover benchmarks, UTF-8 and the bridge (57 checks).

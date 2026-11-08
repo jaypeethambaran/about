@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>IT Budget Explorer</title>
-<meta name="description" content="Explore an IT licences, services and contracts budget from any CSV. Runs entirely in the browser.">
+<meta name="description" content="Explore an IT budget for licences, services and hardware from any CSV. Includes Executive Benchmarks. Runs entirely in the browser.">
 <style>
 /* =====================================================================
    Design tokens. Structure follows IBM Carbon (UI shell, data table,
@@ -19,6 +19,7 @@
   --header:#161616; --header-text:#f4f4f4; --header-2:#c6c6c6; --header-hover:#2c2c2c; --header-border:#393939;
   --nav-bg:#ffffff; --scrim:rgba(22,22,22,.5);
   --bar:#0f62fe; --other:#a8a8a8; --grid:#e8e8e8; --up:#da1e28; --down:#198038;
+  --run:#0f62fe; --grow:#8a3ffc; --transform:#007d79; --rgt-ink:#ffffff;
   --c1:#6929c4; --c2:#1192e8; --c3:#005d5d; --c4:#9f1853; --c5:#fa4d56; --c6:#570408; --c7:#198038; --c8:#002d9c;
   --urg-passed:#da1e28; --urg-30:#eb6200; --urg-60:#d2a106; --urg-90:#8d8d8d; --urg-later:#78a9ff;
   --tag-red-bg:#ffd7d9; --tag-red:#a2191f; --tag-orange-bg:#ffe2cc; --tag-orange:#8a3800;
@@ -33,6 +34,7 @@
   --primary:#0f62fe; --primary-hover:#0353e9; --primary-weak:#0b2350; --link:#78a9ff;
   --header:#161616; --header-border:#393939; --nav-bg:#1e1e1e; --scrim:rgba(0,0,0,.6);
   --bar:#4589ff; --other:#6f6f6f; --grid:#333333; --up:#fa4d56; --down:#42be65;
+  --run:#78a9ff; --grow:#be95ff; --transform:#3ddbd9; --rgt-ink:#161616;
   --c1:#8a3ffc; --c2:#33b1ff; --c3:#08bdba; --c4:#ff7eb6; --c5:#fa4d56; --c6:#d4bbff; --c7:#6fdc8c; --c8:#4589ff;
   --urg-later:#4589ff;
   --tag-red-bg:#a2191f; --tag-red:#ffd7d9; --tag-orange-bg:#8a3800; --tag-orange:#ffe2cc;
@@ -45,6 +47,7 @@
   --primary:#0f62fe; --primary-hover:#0353e9; --primary-weak:#0b2350; --link:#78a9ff;
   --header:#161616; --header-border:#393939; --nav-bg:#1e1e1e; --scrim:rgba(0,0,0,.6);
   --bar:#4589ff; --other:#6f6f6f; --grid:#333333; --up:#fa4d56; --down:#42be65;
+  --run:#78a9ff; --grow:#be95ff; --transform:#3ddbd9; --rgt-ink:#161616;
   --c1:#8a3ffc; --c2:#33b1ff; --c3:#08bdba; --c4:#ff7eb6; --c5:#fa4d56; --c6:#d4bbff; --c7:#6fdc8c; --c8:#4589ff;
   --urg-later:#4589ff;
   --tag-red-bg:#a2191f; --tag-red:#ffd7d9; --tag-orange-bg:#8a3800; --tag-orange:#ffe2cc;
@@ -215,6 +218,20 @@ button.hb-name { background:none; border:0; padding:0; text-align:left; color:va
 .empty-mini { color:var(--text-3); font-size:13px; padding:12px 0; }
 @media (max-width:640px) { .hb { grid-template-columns:minmax(80px, 38%) 1fr 84px; } .hb-pct { display:none; } }
 
+/* ---------- executive benchmarks ---------- */
+.co-strip { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px 16px; align-items:start; }
+.co-strip .helper { white-space:normal; }
+@media (max-width:760px) { .co-strip { grid-template-columns:1fr; } }
+.targets { margin-top:14px; border-top:1px solid var(--border); padding-top:10px; }
+.targets > summary { cursor:pointer; color:var(--link); font-size:13px; }
+.target-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-top:10px; }
+.rgt { display:grid; grid-template-columns:56px minmax(0, 1fr); gap:8px 12px; align-items:center; padding:4px 16px 14px; font-size:12px; color:var(--text-2); }
+.rgt-bar { display:flex; height:24px; overflow:hidden; background:var(--layer-2); border-radius:2px; }
+.rgt-bar.target { height:10px; }
+.rgt-seg { height:100%; display:flex; align-items:center; justify-content:center; color:var(--rgt-ink); font-size:11px; font-weight:600; overflow:hidden; white-space:nowrap; min-width:0; }
+.rgt-seg.none { color:var(--text); }
+#cap-table td, #cap-table th { padding-left:10px; padding-right:10px; }
+
 /* ---------- charts ---------- */
 .chart { width:100%; overflow-x:auto; }
 .chart svg { display:block; width:100%; height:auto; min-width:560px; }
@@ -340,7 +357,7 @@ body.dragging::after { content:"Drop CSV files to load"; position:fixed; inset:0
 <div class="shell">
   <header class="topbar">
     <button class="tb-btn" type="button" id="nav-toggle" aria-label="Collapse navigation" title="Collapse navigation"></button>
-    <div class="brand"><span class="brand-mark" aria-hidden="true">IT</span><span>IT Budget Explorer <small>· Licences, services &amp; contracts</small></span></div>
+    <div class="brand"><span class="brand-mark" aria-hidden="true">IT</span><span>IT Budget Explorer <small>· Operational &amp; Strategic Benchmarks</small></span></div>
     <div class="dataset" id="dataset" hidden></div>
     <div class="tb-spacer"></div>
     <button class="tb-btn" type="button" id="tb-load" title="Load CSV files"></button>
@@ -356,48 +373,50 @@ body.dragging::after { content:"Drop CSV files to load"; position:fixed; inset:0
 <div class="toast" id="toast" role="status" hidden></div>
 <input type="file" id="file-input" accept=".csv,.txt,.tsv,text/csv" multiple hidden>
 
-<script type="text/plain" id="sample-csv">line_id,vendor,product_or_service,category,cost_pool,tower,cost_centre,owner,annual_budget,currency,capex_opex,contract_start,contract_end,renewal_date,auto_renew,notice_period_days,billing_frequency,licence_qty,unit_price,prior_year_budget,jan,feb,mar,apr,may,jun,jul,aug,sep,oct,nov,dec,notes
-IT-001,Northwind Software,Office productivity suite,Licence,Software,End user,IT-Workplace,Head of Workplace,486000,EUR,OPEX,2024-02-29,2027-02-28,2027-03-01,N,30,Annual,1800,270.0,532500,0,0,486000,0,0,0,0,0,0,0,0,0,
-IT-002,Northwind Software,Server & database licences,Licence,Software,Infrastructure,IT-Infra,Head of Infrastructure,212000,EUR,OPEX,2026-06-15,2027-06-14,2027-06-15,Y,90,Annual,64,3312.5,197000,0,0,0,0,0,212000,0,0,0,0,0,0,
-IT-003,Northwind Software,Enterprise support agreement,Contract,Outside services,Infrastructure,IT-Infra,Head of Infrastructure,95000,EUR,OPEX,2025-02-19,2027-02-18,2027-02-19,Y,60,Annual,,,96500,0,95000,0,0,0,0,0,0,0,0,0,0,
-IT-004,Contoso Cloud,IaaS compute & storage commitment,Contract,Cloud services,Infrastructure,IT-Infra,Head of Infrastructure,640000,EUR,OPEX,2025-10-24,2027-10-23,2027-10-24,N,60,Monthly,,,709000,,,,,,,,,,,,,3-year commit; true-up in Q4.
-IT-005,Contoso Cloud,Managed Kubernetes platform,Service,Cloud services,Application,IT-Apps,Head of Applications,118000,EUR,OPEX,2024-12-09,2027-12-08,2027-12-09,Y,60,Monthly,,,,,,,,,,,,,,,,
-IT-006,Fabrikam Security,Endpoint detection & response,Licence,Software,Security,IT-Security,CISO,156000,EUR,OPEX,2025-01-31,2027-01-30,2027-01-31,Y,60,Annual,2100,74.29,168500,156000,0,0,0,0,0,0,0,0,0,0,0,
-IT-007,Fabrikam Security,Managed SOC service,Service,Outside services,Security,IT-Security,CISO,240000,EUR,OPEX,2023-12-31,2026-12-30,2026-12-31,Y,90,Quarterly,,,206500,60000.0,0,0,60000.0,0,0,60000.0,0,0,60000.0,0,0,
-IT-008,Fabrikam Security,Annual penetration testing,Service,Outside services,Security,IT-Security,CISO,45000,EUR,OPEX,,,,,,One-off,,,48500,0,0,0,0,0,0,0,0,45000,0,0,0,
-IT-009,Tailspin Networks,SD-WAN service (32 sites),Service,Telecom,Network,IT-Infra,Network Manager,210000,EUR,OPEX,2026-12-02,2027-12-01,2027-12-02,Y,60,Monthly,,,211500,,,,,,,,,,,,,
-IT-010,Tailspin Networks,Core switch maintenance,Contract,Hardware maintenance,Network,IT-Infra,Network Manager,38000,EUR,OPEX,2023-12-21,2026-12-20,2026-12-21,Y,60,Annual,,,33000,,,,,,,,,,,,,
-IT-011,Tailspin Networks,Campus Wi-Fi refresh,Contract,Hardware,Network,IT-Infra,Network Manager,180000,EUR,CAPEX,,,,,,One-off,,,,0,0,180000,0,0,0,0,0,0,0,0,0,
-IT-012,Wingtip Telecom,Mobile voice & data plans,Service,Telecom,End user,IT-Workplace,Head of Workplace,132000,EUR,OPEX,2024-12-15,2027-12-14,2027-12-15,Y,60,Monthly,950,138.95,137000,,,,,,,,,,,,,
-IT-013,Wingtip Telecom,Internet transit & MPLS,Contract,Telecom,Network,IT-Infra,Network Manager,88000,EUR,OPEX,2026-04-08,2027-04-07,2027-04-08,N,90,Monthly,,,79500,,,,,,,,,,,,,
-IT-014,Adatum Analytics,BI platform licences,Licence,Software,Data,IT-Data,Head of Data,74000,EUR,OPEX,2024-09-03,2027-09-02,2027-09-03,N,90,Annual,420,176.19,69000,0,0,0,0,0,0,0,0,74000,0,0,0,
-IT-015,Adatum Analytics,Data warehouse consumption,Service,Cloud services,Data,IT-Data,Head of Data,165000,EUR,OPEX,2024-12-08,2026-12-07,2026-12-08,Y,30,Monthly,,,174000,,,,,,,,,,,,,
-IT-016,Litware Collaboration,Video conferencing rooms,Licence,Software,End user,IT-Workplace,Head of Workplace,42000,EUR,OPEX,2026-10-25,2027-10-24,2027-10-25,Y,30,Annual,60,700.0,38000,0,0,0,0,0,0,0,0,0,42000,0,0,
-IT-017,Litware Collaboration,Team chat enterprise plan,Licence,Software,End user,IT-Workplace,,58000,EUR,OPEX,2024-01-25,2027-01-24,2027-01-25,N,60,Annual,1800,30,63500,58000,0,0,0,0,0,0,0,0,0,0,0,Owner left the company; needs reassignment.
-IT-018,Proseware HR,HR & payroll SaaS,Licence,Software,Application,IT-Apps,Head of Applications,128000,EUR,OPEX,2025-10-07,2027-10-06,2027-10-07,Y,60,Annual,2000,64.0,144000,0,0,0,0,0,0,0,0,0,128000,0,0,
-IT-019,Woodgrove Finance Apps,ERP subscription,Licence,Software,Application,IT-Apps,Head of Applications,395000,EUR,OPEX,2024-03-31,2027-03-30,2027-03-31,Y,90,Annual,350,1128.57,383500,0,0,395000,0,0,0,0,0,0,0,0,0,
-IT-020,Woodgrove Finance Apps,ERP implementation partner,Service,Outside services,Application,IT-Apps,Head of Applications,220000,EUR,OPEX,2026-06-02,2027-06-01,2027-06-02,Y,60,Monthly,,,195000,,,,,,,,,,,,,
-IT-021,Woodgrove Finance Apps,ERP premium support,Contract,Outside services,Application,IT-Apps,Head of Applications,61000,EUR,OPEX,2024-09-26,2027-09-25,2027-09-26,Y,30,Annual,,,63500,0,0,0,0,0,0,0,0,61000,0,0,0,
-IT-022,Coho Hardware Services,Laptop fleet maintenance,Contract,Hardware maintenance,End user,IT-Workplace,Head of Workplace,76000,EUR,OPEX,2026-10-13,2027-10-12,2027-10-13,N,90,Annual,,,79500,0,0,0,0,0,0,0,0,0,76000,0,0,
-IT-023,Coho Hardware Services,Laptop refresh (25% of fleet),Contract,Hardware,End user,IT-Workplace,Head of Workplace,310000,EUR,CAPEX,,,,,,One-off,,,281000,0,0,0,0,310000,0,0,0,0,0,0,0,Phased with the 4-year device lifecycle.
-IT-024,Coho Hardware Services,Printer managed service,Service,Outside services,End user,,,24000,EUR,OPEX,2024-01-05,2027-01-04,2027-01-05,Y,60,Quarterly,,,26500,6000.0,0,0,6000.0,0,0,6000.0,0,0,6000.0,0,0,
-IT-025,Fourth Coffee Consulting,IT service desk (outsourced),Service,Outside services,End user,IT-Workplace,Head of Workplace,360000,EUR,OPEX,2025-07-05,2027-07-04,2027-07-05,Y,30,Monthly,,,333000,,,,,,,,,,,,,
-IT-026,Fourth Coffee Consulting,Architecture advisory retainer,Service,Outside services,Application,IT-Apps,CIO Office,48000,EUR,OPEX,2024-05-21,2027-05-20,2027-05-21,Y,30,Quarterly,,,47500,12000.0,0,0,12000.0,0,0,12000.0,0,0,12000.0,0,0,
-IT-027,Relecloud Hosting,Colocation (2 racks),Contract,Outside services,Infrastructure,IT-Infra,Head of Infrastructure,72000,EUR,OPEX,2025-12-03,2026-12-02,2026-12-03,Y,90,Monthly,,,69500,,,,,,,,,,,,,
-IT-028,Relecloud Hosting,Disaster recovery site,Service,Cloud services,Infrastructure,IT-Infra,Head of Infrastructure,96000,EUR,OPEX,2026-04-17,2027-04-16,2027-04-17,Y,30,Monthly,,,89000,,,,,,,,,,,,,
-IT-029,VanArsdel Monitoring,APM & observability platform,Licence,Software,Infrastructure,IT-Infra,Head of Infrastructure,138000,EUR,OPEX,2026-03-31,2027-03-30,2027-03-31,Y,60,Annual,,,142000,0,0,138000,0,0,0,0,0,0,0,0,0,
-IT-030,VanArsdel Monitoring,Log management ingestion,Service,Cloud services,Infrastructure,IT-Infra,Head of Infrastructure,54000,EUR,OPEX,2026-04-18,2027-04-17,2027-04-18,Y,60,Monthly,,,56500,,,,,,,,,,,,,
-IT-031,Lamna Backup,Backup & recovery licences,Licence,Software,Infrastructure,IT-Infra,Head of Infrastructure,67000,EUR,OPEX,2024-09-30,2026-09-29,2026-09-30,Y,60,Annual,,,73500,,,,,,,,,,,,,
-IT-032,Trey Research,Analyst research subscription,Licence,Outside services,Application,IT-Apps,CIO Office,39000,EUR,OPEX,2025-12-10,2026-12-09,2026-12-10,N,90,Annual,3,13000.0,44000,,,,,,,,,,,,,
-IT-033,Graphic Design Institute,Design software seats,Licence,Software,End user,IT-Workplace,,26000,EUR,OPEX,2025-03-08,2027-03-07,2027-03-08,Y,60,Annual,40,650.0,24000,0,0,26000,0,0,0,0,0,0,0,0,0,
-IT-034,Alpine Identity,Identity & access management,Licence,Software,Security,IT-Security,CISO,112000,EUR,OPEX,2024-01-01,2026-12-31,2027-01-01,Y,90,Annual,2100,53.33,122000,112000,0,0,0,0,0,0,0,0,0,0,0,
-IT-035,Alpine Identity,Privileged access management,Licence,Software,Security,IT-Security,CISO,48000,EUR,OPEX,2023-12-24,2026-12-23,2026-12-24,Y,30,Annual,80,600.0,,,,,,,,,,,,,,
-IT-036,Humongous Code,Developer tooling & CI seats,Licence,Software,Application,IT-Apps,Head of Applications,52000,EUR,OPEX,2026-02-27,2027-02-26,2027-02-27,Y,30,Annual,160,325.0,53500,0,52000,0,0,0,0,0,0,0,0,0,0,
-IT-037,Humongous Code,Source code security scanning,Licence,Software,Security,IT-Security,CISO,34000,EUR,OPEX,2024-10-21,2027-10-20,2027-10-21,Y,60,Annual,160,212.5,,0,0,0,0,0,0,0,0,0,34000,0,0,
-IT-038,Datum Contact Centre,Contact centre platform,Licence,Software,Application,IT-Apps,Head of Applications,142000,EUR,OPEX,2026-11-13,2027-11-12,2027-11-13,N,30,Annual,180,788.89,124500,0,0,0,0,0,0,0,0,0,0,142000,0,
-IT-039,Lucerne Legal Tech,Contract management system,Licence,Software,Application,IT-Apps,Head of Applications,36000,EUR,OPEX,2025-11-19,2027-11-18,2027-11-19,N,90,Annual,60,600.0,35500,0,0,0,0,0,0,0,0,0,0,36000,0,
-IT-040,Litware Collaboration,Legacy phone system maintenance,Contract,Hardware maintenance,Network,IT-Infra,Network Manager,0,EUR,OPEX,,,,,,Annual,,,41000,,,,,,,,,,,,,Cancelled: not renewing.
-IT-041,Tailspin Networks,Legacy firewall support,Contract,Hardware maintenance,Security,IT-Security,CISO,0,EUR,OPEX,,,,,,Annual,,,22000,,,,,,,,,,,,,Cancelled: not renewing.</script>
+<script type="text/plain" id="sample-csv">line_id,vendor,product_or_service,category,cost_pool,tower,cost_centre,owner,business_capability,spend_category,annual_budget,currency,capex_opex,contract_start,contract_end,renewal_date,auto_renew,notice_period_days,billing_frequency,licence_qty,unit_price,prior_year_budget,jan,feb,mar,apr,may,jun,jul,aug,sep,oct,nov,dec,notes
+IT-001,Northwind Software,Office productivity suite,Licence,Software,End user,IT-Workplace,Head of Workplace,Enterprise IT,Run,486000,EUR,OPEX,2024-02-29,2027-02-28,2027-03-01,N,30,Annual,1800,270.0,532500,0,0,486000,0,0,0,0,0,0,0,0,0,
+IT-002,Northwind Software,Server & database licences,Licence,Software,Infrastructure,IT-Infra,Head of Infrastructure,Enterprise IT,Run,212000,EUR,OPEX,2026-06-15,2027-06-14,2027-06-15,Y,90,Annual,64,3312.5,197000,0,0,0,0,0,212000,0,0,0,0,0,0,
+IT-003,Northwind Software,Enterprise support agreement,Service,Outside services,Infrastructure,IT-Infra,Head of Infrastructure,Enterprise IT,Run,95000,EUR,OPEX,2025-02-19,2027-02-18,2027-02-19,Y,60,Annual,,,96500,0,95000,0,0,0,0,0,0,0,0,0,0,
+IT-004,Contoso Cloud,IaaS compute & storage commitment,Service,Cloud services,Infrastructure,IT-Infra,Head of Infrastructure,Enterprise IT,Grow,640000,EUR,OPEX,2025-10-24,2027-10-23,2027-10-24,N,60,Monthly,,,709000,,,,,,,,,,,,,3-year commit; true-up in Q4.
+IT-005,Contoso Cloud,Managed Kubernetes platform,Service,Cloud services,Application,IT-Apps,Head of Applications,Enterprise IT,Grow,118000,EUR,OPEX,2024-12-09,2027-12-08,2027-12-09,Y,60,Monthly,,,,,,,,,,,,,,,,
+IT-006,Fabrikam Security,Endpoint detection & response,Licence,Software,Security,IT-Security,CISO,Enterprise IT,Run,156000,EUR,OPEX,2025-01-31,2027-01-30,2027-01-31,Y,60,Annual,2100,74.29,168500,156000,0,0,0,0,0,0,0,0,0,0,0,
+IT-007,Fabrikam Security,Managed SOC service,Service,Outside services,Security,IT-Security,CISO,Enterprise IT,Run,240000,EUR,OPEX,2023-12-31,2026-12-30,2026-12-31,Y,90,Quarterly,,,206500,60000.0,0,0,60000.0,0,0,60000.0,0,0,60000.0,0,0,
+IT-008,Fabrikam Security,Annual penetration testing,Service,Outside services,Security,IT-Security,CISO,Enterprise IT,Run,45000,EUR,OPEX,,,,,,One-off,,,48500,0,0,0,0,0,0,0,0,45000,0,0,0,
+IT-009,Tailspin Networks,SD-WAN service (32 sites),Service,Telecom,Network,IT-Infra,Network Manager,Enterprise IT,Run,210000,EUR,OPEX,2026-12-02,2027-12-01,2027-12-02,Y,60,Monthly,,,211500,,,,,,,,,,,,,
+IT-010,Tailspin Networks,Core switch maintenance,Service,Hardware maintenance,Network,IT-Infra,Network Manager,Enterprise IT,Run,38000,EUR,OPEX,2023-12-21,2026-12-20,2026-12-21,Y,60,Annual,,,33000,,,,,,,,,,,,,
+IT-011,Tailspin Networks,Campus Wi-Fi refresh,Hardware,Hardware,Network,IT-Infra,Network Manager,Enterprise IT,Grow,180000,EUR,CAPEX,,,,,,One-off,,,,0,0,180000,0,0,0,0,0,0,0,0,0,
+IT-012,Wingtip Telecom,Mobile voice & data plans,Service,Telecom,End user,IT-Workplace,Head of Workplace,Enterprise IT,Run,132000,EUR,OPEX,2024-12-15,2027-12-14,2027-12-15,Y,60,Monthly,950,138.95,137000,,,,,,,,,,,,,
+IT-013,Wingtip Telecom,Internet transit & MPLS,Service,Telecom,Network,IT-Infra,Network Manager,Enterprise IT,Run,88000,EUR,OPEX,2026-04-08,2027-04-07,2027-04-08,N,90,Monthly,,,79500,,,,,,,,,,,,,
+IT-014,Adatum Analytics,BI platform licences,Licence,Software,Data,IT-Data,Head of Data,Enterprise IT,Grow,74000,EUR,OPEX,2024-09-03,2027-09-02,2027-09-03,N,90,Annual,420,176.19,69000,0,0,0,0,0,0,0,0,74000,0,0,0,
+IT-015,Adatum Analytics,Data warehouse consumption,Service,Cloud services,Data,IT-Data,Head of Data,Enterprise IT,Grow,165000,EUR,OPEX,2024-12-08,2026-12-07,2026-12-08,Y,30,Monthly,,,174000,,,,,,,,,,,,,
+IT-016,Litware Collaboration,Video conferencing rooms,Licence,Software,End user,IT-Workplace,Head of Workplace,Enterprise IT,Run,42000,EUR,OPEX,2026-10-25,2027-10-24,2027-10-25,Y,30,Annual,60,700.0,38000,0,0,0,0,0,0,0,0,0,42000,0,0,
+IT-017,Litware Collaboration,Team chat enterprise plan,Licence,Software,End user,IT-Workplace,,Enterprise IT,Run,58000,EUR,OPEX,2024-01-25,2027-01-24,2027-01-25,N,60,Annual,1800,30,63500,58000,0,0,0,0,0,0,0,0,0,0,0,Owner left the company; needs reassignment.
+IT-018,Proseware HR,HR & payroll SaaS,Licence,Software,Application,IT-Apps,Head of Applications,G&A,Run,128000,EUR,OPEX,2025-10-07,2027-10-06,2027-10-07,Y,60,Annual,2000,64.0,144000,0,0,0,0,0,0,0,0,0,128000,0,0,
+IT-019,Woodgrove Finance Apps,ERP subscription (Kit Assembly),Licence,Software,Application,IT-Apps,Head of Applications,ERP & Supply Chain,Run,395000,EUR,OPEX,2024-03-31,2027-03-30,2027-03-31,Y,90,Annual,350,1128.57,383500,0,0,395000,0,0,0,0,0,0,0,0,0,
+IT-020,Adventure Works Planning,Supply chain planning & routing,Service,Outside services,Application,IT-Apps,Head of Applications,ERP & Supply Chain,Grow,220000,EUR,OPEX,2026-06-02,2027-06-01,2027-06-02,Y,60,Monthly,,,195000,,,,,,,,,,,,,
+IT-021,Woodgrove Finance Apps,ERP premium support,Service,Outside services,Application,IT-Apps,Head of Applications,ERP & Supply Chain,Run,61000,EUR,OPEX,2024-09-26,2027-09-25,2027-09-26,Y,30,Annual,,,63500,0,0,0,0,0,0,0,0,61000,0,0,0,
+IT-022,Coho Hardware Services,Laptop fleet maintenance,Service,Hardware maintenance,End user,IT-Workplace,Head of Workplace,Enterprise IT,Run,76000,EUR,OPEX,2026-10-13,2027-10-12,2027-10-13,N,90,Annual,,,79500,0,0,0,0,0,0,0,0,0,76000,0,0,
+IT-023,Coho Hardware Services,Laptop refresh (25% of fleet),Hardware,Hardware,End user,IT-Workplace,Head of Workplace,Enterprise IT,Grow,310000,EUR,CAPEX,,,,,,One-off,,,281000,0,0,0,0,310000,0,0,0,0,0,0,0,Phased with the 4-year device lifecycle.
+IT-024,Coho Hardware Services,Printer managed service,Service,Outside services,End user,,,Enterprise IT,Run,24000,EUR,OPEX,2024-01-05,2027-01-04,2027-01-05,Y,60,Quarterly,,,26500,6000.0,0,0,6000.0,0,0,6000.0,0,0,6000.0,0,0,
+IT-025,Fourth Coffee Consulting,IT service desk (outsourced),Service,Outside services,End user,IT-Workplace,Head of Workplace,Enterprise IT,Run,360000,EUR,OPEX,2025-07-05,2027-07-04,2027-07-05,Y,30,Monthly,,,333000,,,,,,,,,,,,,
+IT-026,Fourth Coffee Consulting,Architecture advisory retainer,Service,Outside services,Application,IT-Apps,CIO Office,Enterprise IT,Run,48000,EUR,OPEX,2024-05-21,2027-05-20,2027-05-21,Y,30,Quarterly,,,47500,12000.0,0,0,12000.0,0,0,12000.0,0,0,12000.0,0,0,
+IT-027,Relecloud Hosting,Colocation (2 racks),Service,Outside services,Infrastructure,IT-Infra,Head of Infrastructure,Enterprise IT,Run,72000,EUR,OPEX,2025-12-03,2026-12-02,2026-12-03,Y,90,Monthly,,,69500,,,,,,,,,,,,,
+IT-028,Relecloud Hosting,Disaster recovery site,Service,Cloud services,Infrastructure,IT-Infra,Head of Infrastructure,Enterprise IT,Run,96000,EUR,OPEX,2026-04-17,2027-04-16,2027-04-17,Y,30,Monthly,,,89000,,,,,,,,,,,,,
+IT-029,VanArsdel Monitoring,APM & observability platform,Licence,Software,Infrastructure,IT-Infra,Head of Infrastructure,Enterprise IT,Run,138000,EUR,OPEX,2026-03-31,2027-03-30,2027-03-31,Y,60,Annual,,,142000,0,0,138000,0,0,0,0,0,0,0,0,0,
+IT-030,VanArsdel Monitoring,Log management ingestion,Service,Cloud services,Infrastructure,IT-Infra,Head of Infrastructure,Enterprise IT,Run,54000,EUR,OPEX,2026-04-18,2027-04-17,2027-04-18,Y,60,Monthly,,,56500,,,,,,,,,,,,,
+IT-031,Lamna Backup,Backup & recovery licences,Licence,Software,Infrastructure,IT-Infra,Head of Infrastructure,Enterprise IT,Run,67000,EUR,OPEX,2024-09-30,2026-09-29,2026-09-30,Y,60,Annual,,,73500,,,,,,,,,,,,,
+IT-032,Trey Research,Analyst research subscription,Licence,Outside services,Application,IT-Apps,CIO Office,Enterprise IT,Grow,39000,EUR,OPEX,2025-12-10,2026-12-09,2026-12-10,N,90,Annual,3,13000.0,44000,,,,,,,,,,,,,
+IT-033,Graphic Design Institute,Design software seats,Licence,Software,End user,IT-Workplace,,Commercial,Run,26000,EUR,OPEX,2025-03-08,2027-03-07,2027-03-08,Y,60,Annual,40,650.0,24000,0,0,26000,0,0,0,0,0,0,0,0,0,
+IT-034,Alpine Identity,Identity & access management,Licence,Software,Security,IT-Security,CISO,Enterprise IT,Run,112000,EUR,OPEX,2024-01-01,2026-12-31,2027-01-01,Y,90,Annual,2100,53.33,122000,112000,0,0,0,0,0,0,0,0,0,0,0,
+IT-035,Alpine Identity,Privileged access management,Licence,Software,Security,IT-Security,CISO,Enterprise IT,Run,48000,EUR,OPEX,2023-12-24,2026-12-23,2026-12-24,Y,30,Annual,80,600.0,,,,,,,,,,,,,,
+IT-036,Humongous Code,Developer tooling & CI seats,Licence,Software,Application,IT-Apps,Head of Applications,Enterprise IT,Run,52000,EUR,OPEX,2026-02-27,2027-02-26,2027-02-27,Y,30,Annual,160,325.0,53500,0,52000,0,0,0,0,0,0,0,0,0,0,
+IT-037,Humongous Code,Source code security scanning,Licence,Software,Security,IT-Security,CISO,Enterprise IT,Run,34000,EUR,OPEX,2024-10-21,2027-10-20,2027-10-21,Y,60,Annual,160,212.5,,0,0,0,0,0,0,0,0,0,34000,0,0,
+IT-038,Datum Contact Centre,Contact centre platform,Licence,Software,Application,IT-Apps,Head of Applications,Commercial,Run,142000,EUR,OPEX,2026-11-13,2027-11-12,2027-11-13,N,30,Annual,180,788.89,124500,0,0,0,0,0,0,0,0,0,0,142000,0,
+IT-039,Lucerne Legal Tech,Contract management system,Licence,Software,Application,IT-Apps,Head of Applications,G&A,Run,36000,EUR,OPEX,2025-11-19,2027-11-18,2027-11-19,N,90,Annual,60,600.0,35500,0,0,0,0,0,0,0,0,0,0,36000,0,
+IT-040,Litware Collaboration,Legacy phone system maintenance,Service,Hardware maintenance,Network,IT-Infra,Network Manager,Enterprise IT,Run,0,EUR,OPEX,,,,,,Annual,,,41000,,,,,,,,,,,,,Cancelled: not renewing.
+IT-041,Tailspin Networks,Legacy firewall support,Service,Hardware maintenance,Security,IT-Security,CISO,Enterprise IT,Run,0,EUR,OPEX,,,,,,Annual,,,22000,,,,,,,,,,,,,Cancelled: not renewing.
+IT-042,Southridge AI,Enterprise AI search & governance,Service,Cloud services,Application,IT-Apps,CIO Office,Enterprise IT,Transform,180000,EUR,OPEX,2026-09-30,2027-09-29,2027-09-30,N,30,Annual,,,0,0,0,0,0,0,0,0,0,180000,0,0,0,Strategic deployment for contextual knowledge search.
+IT-043,Wide World Revenue AI,Revenue intelligence (AI),Licence,Software,Application,IT-Apps,Head of Applications,Commercial,Transform,120000,EUR,OPEX,2026-08-15,2027-08-14,2027-08-15,N,30,Annual,,,0,0,0,0,0,0,0,0,120000,0,0,0,0,Sales intelligence.</script>
 <script>
 (function () {
 'use strict';
@@ -423,6 +442,7 @@ const ICONS = {
   menu:'M3 6h18M3 12h18M3 18h18', close:'M6 6l12 12M18 6L6 18', upload:'M12 16V4M7 9l5-5 5 5M4 20h16',
   download:'M12 4v12M7 11l5 5 5-5M4 20h16', moon:'M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z',
   search:'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-5-5', arrow:'M5 12h14M13 6l6 6-6 6',
+  benchmark:'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12a1 1 0 1 0 0-2 1 1 0 0 0 0 2z',
   overview:'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z', breakdown:'M3 20h18M6 20V10M11 20V4M16 20v-7M21 20v-4',
   vendors:'M3 21h18M5 21V8l7-5 7 5v13M9 10h.01M15 10h.01M9 14h.01M15 14h.01M10 21v-4h4v4',
   org:'M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
@@ -506,6 +526,18 @@ function withTip(el, fn) {
 let toastTimer;
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 3500); }
 
+// Executive benchmark targets are the user's own assumptions. These defaults are illustrative
+// placeholders, NOT published benchmarks: replace them with figures from a benchmark source the
+// company subscribes to (e.g. Gartner IT Key Metrics, Avasant / Computer Economics). Percentages are
+// stored as whole numbers (6 = 6%). Company figures are kept in localStorage only, never in the file.
+const TARGET_DEFAULTS = { pctRev:6, perFte:14000, run:65, grow:20, transform:15 };
+const RGT = [
+  { key:'run', label:'Run', note:'operate and maintain', color:'var(--run)' },
+  { key:'grow', label:'Grow', note:'scale and expand', color:'var(--grow)' },
+  { key:'transform', label:'Transform', note:'new capabilities', color:'var(--transform)' },
+  { key:'none', label:'Unclassified', note:'blank or unrecognised', color:'var(--other)' },
+];
+
 // ================================================================ 2. CSV
 function detectDelimiter(text) {
   const lines = text.split(/\r?\n/).filter((l) => l.trim()).slice(0, 10);
@@ -564,7 +596,7 @@ function cleanNum(raw) {
   let t = String(raw).trim(); if (!t) return null;
   let neg = false;
   if (/^\(.*\)$/.test(t)) { neg = true; t = t.slice(1, -1); }
-  t = t.replace(/[\s '’€$£¥]|EUR|USD|GBP|CHF|SEK|NOK|DKK|INR|AUD|CAD/gi, '');
+  t = t.replace(/[\s\u00a0'’€$£¥]|EUR|USD|GBP|CHF|SEK|NOK|DKK|INR|AUD|CAD/gi, '');
   if (t.endsWith('-')) { neg = true; t = t.slice(0, -1); }
   if (t.startsWith('-')) { neg = !neg; t = t.slice(1); }
   return { t, neg };
@@ -644,6 +676,8 @@ const ROLES = [
   { key:'pool', label:'Cost pool / spend type', type:'text', re:/cost[\s_-]*pool|pool|spend[\s_-]*type|cost[\s_-]*type|expense[\s_-]*type|account/i },
   { key:'costcentre', label:'Cost centre / department', type:'text', help:'Enables Cost centres & owners.', re:/cost[\s_-]*cent|department|dept|business[\s_-]*unit|\bbu\b|division|team|function/i },
   { key:'owner', label:'Owner', type:'text', re:/owner|holder|manager|responsible|accountable|contact/i },
+  { key:'capability', label:'Business capability', type:'text', help:'Groups spend by capability on Executive benchmarks.', re:/capabilit|domain|function/i },
+  { key:'spend_cat', label:'Spend type (Run / Grow / Transform)', type:'text', help:'Enables the Run / Grow / Transform split.', re:/run.*grow|spend[\s_-]*(cat|type)|transform|investment[\s_-]*(type|class)|\brgt\b/i },
   { key:'capex', label:'CAPEX / OPEX', type:'text', re:/capex|opex/i },
   { key:'renewal', label:'Renewal / end date', type:'date', help:'Enables Renewals.', re:[/renew/i, /expir/i, /end[\s_-]*date|contract[\s_-]*end|term[\s_-]*end|\bend\b|due/i] },
   { key:'notice', label:'Notice period (days)', type:'number', help:'Deadline = renewal − notice.', re:/notice/i },
@@ -669,7 +703,7 @@ function guessMapping(prof) {
     if (main) take('amount', main.ci);
     if (prior) take('prior', prior.ci);
   }
-  for (const key of ['id', 'vendor', 'pool', 'category', 'costcentre', 'owner', 'capex', 'renewal', 'notice', 'auto', 'item']) {
+  for (const key of ['id', 'vendor', 'pool', 'category', 'costcentre', 'owner', 'capability', 'spend_cat', 'capex', 'renewal', 'notice', 'auto', 'item']) {
     const role = ROLES.find((r) => r.key === key);
     const fits = (p) => !used.has(p.ci) && p.month < 0 && (role.type === 'any' || p.type === role.type);
     let hit = null;
@@ -698,13 +732,16 @@ function guessCurrency(prof, rows, ci) {
 const S = {
   loaded:false, files:[], fileInfo:[], headers:[], rows:[], prof:[], map:{}, months:new Array(12).fill(null),
   opts:{ label:'', currency:'', asOf:dayToISO(todayDay()), fyStart:0, dateOrder:'auto', dec:'auto' },
+  company:{ rev:null, fte:null, otherIt:null, t:{ ...TARGET_DEFAULTS } },
   recs:[], dims:[], colorDim:null, colorMap:new Map(),
-  filters:{}, q:'', flag:null, page:'overview',
+  filters:{}, q:'', flag:null, page:'strategy',
   ui:{ groupBy:null, splitBy:null, bdView:'both', bSort:{ key:'value', dir:-1 }, vSort:{ key:'value', dir:-1 }, oSort:{ key:'value', dir:-1 },
     cSort:{ key:'value', dir:-1 }, lSort:{ key:null, dir:-1 }, lPage:0, lSize:50, density:'compact', renTab:'timeline', renSeg:'all',
     rSort:{ key:'deadline', dir:1 }, yoyTab:'increases', ySort:{ key:'d', dir:-1 }, qSort:{ key:'sev', dir:1 }, drawerReturn:null },
 };
-const sig = () => S.headers.join('␟');
+const sig = () => S.headers.join('\u241f');
+{ const c = store.get('company'); if (c) S.company = { ...S.company, ...c, t:{ ...TARGET_DEFAULTS, ...(c.t || {}) } }; }
+function defaultPage() { return ready() && (S.map.spend_cat != null || S.map.capability != null) ? 'strategy' : 'overview'; }
 const ready = () => S.loaded && S.map.amount != null;
 const hasMonths = () => S.months.filter((c) => c != null).length >= 2;
 const asOfDay = () => isoToDay(S.opts.asOf);
@@ -771,7 +808,7 @@ function buildRecords() {
 }
 function computeDims() {
   const n = S.rows.length, roleOf = new Map(Object.entries(S.map).map(([k, ci]) => [ci, k]));
-  const pref = ['category', 'pool', 'vendor', 'costcentre', 'owner', 'capex'];
+  const pref = ['capability', 'spend_cat', 'category', 'pool', 'vendor', 'costcentre', 'owner', 'capex'];
   const ok = (p) => p.type === 'text' && p.filled >= n * 0.3 && p.uniq <= Math.max(60, n * 0.5) && (p.uniq < n * 0.9 || n < 10) && p.month < 0;
   const dims = S.prof.filter((p) => ok(p) || (pref.includes(roleOf.get(p.ci)) && p.type !== 'number'));
   dims.sort((a, b) => {
@@ -780,11 +817,11 @@ function computeDims() {
   });
   S.dims = dims.map((p) => p.ci).filter((ci) => S.prof[ci].uniq > 1 || S.rows.some((r) => r[ci] === ''));
   const small = (ci) => ci != null && S.prof[ci].uniq >= 2 && S.prof[ci].uniq <= 8;
-  S.colorDim = [S.map.category, S.map.pool, S.map.capex, ...S.dims].find(small) ?? null;
+  S.colorDim = [S.map.category, S.map.capability, S.map.spend_cat, S.map.pool, S.map.capex, ...S.dims].find(small) ?? null;
   S.colorMap = new Map();
   if (S.colorDim != null) groupBy(S.recs, S.colorDim).forEach((g, i) => S.colorMap.set(g.key, PALETTE[i % PALETTE.length]));
   const saved = store.get('ui:' + sig()) || {};
-  const g = [S.map.pool, S.map.category, ...S.dims].find((ci) => ci != null && S.dims.includes(ci));
+  const g = [S.map.capability, S.map.pool, S.map.category, ...S.dims].find((ci) => ci != null && S.dims.includes(ci));
   S.ui.groupBy = S.dims.includes(saved.groupBy) ? saved.groupBy : (g ?? null);
   if ('splitBy' in saved && (saved.splitBy === null || (S.dims.includes(saved.splitBy) && saved.splitBy !== S.ui.groupBy))) S.ui.splitBy = saved.splitBy;
   else S.ui.splitBy = S.colorDim !== S.ui.groupBy ? S.colorDim : null;
@@ -807,7 +844,7 @@ function computeBridge(recs) {
   const b = { prior:0, added:0, increases:0, decreases:0, removed:0, next:0, newCount:0, removedCount:0 };
   for (const r of recs) {
     b.next += r.amount;
-    if (r.prior == null) { b.added += r.amount; if (r.amount) b.newCount++; continue; }
+    if (r.prior == null || (r.prior === 0 && r.amount > 0)) { b.added += r.amount; if (r.amount) b.newCount++; continue; } // blank or zero prior = new spend
     b.prior += r.prior;
     if (r.amount === 0 && r.prior > 0) { b.removed += r.prior; b.removedCount++; }
     else if (r.amount > r.prior) b.increases += r.amount - r.prior;
@@ -840,6 +877,7 @@ function vendorAgg(recs) {
 
 // ================================================================ 5. shell: pages, nav, header, filters, drawer
 const PAGES = [
+  { id:'strategy', label:'Executive benchmarks', icon:'benchmark', group:'Analyse', render:pageStrategy, insight:insStrategy },
   { id:'overview', label:'Overview', icon:'overview', group:'Analyse', render:pageOverview, insight:insOverview },
   { id:'breakdown', label:'Spend breakdown', icon:'breakdown', group:'Analyse', render:pageBreakdown, insight:insBreakdown },
   { id:'vendors', label:'Vendors', icon:'vendors', group:'Analyse', render:pageVendors, insight:insVendors,
@@ -893,7 +931,7 @@ function pageHeader(page, recs) {
   const actions = [];
   if (ready() && page.id !== 'source') actions.push(btn('Export CSV', 'secondary', () => exportCsv(recs), 'download', { title:'Export the filtered rows', id:'export-csv' }));
   return h('div', {},
-    h('nav', { class:'crumbs', 'aria-label':'Breadcrumb' }, h('a', { href:'#/overview' }, 'IT budget'), '/', h('span', {}, page.group), '/', h('span', { 'aria-current':'page' }, page.label)),
+    h('nav', { class:'crumbs', 'aria-label':'Breadcrumb' }, h('a', { href:'#/' + defaultPage() }, 'IT budget'), '/', h('span', {}, page.group), '/', h('span', { 'aria-current':'page' }, page.label)),
     h('div', { class:'page-head' },
       h('div', {}, h('h1', { class:'page-t' }, page.label), h('p', { class:'page-s', id:'page-insight' }, ready() && page.insight ? page.insight(recs) : '')),
       actions.length ? h('div', { class:'page-a' }, actions) : null));
@@ -961,7 +999,7 @@ function lineDrawer(r) {
     sub:[r.vendor && r.item ? r.vendor : null, r.id ? 'ID ' + r.id : null, `Row ${r.i + 1}`].filter(Boolean).join(' · '),
     body:[
       h('div', { class:'stats' }, stat(label(), fmtMoney(r.amount)),
-        S.map.prior != null ? stat('Prior year', r.prior == null ? 'New' : fmtMoney(r.prior)) : null,
+        S.map.prior != null ? stat('Prior year', !r.prior ? 'New' : fmtMoney(r.prior)) : null,
         S.map.prior != null && r.prior ? stat('Change', fmtSignedPct((r.amount - r.prior) / r.prior)) : null),
       S.map.renewal != null ? dsec('Renewal', kv([
         ['Renewal / end date', fmtDay(r.renewal)],
@@ -1005,8 +1043,8 @@ function vendorDrawer(g) {
 }
 
 // ================================================================ 6. charts & components
-function card({ title, sub, actions, body, foot, flush, id }) {
-  return h('section', { class:'card', id },
+function card({ title, sub, actions, body, foot, flush, id, style }) {
+  return h('section', { class:'card', id, style },
     title || actions ? h('header', { class:'card-h' }, h('div', {}, title ? h('h2', { class:'card-t' }, title) : null, sub ? h('p', { class:'card-s' }, sub) : null), actions ? h('div', { class:'card-a' }, actions) : null) : null,
     h('div', { class:'card-b' + (flush ? ' flush' : '') }, body),
     foot ? h('footer', { class:'card-f' }, foot) : null);
@@ -1107,7 +1145,7 @@ function waterfall(steps, { height = 280, compact, width } = {}) {
 }
 function bridgeSteps(b) {
   return [
-    { label:'Prior year', v:b.prior, total:true }, { label:'New lines', v:b.added, note:`${b.newCount} lines with no prior-year figure` },
+    { label:'Prior year', v:b.prior, total:true }, { label:'New lines', v:b.added, note:`${b.newCount} lines with no prior-year spend` },
     { label:'Increases', v:b.increases }, { label:'Decreases', v:-b.decreases },
     { label:'Removed', v:-b.removed, note:`${b.removedCount} lines budgeted at 0` }, { label:label(), v:b.next, total:true },
   ];
@@ -1227,48 +1265,131 @@ function heatCell(v, max) {
 }
 
 // ================================================================ 7. pages
+
 // Page subtitles state the main finding (Carbon: "titles should state the insight").
+
+// ---------- Executive benchmarks ----------
+function rgtOf(r) {
+  const v = (r.row[S.map.spend_cat] || '').toLowerCase();
+  if (/transform|innovat|change the business|\bctb\b/.test(v)) return 'transform';
+  if (/grow|expan|scale/.test(v)) return 'grow';
+  if (/\brun\b|operat|maint|sustain|keep the lights|\bktlo\b|\brtb\b/.test(v)) return 'run';
+  return 'none';
+}
+function rgtSplit(recs) {
+  const m = { run:0, grow:0, transform:0, none:0 }, vals = { run:new Set(), grow:new Set(), transform:new Set(), none:new Set() };
+  for (const r of recs) { const k = rgtOf(r); m[k] += r.amount; vals[k].add(cell(r, S.map.spend_cat)); }
+  return { m, vals, classified:m.run + m.grow + m.transform, all:m.run + m.grow + m.transform + m.none };
+}
+function companyFigures(recs) {
+  const C = S.company, inFile = sum(recs, (r) => r.amount);
+  const filtered = Object.keys(S.filters).length > 0 || !!S.q || !!S.flag;
+  const other = filtered ? 0 : C.otherIt || 0;
+  const it = inFile + other;
+  return { inFile, other, it, filtered, pctRev:C.rev ? it / C.rev : null, perFte:C.fte ? it / C.fte : null };
+}
+function vsTarget(actual, target) {
+  if (actual == null || !target) return null;
+  const d = actual / target - 1;
+  if (Math.abs(d) <= 0.1) return tag('Near target', 'green', 'Within ±10% of your target');
+  return d > 0 ? tag(`${fmtPct(d)} above target`, d > 0.25 ? 'red' : 'yellow') : tag(`${fmtPct(-d)} below target`, 'blue');
+}
+const fmtPp = (x) => (x > 0 ? '+' : x < 0 ? '−' : '') + Math.abs(x * 100).toFixed(1) + ' pp';
+function numInput(id, value, onSet, extra = {}) {
+  return h('input', { class:'input', id, type:'number', min:0, step:'any', value:value ?? '', ...extra,
+    onchange:(e) => { const v = e.target.value === '' ? null : +e.target.value; onSet(Number.isFinite(v) && v >= 0 ? v : null); store.set('company', S.company); setTimeout(render, 0); } });
+}
+function insStrategy(recs) {
+  const f = companyFigures(recs), T = S.company.t, parts = [];
+  if (f.pctRev != null) parts.push(`IT spend is ${fmtPct(f.pctRev, 1)} of revenue (target ${T.pctRev}%)`);
+  if (f.perFte != null) parts.push(`${fmtMoney(f.perFte)} per FTE (target ${fmtMoney(T.perFte)})`);
+  if (S.map.spend_cat != null) { const x = rgtSplit(recs); if (x.classified) parts.push(`${fmtPct(x.m.transform / x.classified, 1)} of classified spend goes to Transform (target ${T.transform}%)`); }
+  if (f.pctRev == null || f.perFte == null) parts.push(`enter company ${f.pctRev == null && f.perFte == null ? 'revenue and headcount' : f.pctRev == null ? 'revenue' : 'headcount'} to compare IT spend with your targets`);
+  const s = parts.join(' · ');
+  return s.charAt(0).toUpperCase() + s.slice(1) + '.';
+}
+function pageStrategy(recs) {
+  const C = S.company, T = C.t, f = companyFigures(recs), cur = S.opts.currency ? ` (${S.opts.currency})` : '';
+  const field = (lbl, input, help) => h('label', { class:'fb-field' }, h('span', { class:'fb-l' }, lbl), input, help ? h('span', { class:'helper' }, help) : null);
+  const out = [];
+  if (f.filtered) out.push(h('div', { class:'notice' }, icon('info'), h('span', {}, 'Filters are active: these figures use the filtered spend only, and other IT spend is left out.')));
+  else if (!C.otherIt) out.push(h('div', { class:'notice' }, icon('info'), h('span', {}, `This file holds ${fmtMoney(f.inFile)} of budget lines. Benchmarks usually cover total IT spend, including internal IT staff, so add other IT spend below for a like-for-like comparison.`)));
+
+  out.push(card({ title:'Company figures', sub:'Used for unit economics. Stored only in this browser, never in the file.', style:'margin-bottom:16px',
+    body:[h('div', { class:'co-strip' },
+      field(`Annual revenue${cur}`, numInput('co-rev', C.rev, (v) => { C.rev = v; }, { placeholder:'e.g. 150000000' }), C.rev ? `= ${fmtMoney(C.rev)}` : null),
+      field('Company headcount (FTE)', numInput('co-fte', C.fte, (v) => { C.fte = v; }, { placeholder:'e.g. 800' }), C.fte ? `= ${fmtInt(C.fte)} FTE` : null),
+      field(`Other IT spend not in this file${cur}`, numInput('co-other', C.otherIt, (v) => { C.otherIt = v; }, { placeholder:'e.g. 2500000' }), (C.otherIt ? `= ${fmtMoney(C.otherIt)} · ` : '') + 'For example internal IT staff, so the comparison covers total IT spend.')),
+    h('details', { class:'targets', open:!!S.ui.targetsOpen, ontoggle:(e) => { S.ui.targetsOpen = e.target.open; } },
+      h('summary', { id:'co-targets' }, 'Benchmark targets (your assumptions)'),
+      h('p', { class:'helper', style:'white-space:normal' }, 'The defaults are illustrative placeholders, not published benchmarks. Replace them with figures for your industry and company size from your own benchmark source, such as Gartner IT Key Metrics or Avasant (Computer Economics).'),
+      h('div', { class:'target-grid' },
+        field('IT spend, % of revenue', numInput('co-t-pct', T.pctRev, (v) => { T.pctRev = v ?? TARGET_DEFAULTS.pctRev; })),
+        field(`IT spend per FTE${cur}`, numInput('co-t-fte', T.perFte, (v) => { T.perFte = v ?? TARGET_DEFAULTS.perFte; })),
+        field('Run, %', numInput('co-t-run', T.run, (v) => { T.run = v ?? TARGET_DEFAULTS.run; })),
+        field('Grow, %', numInput('co-t-grow', T.grow, (v) => { T.grow = v ?? TARGET_DEFAULTS.grow; })),
+        field('Transform, %', numInput('co-t-transform', T.transform, (v) => { T.transform = v ?? TARGET_DEFAULTS.transform; }))),
+      h('div', { style:'margin-top:10px' }, btn('Reset targets to defaults', 'ghost sm', () => { C.t = { ...TARGET_DEFAULTS }; store.set('company', S.company); render(); }, null, { id:'co-t-reset' })))] }));
+
+  const x = S.map.spend_cat != null ? rgtSplit(recs) : null;
+  const tiles = [
+    kpi({ id:'bench-total', label:'IT spend in scope', value:fmtC(f.it), raw:f.it, meta:h('span', {}, f.other ? `${fmtC(f.inFile)} in file + ${fmtC(f.other)} other` : `${fmtInt(recs.length)} lines in file`) }),
+    kpi({ id:'bench-rev', label:'IT spend as % of revenue', value:f.pctRev != null ? fmtPct(f.pctRev, 1) : '—', raw:f.pctRev,
+      meta:f.pctRev != null ? [vsTarget(f.pctRev * 100, T.pctRev), h('span', {}, `Target ${T.pctRev}%`)] : h('span', {}, 'Enter annual revenue above') }),
+    kpi({ id:'bench-fte', label:'IT spend per FTE', value:f.perFte != null ? fmtMoney(f.perFte) : '—', raw:f.perFte,
+      meta:f.perFte != null ? [vsTarget(f.perFte, T.perFte), h('span', {}, `Target ${fmtMoney(T.perFte)}`)] : h('span', {}, 'Enter headcount above') }),
+  ];
+  if (x && x.classified) tiles.push(kpi({ id:'bench-transform', label:'Transform share', value:fmtPct(x.m.transform / x.classified, 1), raw:x.m.transform / x.classified,
+    meta:[tag(`${fmtPp(x.m.transform / x.classified - T.transform / 100)} vs target`, 'gray'), h('span', {}, `Target ${T.transform}%`)], hint:'Share of classified spend; unclassified lines are left out' }));
+  out.push(h('div', { class:'kpis' }, tiles));
+
+  const cards = [];
+  if (x) {
+    const base = x.classified || 1, tSum = (T.run + T.grow + T.transform) || 1;
+    const seg = (g, v, total, withLabel) => (v > 0 ? h('div', { class:'rgt-seg' + (g.key === 'none' ? ' none' : ''), style:`width:${v / total * 100}%;background:${g.color}`, title:`${g.label}: ${fmtPct(v / total, 1)}` }, withLabel && v / total >= 0.07 ? `${g.label} ${fmtPct(v / total)}` : '') : null);
+    const rows = RGT.filter((g) => g.key !== 'none' || x.m.none).map((g) => ({ ...g, v:x.m[g.key], share:g.key === 'none' ? null : x.m[g.key] / base, target:g.key === 'none' ? null : T[g.key] / 100, values:[...x.vals[g.key]] }));
+    const cols = [
+      { key:'label', label:'Spend type', render:(g) => h('span', { class:'sw-label' }, h('span', { class:'swatch', style:`background:${g.color}` }), h('b', {}, g.label), h('span', { class:'muted' }, g.note)) },
+      { key:'v', label:label(), num:true, render:(g) => fmtMoney(g.v) },
+      { key:'share', label:'Actual', num:true, render:(g) => (g.share == null ? h('span', { class:'muted' }, 'not compared') : fmtPct(g.share, 1)) },
+      { key:'target', label:'Target', num:true, render:(g) => (g.target == null ? '—' : fmtPct(g.target)) },
+      { key:'diff', label:'Difference', num:true, render:(g) => (g.share == null ? '—' : fmtPp(g.share - g.target)) },
+    ];
+    cards.push(card({ title:x.classified ? `Run takes ${fmtPct(x.m.run / base)} of classified spend (target ${T.run}%)` : 'Run vs Grow vs Transform',
+      sub:`From the “${hdr(S.map.spend_cat)}” column · targets are your assumptions · click a row to filter`, flush:true,
+      body:[h('div', { class:'rgt' },
+        h('span', {}, 'Actual'), h('div', { class:'rgt-bar', role:'img', 'aria-label':rows.map((g) => `${g.label} ${fmtPct(x.all ? g.v / x.all : 0)}`).join(', ') }, RGT.map((g) => seg(g, x.m[g.key], x.all || 1, true))),
+        h('span', {}, 'Target'), h('div', { class:'rgt-bar target', role:'img', 'aria-label':`Target: Run ${T.run}%, Grow ${T.grow}%, Transform ${T.transform}%` }, RGT.slice(0, 3).map((g) => seg(g, T[g.key], tSum, false)))),
+      dataTable({ cols, rows, id:'rgt-table', onRow:(g) => { if (g.values.length === 1) setFilter(S.map.spend_cat, g.values[0]); else toast(`${g.label} combines ${g.values.length} values; use the filter bar to pick one.`); } })] }));
+  } else {
+    cards.push(emptyState('compare', 'Run / Grow / Transform needs a spend-type column', 'Map a column holding values such as Run, Grow and Transform on Data source & columns.', h('a', { class:'btn primary', href:'#/source' }, icon('source'), 'Map columns')));
+  }
+  if (S.map.capability != null) {
+    const caps = groupBy(recs, S.map.capability), total = sum(recs, (r) => r.amount);
+    const cols = [
+      { key:'key', label:hdr(S.map.capability), cls:'strong' },
+      { key:'value', label:label(), num:true, render:(g) => fmtMoney(g.value) },
+      { key:'share', label:'Share', num:true, sortVal:(g) => g.value, render:(g) => fmtPct(total ? g.value / total : 0, 1) },
+      x ? { key:'mix', label:'Run / Grow / Transform', sortable:false, cls:'mix', render:(g) => { const y = rgtSplit(g.recs); return y.all ? h('span', { class:'stack mini', style:'width:72px' }, RGT.map((r) => (y.m[r.key] > 0 ? h('span', { style:`width:${y.m[r.key] / y.all * 100}%;background:${r.color}`, title:`${r.label}: ${fmtMoney(y.m[r.key])}` }) : null))) : ''; } } : null,
+      S.map.prior != null ? { key:'chg', label:'vs prior', num:true, sortVal:(g) => (g.prior ? (g.value - g.prior) / g.prior : null), render:(g) => (g.prior ? h('span', { style:`color:${g.value > g.prior ? 'var(--up)' : 'var(--down)'}` }, fmtSignedPct((g.value - g.prior) / g.prior)) : '—') } : null,
+    ].filter(Boolean);
+    S.ui.capSort = S.ui.capSort || { key:'value', dir:-1 };
+    cards.push(card({ title:caps.length && total ? `${caps[0].key} takes ${fmtPct(caps[0].value / total)} of spend` : 'Spend by business capability', sub:'Click a row to filter', flush:true,
+      body:dataTable({ cols, rows:sortRows(caps, cols, S.ui.capSort), sort:S.ui.capSort, onSort:sorter('capSort'), onRow:(g) => setFilter(S.map.capability, g.key), id:'cap-table',
+        foot:cols.map((c, i) => (i === 0 ? 'Total' : c.key === 'value' ? fmtMoney(total) : c.key === 'share' ? '100%' : '')) }) }));
+  } else {
+    cards.push(emptyState('compare', 'Capability view needs a business-capability column', 'Map a column such as “Business capability” or “Domain” on Data source & columns.', h('a', { class:'btn primary', href:'#/source' }, icon('source'), 'Map columns')));
+  }
+  out.push(h('div', { class:'grid g2' }, cards), footer());
+  return out;
+}
+
+// ---------- Overview ----------
 function insOverview(recs) {
   const t = sum(recs, (r) => r.amount), b = S.map.prior != null ? computeBridge(recs) : null;
   const v = S.map.vendor != null ? new Set(recs.filter((r) => r.amount).map((r) => r.vendor)).size : null;
   return `${fmtMoney(t)} across ${fmtInt(recs.length)} lines` + (v != null ? ` and ${v} vendors` : '') + (b && b.prior ? `, ${fmtSignedPct((t - b.prior) / b.prior)} vs prior year.` : '.');
 }
-function insBreakdown(recs) {
-  const ci = S.ui.groupBy; if (ci == null) return 'Group spend by any column.';
-  const g = groupBy(recs, ci), t = sum(recs, (r) => r.amount);
-  return g.length && t ? `${g[0].key} is the largest ${low(ci)} at ${fmtPct(g[0].value / t)} of spend (${g.length} groups).` : 'No matching spend.';
-}
-function insVendors(recs) {
-  const g = vendorAgg(recs).filter((v) => v.value > 0), t = sum(g, (v) => v.value);
-  if (!t) return 'No matching spend.';
-  let acc = 0, k = 0; for (const v of g) { acc += v.value; k++; if (acc / t >= 0.8) break; }
-  return `${g.length} vendors. The top 5 account for ${fmtPct(sum(g.slice(0, 5), (v) => v.value) / t)} of spend; ${k} vendors make up 80%.`;
-}
-function insOrg(recs) {
-  const t = sum(recs, (r) => r.amount), parts = [];
-  if (S.map.costcentre != null) parts.push(`${new Set(recs.map((r) => cell(r, S.map.costcentre))).size} cost centres`);
-  if (S.map.owner != null) parts.push(`${fmtPct(t ? sum(recs.filter((r) => !r.owner), (r) => r.amount) / t : 0, 1)} of spend has no owner`);
-  return parts.join(' · ') + '.';
-}
-function insRenewals(recs) {
-  const us = recs.map((r) => ({ r, u:urgencyOf(r) })).filter((x) => x.u && x.u.max <= 90);
-  const od = us.filter((x) => x.u.key === 'passed');
-  return `${us.length} notice deadlines in the next 90 days worth ${fmtC(sum(us, (x) => x.r.amount))}` + (od.length ? `, including ${od.length} already overdue.` : '.');
-}
-function insCashflow(recs) {
-  const order = monthOrder(), tot = order.map((m) => sum(recs, (r) => monthVal(r, m))), t = tot.reduce((a, b) => a + b, 0);
-  const i = tot.indexOf(Math.max(...tot));
-  return t ? `Peak month is ${mname(order[i])} at ${fmtC(tot[i])} (${fmtPct(tot[i] / t)} of the year); the first half carries ${fmtPct(tot.slice(0, 6).reduce((a, b) => a + b, 0) / t)}.` : 'No matching spend.';
-}
-function insYoy(recs) {
-  const b = computeBridge(recs), d = b.next - b.prior;
-  return b.prior ? `${d >= 0 ? 'Up' : 'Down'} ${fmtC(Math.abs(d))} (${fmtSignedPct(d / b.prior)}) from the prior year: ${fmtSigned(b.added)} new, ${fmtSigned(b.increases)} increases, ${fmtSigned(-b.decreases)} decreases, ${fmtSigned(-b.removed)} removed.` : 'No prior-year figures in the selection.';
-}
-function insLines(recs) { return `${fmtInt(recs.length)} of ${fmtInt(S.recs.length)} rows with every column from your file. Click a row for details.`; }
-function insQuality(recs) { const q = qualityOf(recs); return `${fmtPct(q.score)} of spend passes all checks · ${q.errors} errors · ${q.warnings} warnings.`; }
-function insSource() { return S.loaded ? `${S.files.join(', ')} · ${fmtInt(S.rows.length)} rows · ${S.headers.length} columns. Check how each column is interpreted.` : ''; }
-
-// ---------- Overview ----------
 function pageOverview(recs) {
   const total = sum(recs, (r) => r.amount);
   const tiles = [];
@@ -1285,7 +1406,7 @@ function pageOverview(recs) {
     tiles.push(kpi({ id:'renewals', label:'Notice deadlines ≤ 90 days', value:fmtInt(us.length), href:'#/renewals', alert:od > 0,
       meta:[od ? tag(`${od} overdue`, 'red') : tag('None overdue', 'green'), h('span', {}, `${fmtC(sum(us, (x) => x.r.amount))} of spend`)], hint:'Deadline = renewal date minus notice period' }));
   }
-  if (b) tiles.push(kpi({ id:'new', label:'New spend vs prior year', value:fmtC(b.added), href:'#/yoy', meta:h('span', {}, `${b.newCount} lines with no prior-year figure`) }));
+  if (b) tiles.push(kpi({ id:'new', label:'New spend vs prior year', value:fmtC(b.added), href:'#/yoy', meta:h('span', {}, `${b.newCount} lines with no prior-year spend`) }));
   const q = qualityOf(recs);
   tiles.push(kpi({ id:'quality', label:'Data quality', value:fmtPct(q.score), href:'#/quality',
     meta:[q.errors ? tag(`${q.errors} errors`, 'red') : tag('No errors', 'green'), h('span', {}, `${q.warnings} warnings`)], hint:'Share of spend in rows without errors or warnings' }));
@@ -1335,6 +1456,11 @@ function pageOverview(recs) {
 }
 
 // ---------- Spend breakdown (analytical list page: chart + table, switchable) ----------
+function insBreakdown(recs) {
+  const ci = S.ui.groupBy; if (ci == null) return 'Group spend by any column.';
+  const g = groupBy(recs, ci), t = sum(recs, (r) => r.amount);
+  return g.length && t ? `${g[0].key} is the largest ${low(ci)} at ${fmtPct(g[0].value / t)} of spend (${g.length} groups).` : 'No matching spend.';
+}
 function pageBreakdown(recs) {
   const total = sum(recs, (r) => r.amount);
   const gci = S.ui.groupBy, sci = S.ui.splitBy;
@@ -1388,6 +1514,12 @@ function pageBreakdown(recs) {
 }
 
 // ---------- Vendors ----------
+function insVendors(recs) {
+  const g = vendorAgg(recs).filter((v) => v.value > 0), t = sum(g, (v) => v.value);
+  if (!t) return 'No matching spend.';
+  let acc = 0, k = 0; for (const v of g) { acc += v.value; k++; if (acc / t >= 0.8) break; }
+  return `${g.length} vendors. The top 5 account for ${fmtPct(sum(g.slice(0, 5), (v) => v.value) / t)} of spend; ${k} vendors make up 80%.`;
+}
 function pageVendors(recs) {
   const all = vendorAgg(recs), total = sum(all, (v) => v.value);
   const pos = all.filter((v) => v.value > 0);
@@ -1405,7 +1537,7 @@ function pageVendors(recs) {
     { key:'share', label:'Share', num:true, sortVal:(v) => v.value, render:(v) => fmtPct(total ? v.value / total : 0, 1) },
   ];
   if (S.map.prior != null) cols.push({ key:'chg', label:'vs prior', num:true, sortVal:(v) => (v.priorN && v.prior ? (v.value - v.prior) / v.prior : null),
-    render:(v) => (!v.priorN ? tag('New', 'purple') : h('span', { style:`color:${v.value > v.prior ? 'var(--up)' : v.value < v.prior ? 'var(--down)' : 'inherit'}` }, fmtSignedPct(v.prior ? (v.value - v.prior) / v.prior : null))) });
+    render:(v) => (!v.priorN || !v.prior ? tag('New', 'purple') : h('span', { style:`color:${v.value > v.prior ? 'var(--up)' : v.value < v.prior ? 'var(--down)' : 'inherit'}` }, fmtSignedPct(v.prior ? (v.value - v.prior) / v.prior : null))) });
   if (S.colorDim != null) cols.push({ key:'mix', label:`Mix by ${low(S.colorDim)}`, sortable:false, render:(v) => (v.value ? h('span', { class:'stack mini' }, [...v.parts.entries()].map(([k, x]) => h('span', { style:`width:${Math.max(0, x / v.value * 100)}%;background:${colorOf(k)}`, title:`${k}: ${fmtMoney(x)}` }))) : '') });
   if (S.map.renewal != null) cols.push({ key:'next', label:'Next deadline', sortVal:(v) => (v.next ? v.next.deadline : null), render:(v) => (v.next ? h('div', {}, urgTag(v.nextU), h('div', { class:'muted', style:'font-size:12px;margin-top:2px' }, fmtDay(v.next.deadline))) : h('span', { class:'muted' }, '—')) });
   if (S.map.owner != null) cols.push({ key:'owners', label:'Owner', sortVal:(v) => [...v.owners].join(), render:(v) => (v.owners.size === 0 ? tag('No owner', 'yellow') : v.owners.size === 1 ? [...v.owners][0] : `${[...v.owners][0]} +${v.owners.size - 1}`) });
@@ -1416,6 +1548,12 @@ function pageVendors(recs) {
 }
 
 // ---------- Cost centres & owners ----------
+function insOrg(recs) {
+  const t = sum(recs, (r) => r.amount), parts = [];
+  if (S.map.costcentre != null) parts.push(`${new Set(recs.map((r) => cell(r, S.map.costcentre))).size} cost centres`);
+  if (S.map.owner != null) parts.push(`${fmtPct(t ? sum(recs.filter((r) => !r.owner), (r) => r.amount) / t : 0, 1)} of spend has no owner`);
+  return parts.join(' · ') + '.';
+}
 function pageOrganisation(recs) {
   const total = sum(recs, (r) => r.amount), out = [];
   const cc = S.map.costcentre;
@@ -1457,6 +1595,11 @@ function pageOrganisation(recs) {
 }
 
 // ---------- Renewals ----------
+function insRenewals(recs) {
+  const us = recs.map((r) => ({ r, u:urgencyOf(r) })).filter((x) => x.u && x.u.max <= 90);
+  const od = us.filter((x) => x.u.key === 'passed');
+  return `${us.length} notice deadlines in the next 90 days worth ${fmtC(sum(us, (x) => x.r.amount))}` + (od.length ? `, including ${od.length} already overdue.` : '.');
+}
 function pageRenewals(recs) {
   const items = recs.map((r) => ({ r, u:urgencyOf(r) })).filter((x) => x.u);
   const count = (k) => items.filter((x) => x.u.key === k).length;
@@ -1510,6 +1653,11 @@ function pageRenewals(recs) {
 }
 
 // ---------- Cash flow ----------
+function insCashflow(recs) {
+  const order = monthOrder(), tot = order.map((m) => sum(recs, (r) => monthVal(r, m))), t = tot.reduce((a, b) => a + b, 0);
+  const i = tot.indexOf(Math.max(...tot));
+  return t ? `Peak month is ${mname(order[i])} at ${fmtC(tot[i])} (${fmtPct(tot[i] / t)} of the year); the first half carries ${fmtPct(tot.slice(0, 6).reduce((a, b) => a + b, 0) / t)}.` : 'No matching spend.';
+}
 function pageCashflow(recs) {
   const order = monthOrder(), keys = S.colorDim != null ? [...S.colorMap.keys()] : [null];
   const series = keys.map((k) => ({ key:k || label(), color:k ? colorOf(k) : 'var(--bar)', values:order.map((m) => sum(recs.filter((r) => k == null || cell(r, S.colorDim) === k), (r) => monthVal(r, m))) }));
@@ -1530,14 +1678,18 @@ function pageCashflow(recs) {
 }
 
 // ---------- Year over year ----------
+function insYoy(recs) {
+  const b = computeBridge(recs), d = b.next - b.prior;
+  return b.prior ? `${d >= 0 ? 'Up' : 'Down'} ${fmtC(Math.abs(d))} (${fmtSignedPct(d / b.prior)}) from the prior year: ${fmtSigned(b.added)} new, ${fmtSigned(b.increases)} increases, ${fmtSigned(-b.decreases)} decreases, ${fmtSigned(-b.removed)} removed.` : 'No prior-year figures in the selection.';
+}
 function pageYoy(recs) {
   const b = computeBridge(recs);
-  const out = [h('div', { class:'grid' }, card({ title:'Bridge from prior year', sub:'Lines with no prior-year figure count as new; lines budgeted at 0 with a prior figure count as removed · hover for values',
+  const out = [h('div', { class:'grid' }, card({ title:'Bridge from prior year', sub:'Lines with a blank or zero prior-year figure count as new; lines budgeted at 0 with a prior figure count as removed · hover for values',
     body:h('div', { class:'chart' }, waterfall(bridgeSteps(b), { height:300 })) }))];
   const groups = {
-    increases:recs.filter((r) => r.prior != null && r.amount > r.prior),
-    decreases:recs.filter((r) => r.prior != null && r.amount < r.prior && r.amount !== 0),
-    new:recs.filter((r) => r.prior == null && r.amount),
+    increases:recs.filter((r) => r.prior > 0 && r.amount > r.prior),
+    decreases:recs.filter((r) => r.prior > 0 && r.amount < r.prior && r.amount !== 0),
+    new:recs.filter((r) => !r.prior && r.amount),
     removed:recs.filter((r) => r.prior > 0 && r.amount === 0),
   };
   const t = tabs([['increases', `Increases (${groups.increases.length})`], ['decreases', `Decreases (${groups.decreases.length})`], ['new', `New (${groups.new.length})`], ['removed', `Removed (${groups.removed.length})`]], S.ui.yoyTab, (k) => { S.ui.yoyTab = k; render(); }, 'yoy-tabs');
@@ -1546,7 +1698,7 @@ function pageYoy(recs) {
     { key:'item', label:'Line', cls:'wrap strong', sortVal:(x) => x.r.item, render:(x) => x.r.item || `Row ${x.r.i + 1}` },
     S.map.vendor != null ? { key:'vendor', label:'Vendor', sortVal:(x) => x.r.vendor, render:(x) => x.r.vendor } : null,
     S.colorDim != null ? { key:'cat', label:hdr(S.colorDim), sortVal:(x) => cell(x.r, S.colorDim), render:(x) => swatchLabel(cell(x.r, S.colorDim)) } : null,
-    { key:'prior', label:'Prior year', num:true, sortVal:(x) => x.r.prior, render:(x) => (x.r.prior == null ? tag('New', 'purple') : fmtMoney(x.r.prior)) },
+    { key:'prior', label:'Prior year', num:true, sortVal:(x) => x.r.prior, render:(x) => (!x.r.prior ? tag('New', 'purple') : fmtMoney(x.r.prior)) },
     { key:'amount', label:label(), num:true, sortVal:(x) => x.r.amount, render:(x) => fmtMoney(x.r.amount) },
     { key:'d', label:'Change', num:true, cls:'strong', sortVal:(x) => Math.abs(x.d), render:(x) => h('span', { style:`color:${x.d > 0 ? 'var(--up)' : 'var(--down)'}` }, fmtSigned(x.d)) },
     { key:'p', label:'Change %', num:true, sortVal:(x) => (x.r.prior ? x.d / x.r.prior : null), render:(x) => (x.r.prior ? fmtSignedPct(x.d / x.r.prior) : '—') },
@@ -1558,6 +1710,7 @@ function pageYoy(recs) {
 }
 
 // ---------- Line items ----------
+function insLines(recs) { return `${fmtInt(recs.length)} of ${fmtInt(S.recs.length)} rows with every column from your file. Click a row for details.`; }
 function pageLines(recs) {
   const typeOf = (c) => S.prof[c].type;
   const cols = S.headers.map((hd, c) => ({ key:'c' + c, label:pretty(hd), num:typeOf(c) === 'number', cls:c === S.map.amount ? 'strong' : c === S.map.item ? 'wrap' : '',
@@ -1581,6 +1734,7 @@ function pageLines(recs) {
 }
 
 // ---------- Data quality ----------
+function insQuality(recs) { const q = qualityOf(recs); return `${fmtPct(q.score)} of spend passes all checks · ${q.errors} errors · ${q.warnings} warnings.`; }
 function pageQuality(recs) {
   const q = qualityOf(recs), total = sum(recs, (r) => Math.abs(r.amount));
   const res = q.res.filter((x) => x.n);
@@ -1603,6 +1757,7 @@ function pageQuality(recs) {
 }
 
 // ---------- Data source & columns ----------
+function insSource() { return S.loaded ? `${S.files.join(', ')} · ${fmtInt(S.rows.length)} rows · ${S.headers.length} columns. Check how each column is interpreted.` : ''; }
 function pageSource() {
   const out = [];
   if (S.map.amount == null) out.push(h('div', { class:'notice warn' }, icon('warn'), h('span', {}, 'Choose which column holds the budget amount, then select Apply.')));
@@ -1650,6 +1805,7 @@ function readForms() {
 // ---------- landing, unavailable, footer ----------
 function landing() {
   const feats = [
+    ['benchmark', 'Executive benchmarks', 'IT spend vs revenue and headcount, Run / Grow / Transform and capabilities, against your own targets.', 'Needs: spend type and/or capability columns'],
     ['overview', 'Overview & breakdowns', 'Headline figures and spend by any column, as chart, table or both.', 'Needs: an amount column'],
     ['vendors', 'Vendors', 'Concentration (Pareto) and a detail panel per vendor with lines and owners.', 'Needs: a vendor column'],
     ['calendar', 'Renewals', 'Timeline, monthly calendar and a list of notice deadlines.', 'Needs: a renewal date (+ notice period)'],
@@ -1699,7 +1855,7 @@ function go(id) { if (location.hash !== '#/' + id) location.hash = '#/' + id; el
 function route() {
   const id = (location.hash.match(/^#\/([\w-]+)/) || [])[1];
   const prev = S.page;
-  S.page = pageById(id) ? id : 'overview';
+  S.page = pageById(id) ? id : defaultPage();
   closeDrawer();
   render();
   if (prev !== S.page) $('main').scrollTop = 0;
@@ -1727,7 +1883,7 @@ function load(parsed) {
   S.loaded = true;
   apply();
   toast(`Loaded ${fmtInt(rows.length)} rows from ${S.files.join(', ')}.`);
-  go(S.map.amount == null ? 'source' : 'overview');
+  go(S.map.amount == null ? 'source' : defaultPage());
 }
 async function readFiles(fileList) {
   const files = [...fileList].filter((f) => /\.(csv|txt|tsv)$/i.test(f.name) || f.type === 'text/csv');
@@ -1736,7 +1892,7 @@ async function readFiles(fileList) {
   for (const f of files) {
     const buf = await f.arrayBuffer();
     let text = new TextDecoder('utf-8').decode(buf);
-    if (text.includes('�')) text = new TextDecoder('windows-1252').decode(buf);
+    if (text.includes('\ufffd')) text = new TextDecoder('windows-1252').decode(buf); // U+FFFD = invalid UTF-8, so retry as Windows-1252
     parsed.push({ name:f.name, ...parseCSV(text) });
   }
   load(parsed);
