@@ -21,6 +21,7 @@
   --bar:#0f62fe; --other:#a8a8a8; --grid:#e8e8e8; --up:#da1e28; --down:#198038;
   --run:#0f62fe; --grow:#8a3ffc; --transform:#007d79; --rgt-ink:#ffffff;
   --c1:#6929c4; --c2:#1192e8; --c3:#005d5d; --c4:#9f1853; --c5:#fa4d56; --c6:#570408; --c7:#198038; --c8:#002d9c;
+  --c9:#ee538b; --c10:#b28600; --c11:#009d9a; --c12:#012749; --c13:#8a3800; --c14:#a56eff;
   --urg-passed:#da1e28; --urg-30:#eb6200; --urg-60:#d2a106; --urg-90:#8d8d8d; --urg-later:#78a9ff;
   --tag-red-bg:#ffd7d9; --tag-red:#a2191f; --tag-orange-bg:#ffe2cc; --tag-orange:#8a3800;
   --tag-yellow-bg:#fcf4d6; --tag-yellow:#684e00; --tag-green-bg:#defbe6; --tag-green:#0e6027;
@@ -36,6 +37,7 @@
   --bar:#4589ff; --other:#6f6f6f; --grid:#333333; --up:#fa4d56; --down:#42be65;
   --run:#78a9ff; --grow:#be95ff; --transform:#3ddbd9; --rgt-ink:#161616;
   --c1:#8a3ffc; --c2:#33b1ff; --c3:#08bdba; --c4:#ff7eb6; --c5:#fa4d56; --c6:#d4bbff; --c7:#6fdc8c; --c8:#4589ff;
+  --c9:#d12771; --c10:#d2a106; --c11:#007d79; --c12:#bae6ff; --c13:#ba4e00; --c14:#be95ff;
   --urg-later:#4589ff;
   --tag-red-bg:#a2191f; --tag-red:#ffd7d9; --tag-orange-bg:#8a3800; --tag-orange:#ffe2cc;
   --tag-yellow-bg:#684e00; --tag-yellow:#fcf4d6; --tag-green-bg:#0e6027; --tag-green:#defbe6;
@@ -49,6 +51,7 @@
   --bar:#4589ff; --other:#6f6f6f; --grid:#333333; --up:#fa4d56; --down:#42be65;
   --run:#78a9ff; --grow:#be95ff; --transform:#3ddbd9; --rgt-ink:#161616;
   --c1:#8a3ffc; --c2:#33b1ff; --c3:#08bdba; --c4:#ff7eb6; --c5:#fa4d56; --c6:#d4bbff; --c7:#6fdc8c; --c8:#4589ff;
+  --c9:#d12771; --c10:#d2a106; --c11:#007d79; --c12:#bae6ff; --c13:#ba4e00; --c14:#be95ff;
   --urg-later:#4589ff;
   --tag-red-bg:#a2191f; --tag-red:#ffd7d9; --tag-orange-bg:#8a3800; --tag-orange:#ffe2cc;
   --tag-yellow-bg:#684e00; --tag-yellow:#fcf4d6; --tag-green-bg:#0e6027; --tag-green:#defbe6;
@@ -300,6 +303,28 @@ dl.kv dt, dl.kv dd { padding:6px 0; border-bottom:1px solid var(--border); margi
 dl.kv dt { color:var(--text-2); padding-right:12px; }
 dl.kv dd { overflow-wrap:anywhere; }
 
+/* ---------- vendors ---------- */
+.owner-chip { display:inline-flex; align-items:center; gap:6px; height:22px; padding:0 9px 0 7px; border-radius:11px; font-size:12px; font-weight:500; white-space:nowrap; max-width:220px; overflow:hidden; text-overflow:ellipsis;
+  background:color-mix(in srgb, var(--oc) 16%, var(--layer)); border:1px solid color-mix(in srgb, var(--oc) 45%, var(--layer)); color:var(--text); }
+.owner-cell { display:inline-flex; gap:6px; align-items:center; }
+.donut-wrap { display:grid; grid-template-columns:176px minmax(0, 1fr); gap:16px; align-items:center; }
+.donut-wrap .dt-wrap { border-top:0; }
+#v-fn-table td, #v-fn-table th { padding-left:8px; padding-right:8px; }
+.donut { width:176px; height:176px; display:block; }
+.donut .slice { stroke:var(--layer); stroke-width:1.5; cursor:pointer; }
+.donut .slice:hover, .donut .slice:focus { filter:brightness(1.12); outline:none; stroke:var(--text); }
+.donut .donut-v { fill:var(--text); font-size:20px; font-weight:600; }
+.donut .donut-l { fill:var(--text-3); font-size:12px; }
+@media (max-width:640px) { .donut-wrap { grid-template-columns:1fr; justify-items:center; } .donut-wrap .dt-wrap { width:100%; } }
+.bands { display:grid; gap:2px; font-size:13px; }
+.band-row { display:grid; grid-template-columns:minmax(110px, 30%) 64px minmax(0, 1fr) 52px; gap:10px; align-items:center; background:none; border:0; border-radius:2px; padding:7px 6px; text-align:left; width:100%; color:inherit; }
+button.band-row:hover:not(:disabled) { background:var(--layer-hover); }
+button.band-row:disabled { cursor:default; opacity:.6; }
+.band-row .num { text-align:right; }
+.band-h { font-size:12px; color:var(--text-3); padding-top:0; }
+.band-bar { display:grid; grid-template-columns:minmax(40px, 1fr) 92px; gap:10px; align-items:center; }
+.band-bar .hb-track { height:14px; }
+
 /* ---------- key contracts ---------- */
 .ct-cmp { display:grid; grid-template-columns:minmax(80px, 24%) minmax(40px, 1fr) 104px; gap:10px 12px; align-items:center; font-size:13px; }
 .ct-cmp .hb-track { height:20px; }
@@ -461,7 +486,7 @@ IT-043,Wide World Revenue AI,Revenue intelligence (AI),Licence,Software,Applicat
 // ================================================================ 1. helpers
 const LOCALE = 'en-GB', SVGNS = 'http://www.w3.org/2000/svg', BLANK = '(blank)', DAY = 864e5;
 const MONTHS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
-const PALETTE = ['--c1','--c2','--c3','--c4','--c5','--c6','--c7','--c8'];
+const PALETTE = ['--c1','--c2','--c3','--c4','--c5','--c6','--c7','--c8','--c9','--c10','--c11','--c12','--c13','--c14'];
 const URGENCY = [
   { key:'passed', label:'Overdue', max:-1, color:'--urg-passed', tag:'red' },
   { key:'d30', label:'≤ 30 days', max:30, color:'--urg-30', tag:'orange' },
@@ -794,7 +819,7 @@ const S = {
   opts:{ label:'', currency:'', asOf:dayToISO(todayDay()), fyStart:0, dateOrder:'auto', dec:'auto' },
   recs:[], dims:[], colorDim:null, colorMap:new Map(),
   filters:{}, q:'', flag:null, page:'overview',
-  ui:{ ctSort:{ key:'annual', dir:-1 }, groupBy:null, splitBy:null, bdView:'both', bSort:{ key:'value', dir:-1 }, vSort:{ key:'value', dir:-1 }, oSort:{ key:'value', dir:-1 },
+  ui:{ vFn:null, ctSort:{ key:'annual', dir:-1 }, groupBy:null, splitBy:null, bdView:'both', bSort:{ key:'value', dir:-1 }, vSort:{ key:'value', dir:-1 }, oSort:{ key:'value', dir:-1 },
     cSort:{ key:'value', dir:-1 }, lSort:{ key:null, dir:-1 }, lPage:0, lSize:50, density:'compact', renTab:'timeline', renSeg:'all',
     rSort:{ key:'deadline', dir:1 }, yoyTab:'increases', ySort:{ key:'d', dir:-1 }, qSort:{ key:'sev', dir:1 }, drawerReturn:null },
 };
@@ -948,7 +973,7 @@ const CONTRACTS = readContracts();
 const PAGES = [
   { id:'overview', label:'Overview', icon:'overview', group:'Analyse', render:pageOverview, insight:insOverview, noFilters:true },
   { id:'breakdown', label:'Spend breakdown', icon:'breakdown', group:'Analyse', render:pageBreakdown, insight:insBreakdown },
-  { id:'vendors', label:'Vendors', icon:'vendors', group:'Analyse', render:pageVendors, insight:insVendors,
+  { id:'vendors', label:'Vendors', icon:'vendors', group:'Analyse', render:pageVendors, insight:insVendors, noFilters:true,
     needs:() => S.map.vendor != null, needsText:'a vendor / supplier column' },
   { id:'organisation', label:'Cost centres & owners', icon:'org', group:'Analyse', render:pageOrganisation, insight:insOrg,
     needs:() => S.map.costcentre != null || S.map.owner != null, needsText:'a cost centre or owner column' },
@@ -1453,31 +1478,137 @@ function pageBreakdown(recs) {
   return out;
 }
 
-// ---------- Vendors ----------
+// ---------- Vendors (no filter bar: always every row) ----------
+// colour per value of a column, by spend rank; the same map colours the donut and the owner chips
+function rankColors(ci) { const m = new Map(); groupBy(S.recs, ci).forEach((g, i) => m.set(g.key, cv(PALETTE[i % PALETTE.length]))); return m; }
+const ownerChip = (name, color, extra) => h('span', { class:'owner-chip', style:`--oc:${color}`, title:extra || name }, h('span', { class:'dot-sw', style:`background:${color}` }), name);
+// renewal date per budget line: the file's renewal column, else the day after the current term of a key contract that covers the line
+function renewalLookup() {
+  const byContract = new Map();
+  for (const c of CONTRACTS) {
+    const d = contractData(c);
+    if (d.termEnd != null) for (const r of d.matched) byContract.set(r, { day:d.termEnd + 1, note:`Day after the current term on the ${c.name} invoices, which ends ${fmtDay(d.termEnd)}` });
+  }
+  return (r) => (r.renewal != null ? { day:r.renewal, note:'Renewal date from the budget file' + (r.notice != null ? ` · notice by ${fmtDay(r.deadline)}` : '') } : byContract.get(r) || null);
+}
+function vendorRenewal(g, ren, AS) {
+  const xs = g.recs.filter((r) => r.amount > 0).map(ren).filter(Boolean).sort((a, b) => a.day - b.day);
+  return xs.find((x) => x.day >= AS) || xs[xs.length - 1] || null;
+}
+// spend-size bands; the thresholds scale with the size of the budget (250k … 10k for a budget in the millions)
+function sizeBands(vendors, total) {
+  const k = Math.pow(10, Math.floor(Math.log10(Math.max(total, 1))) - 6), cuts = [250e3, 100e3, 50e3, 25e3, 10e3].map((x) => x * k);
+  const bands = [{ lo:cuts[0], hi:Infinity, label:`${fmtC(cuts[0])} and more` }];
+  for (let i = 1; i < cuts.length; i++) bands.push({ lo:cuts[i], hi:cuts[i - 1], label:`${fmtC(cuts[i])} – ${fmtC(cuts[i - 1])}` });
+  bands.push({ lo:-Infinity, hi:cuts[4], label:`Under ${fmtC(cuts[4])}` });
+  for (const b of bands) { b.vendors = vendors.filter((v) => v.value >= b.lo && v.value < b.hi); b.value = sum(b.vendors, (v) => v.value); }
+  // the "long tail": vendors under 25k, or under 50k / 100k when fewer than 3 vendors are that small
+  const tailCut = [cuts[3], cuts[2], cuts[1]].find((c) => vendors.filter((v) => v.value < c).length >= 3) ?? cuts[3];
+  return { bands, tailCut, tail:vendors.filter((v) => v.value < tailCut) };
+}
+function donut(items, { size = 210, thick = 36, label: aria, center = [], onClick }) {
+  const R = size / 2, r0 = R - thick, total = sum(items, (x) => x.value) || 1;
+  const g = s('svg', { viewBox:`0 0 ${size} ${size}`, class:'donut', role:'img', 'aria-label':aria });
+  const pt = (a, r) => `${(R + r * Math.cos(a)).toFixed(2)} ${(R + r * Math.sin(a)).toFixed(2)}`;
+  let a = -Math.PI / 2;
+  for (const it of items) {
+    const f = it.value / total; if (!(f > 0)) continue;
+    const a1 = a + f * 2 * Math.PI - (f >= 0.9999 ? 0.0001 : 0), big = f > 0.5 ? 1 : 0;
+    const path = s('path', { d:`M${pt(a, R)} A${R} ${R} 0 ${big} 1 ${pt(a1, R)} L${pt(a1, r0)} A${r0} ${r0} 0 ${big} 0 ${pt(a, r0)} Z`, style:`fill:${it.color}`, class:'slice', tabindex:0,
+      onclick:onClick ? () => onClick(it) : null, onkeydown:onClick ? (e) => { if (e.key === 'Enter') onClick(it); } : null });
+    withTip(path, () => [it.key, fmtMoney(it.value), `${fmtPct(f, 1)} of vendor spend` + (it.n != null ? ` · ${it.n} vendor${it.n === 1 ? '' : 's'}` : ''), onClick ? 'Click for its vendors' : null]);
+    g.append(path); a = a1;
+  }
+  center.forEach((t, i) => g.append(s('text', { x:R, y:R + (i - (center.length - 1) / 2) * 20 + 6, 'text-anchor':'middle', class:i === 0 ? 'donut-v' : 'donut-l' }, t)));
+  return g;
+}
+function vendorListDrawer(title, sub, vendors, all, footer) {
+  const t = sum(vendors, (v) => v.value);
+  openDrawer({ title, sub,
+    body:dataTable({ cols:[{ key:'key', label:'Vendor', cls:'strong wrap' }, { key:'value', label:label(), num:true, render:(v) => fmtMoney(v.value) }, { key:'share', label:'Share', num:true, render:(v) => fmtPct(t ? v.value / t : 0, 1) }],
+      rows:vendors, onRow:(v) => vendorDrawer(all.find((x) => x.key === v.key) || v), foot:['Total', fmtMoney(t), '100%'] }),
+    footer:[footer, btn('Close', 'primary', closeDrawer)] });
+}
 function insVendors(recs) {
   const g = vendorAgg(recs).filter((v) => v.value > 0), t = sum(g, (v) => v.value);
   if (!t) return 'No matching spend.';
-  const top = (n) => fmtPct(sum(g.slice(0, n), (v) => v.value) / t);
-  return `${g.length} vendors. The top 5 account for ${top(5)} of spend and the top 10 for ${top(10)}.`;
+  const top = (n) => fmtPct(sum(g.slice(0, n), (v) => v.value) / t), sb = sizeBands(g, t);
+  return `${g.length} vendors. The top 10 take ${top(10)} of spend, while ${sb.tail.length} vendors under ${fmtC(sb.tailCut)} each add up to ${fmtPct(sum(sb.tail, (v) => v.value) / t)}.`;
 }
 function pageVendors(recs) {
-  const all = vendorAgg(recs), total = sum(all, (v) => v.value);
-  const out = [];
+  const all = vendorAgg(recs), pos = all.filter((v) => v.value > 0), total = sum(all, (v) => v.value), AS = asOfDay();
+  const ren = renewalLookup(), vren = new Map(all.map((v) => [v, vendorRenewal(v, ren, AS)]));
+  const oc = S.map.owner != null ? rankColors(S.map.owner) : null, sb = sizeBands(pos, total);
+  const soon = pos.filter((v) => { const x = vren.get(v); return x && x.day >= AS && x.day - AS <= 90; }), anyRen = [...vren.values()].some(Boolean);
+  const top = (n) => (total ? sum(pos.slice(0, n), (v) => v.value) / total : 0);
+  const out = [h('div', { class:'kpis' },
+    kpi({ id:'v-count', label:'Vendors with spend', value:fmtInt(pos.length), raw:pos.length, meta:h('span', {}, `${fmtMoney(total)} in total`) }),
+    kpi({ id:'v-top10', label:'Top 10 vendors', value:fmtPct(top(10)), raw:top(10), meta:h('span', {}, `of spend · top 5: ${fmtPct(top(5))}`) }),
+    kpi({ id:'v-tail', label:`Vendors under ${fmtC(sb.tailCut)}`, value:fmtInt(sb.tail.length), raw:sb.tail.length,
+      meta:h('span', {}, `${fmtPct(total ? sum(sb.tail, (v) => v.value) / total : 0, 1)} of spend between them`), hint:'Small contracts: candidates to consolidate or move to a standard tool' }),
+    kpi({ id:'v-renew', label:'Renewing in the next 90 days', value:anyRen ? fmtInt(soon.length) : '—', raw:anyRen ? soon.length : null,
+      meta:h('span', { title:soon.map((v) => v.key).join(', ') }, !anyRen ? 'No renewal dates in the data yet' : soon.length ? `${fmtMoney(sum(soon, (v) => v.value))}: ${soon.slice(0, 3).map((v) => v.key).join(', ')}${soon.length > 3 ? '…' : ''}` : 'None in the next 90 days') }))];
+
+  // functional view: spend by budget owner (or capability / cost centre), as a donut with its key
+  const fns = [['owner', 'Budget owner'], ['capability', 'Capability'], ['costcentre', 'Cost centre']].filter(([k]) => S.map[k] != null && S.prof[S.map[k]].uniq > 1);
+  const cards = [];
+  if (fns.length && total) {
+    if (!fns.some(([k]) => k === S.ui.vFn)) S.ui.vFn = fns[0][0];
+    const ci = S.map[S.ui.vFn], colors = S.ui.vFn === 'owner' && oc ? oc : rankColors(ci), fnName = fns.find(([k]) => k === S.ui.vFn)[1];
+    const groups = groupBy(recs.filter((r) => r.amount > 0), ci).map((g) => ({ ...g, color:colors.get(g.key) || 'var(--other)', n:new Set(g.recs.map((r) => cell(r, S.map.vendor))).size }));
+    const open = (g) => vendorListDrawer(g.key, `${fmtMoney(g.value)} · ${fmtPct(g.value / total, 1)} of vendor spend · ${g.n} vendor${g.n === 1 ? '' : 's'}`, vendorAgg(g.recs).filter((v) => v.value > 0), all,
+      btn('List its lines', 'secondary', () => { closeDrawer(); setFilter(ci, g.key); }));
+    const fnsOf = (v) => [...new Set(v.recs.filter((r) => r.amount > 0 && r.row[ci]).map((r) => r.row[ci]))];
+    const shared = pos.filter((v) => fnsOf(v).length > 1);
+    cards.push(card({ title:`${groups[0].key}: ${fmtPct(groups[0].value / total)} of vendor spend`, id:'v-fn-card',
+      sub:`Spend by ${fnName.toLowerCase()} · click a slice or row for its vendors`,
+      body:[fns.length > 1 ? h('div', { style:'margin-bottom:12px' }, segmented(fns.map(([k, l]) => [k, l]), S.ui.vFn, (k) => { S.ui.vFn = k; render(); }, 'Group the chart by', 'v-fn')) : null,
+        h('div', { class:'donut-wrap' },
+        donut(groups, { label:groups.map((g) => `${g.key} ${fmtPct(g.value / total)}`).join(', '), center:[fmtC(total), `${pos.length} vendors`], onClick:open }),
+        dataTable({ cols:[
+          { key:'key', label:fnName, render:(g) => h('span', { class:'sw-label' }, h('span', { class:'swatch', style:`background:${g.color}` }), g.key) },
+          { key:'value', label:'Spend', num:true, render:(g) => h('span', { title:fmtMoney(g.value) }, fmtC(g.value)) },
+          { key:'share', label:'Share', num:true, render:(g) => fmtPct(g.value / total, 1) },
+          { key:'n', label:'Vendors', num:true }], rows:groups, onRow:open, maxHeight:'300px', id:'v-fn-table' })),
+        shared.length ? h('p', { class:'ct-gap', id:'v-shared' }, icon('info', 14), ` ${shared.length} vendor${shared.length === 1 ? ' is' : 's are'} bought by more than one ${fnName.toLowerCase()}: `,
+          shared.slice(0, 3).map((v, i) => [i ? '; ' : '', h('b', {}, v.key), ` (${fnsOf(v).join(', ')})`]), shared.length > 3 ? `; and ${shared.length - 3} more` : '', '. A chance to combine contracts.') : null] }));
+  }
+  // long tail: how many vendors, and how much spend, in each size band
+  if (pos.length) {
+    const maxV = Math.max(...sb.bands.map((b) => b.value), 1);
+    cards.push(card({ title:`${sb.tail.length} of ${pos.length} vendors are under ${fmtC(sb.tailCut)} each: ${fmtPct(total ? sum(sb.tail, (v) => v.value) / total : 0)} of spend`, id:'v-bands',
+      sub:'Vendors grouped by their yearly spend · click a band for its vendors',
+      body:h('div', { class:'bands' },
+        h('div', { class:'band-row band-h' }, h('span', {}, 'Yearly spend per vendor'), h('span', { class:'num' }, 'Vendors'), h('span', {}, 'Spend'), h('span', { class:'num' }, 'Share')),
+        sb.bands.map((b, i) => h('button', { type:'button', class:'band-row', id:'v-band-' + i, disabled:!b.vendors.length, title:b.vendors.length ? `${b.label}: open the ${b.vendors.length} vendors` : null,
+          onclick:() => vendorListDrawer(b.label, `${b.vendors.length} vendors · ${fmtMoney(b.value)} · ${fmtPct(total ? b.value / total : 0, 1)} of spend`, b.vendors, all) },
+          h('span', { class:'band-l' }, b.label), h('span', { class:'num strong' }, fmtInt(b.vendors.length)),
+          h('span', { class:'band-bar' }, h('span', { class:'hb-track' }, h('span', { class:'hb-fill', style:`width:${b.value / maxV * 100}%;background:${b.lo >= sb.tailCut ? 'var(--bar)' : 'var(--other)'}` })), h('span', { class:'hb-val' }, fmtMoney(b.value))),
+          h('span', { class:'num muted' }, fmtPct(total ? b.value / total : 0, 1)))),
+        (() => { const big = sb.bands.slice(0, 2).flatMap((b) => b.vendors); return big.length ? h('p', { class:'ct-gap' }, `At the other end, ${big.length} vendor${big.length === 1 ? '' : 's'} at ${fmtC(sb.bands[1].lo)} or more make${big.length === 1 ? 's' : ''} up ${fmtPct(total ? sum(big, (v) => v.value) / total : 0)} of spend.`) : null; })()) }));
+  }
+  if (cards.length) out.push(h('div', { class:'grid g2' }, cards));
+
   const cols = [
     { key:'rank', label:'#', num:true, sortVal:(v) => -v.value, render:(v) => all.indexOf(v) + 1 },
     { key:'key', label:'Vendor', cls:'strong wrap' },
-    { key:'count', label:'Lines', num:true },
     { key:'value', label:label(), num:true, cls:'strong', render:(v) => fmtMoney(v.value) },
     { key:'share', label:'Share', num:true, sortVal:(v) => v.value, render:(v) => fmtPct(total ? v.value / total : 0, 1) },
   ];
   if (S.map.prior != null) cols.push({ key:'chg', label:'vs prior', num:true, sortVal:(v) => (v.priorN && v.prior ? (v.value - v.prior) / v.prior : null),
     render:(v) => (!v.priorN || !v.prior ? tag('New', 'purple') : h('span', { style:`color:${v.value > v.prior ? 'var(--up)' : v.value < v.prior ? 'var(--down)' : 'inherit'}` }, fmtSignedPct(v.prior ? (v.value - v.prior) / v.prior : null))) });
-  if (S.colorDim != null) cols.push({ key:'mix', label:`Mix by ${low(S.colorDim)}`, sortable:false, render:(v) => (v.value ? h('span', { class:'stack mini' }, [...v.parts.entries()].map(([k, x]) => h('span', { style:`width:${Math.max(0, x / v.value * 100)}%;background:${colorOf(k)}`, title:`${k}: ${fmtMoney(x)}` }))) : '') });
-  if (S.map.renewal != null) cols.push({ key:'next', label:'Next deadline', sortVal:(v) => (v.next ? v.next.deadline : null), render:(v) => (v.next ? h('div', {}, urgTag(v.nextU), h('div', { class:'muted', style:'font-size:12px;margin-top:2px' }, fmtDay(v.next.deadline))) : h('span', { class:'muted' }, '—')) });
-  if (S.map.owner != null) cols.push({ key:'owners', label:'Owner', sortVal:(v) => [...v.owners].join(), render:(v) => (v.owners.size === 0 ? tag('No owner', 'yellow') : v.owners.size === 1 ? [...v.owners][0] : `${[...v.owners][0]} +${v.owners.size - 1}`) });
-  out.push(card({ title:'All vendors', sub:'Click a vendor to open its lines, renewals and owners', flush:true,
+  cols.push({ key:'renewal', label:'Renewal', sortVal:(v) => (vren.get(v) ? vren.get(v).day : null), render:(v) => {
+    const x = vren.get(v); if (!x) return h('span', { class:'muted' }, '—');
+    const d = Math.round(x.day - AS);
+    return h('div', { title:x.note, style:'white-space:nowrap' }, fmtDay(x.day), h('div', { style:'margin-top:2px' }, d < 0 ? tag(`${-d} days ago`, 'red') : d <= 90 ? tag(`in ${d} days`, 'orange') : h('span', { class:'muted', style:'font-size:12px' }, `in ${d} days`)));
+  } });
+  if (oc) cols.push({ key:'owners', label:'Owner', sortVal:(v) => [...v.owners].join(), render:(v) => {
+    const os = [...v.owners];
+    return !os.length ? tag('No owner', 'yellow') : h('span', { class:'owner-cell' }, ownerChip(os[0], oc.get(os[0]) || 'var(--other)', os.join(', ')), os.length > 1 ? h('span', { class:'muted', title:os.join(', ') }, `+${os.length - 1}`) : null);
+  } });
+  out.push(card({ title:'All vendors', sub:'Click a vendor to open its lines, renewal and owners', flush:true,
     body:dataTable({ cols, rows:sortRows(all, cols, S.ui.vSort), sort:S.ui.vSort, onSort:sorter('vSort'), onRow:(v) => vendorDrawer(v), maxHeight:'620px', id:'vendor-table',
-      foot:cols.map((c, i) => (i === 1 ? `Total (${all.length})` : c.key === 'value' ? fmtMoney(total) : c.key === 'count' ? fmtInt(recs.length) : '')) }) }));
+      foot:cols.map((c, i) => (i === 1 ? `Total (${all.length})` : c.key === 'value' ? fmtMoney(total) : c.key === 'share' ? '100%' : '')) }) }));
   return out;
 }
 

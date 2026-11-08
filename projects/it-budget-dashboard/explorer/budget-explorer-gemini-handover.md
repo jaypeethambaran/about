@@ -26,7 +26,7 @@ You are taking over a working prototype. This document explains what it is, how 
 4. **The owner's focus is the UI** and **accepting any CSV**. Keep both central.
 5. A previous Gemini session added an Executive benchmarks page and the Hardware / Licence / Service taxonomy. Claude integrated it with fixes (see the change log in section 13).
 6. **The owner then had Executive benchmarks and the vendor Pareto chart removed**, and asked for **a page per key contract built from its invoices, adjusted to a yearly figure**. Don't bring the removed views back unless the owner asks.
-7. **Overview has no filter bar and lists the top 15 vendors.** The owner's own build also has **no way to load CSV files in the page** (`data-upload="off"`, section 3): its data is embedded at build time.
+7. **Overview and Vendors have no filter bar.** Overview lists the top 15 vendors; Vendors opens with a spend-by-owner pie chart and a vendor-size view, and its table shows renewal date and colour-coded owners instead of line counts and spend-type mix. The owner's own build also has **no way to load CSV files in the page** (`data-upload="off"`, section 3): its data is embedded at build time.
 
 ---
 
@@ -49,7 +49,7 @@ Set **Data source & columns → Urgency as of = 2026-11-07** first, because rene
 | Category split | Service 2,962,000 · Licence 2,365,000 · Hardware 490,000 (no "Contract" category) |
 | Run / Grow / Transform | Run 3,771,000 (**64.8%**) · Grow 1,746,000 (**30.0%**) · Transform 300,000 (**5.2%**) |
 | Business capabilities | Enterprise IT 80.6% · ERP & Supply Chain 11.6% · Commercial 5.0% · G&A 2.8% |
-| Vendors insight | 23 vendors; top 5 = **49%** of spend, top 10 = **75%** |
+| Vendors page | 23 vendors; top 5 = **49%** of spend, top 10 = **75%**; no vendor under €25k, so the long-tail cut moves to €50k: **3 vendors**; pie by budget owner, largest Head of Workplace (24%); by capability, 4 slices with Enterprise IT largest |
 | Key contract: Contoso Cloud | Monthly invoice 56,500 × 12 = **678,000** a year; budget (2 lines) **758,000**; headroom **80,000**; no exchange rate needed |
 | Key contract: Fabrikam Security | Endpoint licences 176,400 billed yearly (×1) + SOC and retainer 72,500 a quarter (×4) = **466,400 USD**; at the file's illustrative rate 0.89 = **415,096 EUR**; budget (3 lines) **441,000**; headroom **25,904**; term ends **30 Sep 2027**. An ended onboarding invoice (12,000 for 6 months) is listed but not counted. Typing rate 0.95 gives **2,080 over budget** |
 | Notice deadlines within 90 days | **18**, of which **7 overdue** |
@@ -268,7 +268,7 @@ Each entry is `{ id, label, icon, group, render, insight, needs?, needsText?, no
 |---|---|---|---|
 | Analyse | **Overview** | **The landing page. No filter bar: it always shows the whole budget.** KPI tiles (total with trend line and change vs prior year, vendors, 90-day deadlines, new spend, quality score), then cards for category mix (a bar opens Line items filtered to it), the **top 15 vendors** (a bar opens the vendor panel), the first deadlines to act on, monthly cash flow, a mini bridge and data checks. Each card links to its page. | amount |
 | Analyse | **Spend breakdown** | **Group by** any column, **Split by** another, and a **View** switch (Chart / Table / Chart + table). Stacked bars plus a cross-table with shaded cells. Clicking filters. | amount |
-| Analyse | **Vendors** | Vendor table with rank, lines, share, change, category mix, next deadline and owner (the Pareto chart was removed at the owner's request). A row opens the **vendor details panel**. | vendor |
+| Analyse | **Vendors** | **No filter bar.** KPI tiles: vendors with spend, top-10 share, vendors in the long tail (under 25k, moving to 50k / 100k when fewer than 3 vendors are that small; thresholds scale with the budget size), renewals in the next 90 days. A **pie (donut) chart by budget owner**, switchable to capability or cost centre, with its key as a table and a note on vendors bought by more than one owner; a **vendor-size card** (vendors and spend per spend band). Then the vendor table: rank, spend, share, change vs prior, **renewal date** (the file's renewal column, else the day after a key contract's current term) and **owner as a coloured chip** (same colours as the pie). Slices, bands and rows open panels. The Pareto chart, Lines and Mix columns were removed at the owner's request. | vendor |
 | Analyse | **Cost centres & owners** | Shaded grid of cost centre × colour column, and an owner table with lines lacking an owner highlighted | cost centre or owner |
 | Key contracts | **One page per contract** in `#contracts-json` (id `c-<id>`) | KPI tiles: annual cost at current run-rate, budget, run-rate in budget currency (when currencies differ), headroom or over budget, and current term end (yearly or half-yearly contracts). Cards: annual cost by product (coloured by `kind`, click for line details); budget vs run-rate bars with the exchange-rate input and the matched and related budget lines; the invoice lines table (quantity, service period, invoiced, factor, per year, per unit per month, share) with an invoice-total check; and how the figures are calculated. Export CSV gives the annualised lines. No filter bar. | invoice lines in `#contracts-json` |
 | Plan | **Renewals** | Urgency filter buttons, then **Timeline / Calendar / List** tabs. The calendar has 12 month cards grouped by notice-deadline month, plus Overdue and Later cards. | renewal date |
@@ -278,7 +278,7 @@ Each entry is `{ id, label, icon, group, render, insight, needs?, needsText?, no
 | Data | **Data quality** | Score ring, checks by severity and "View rows" (filters Line items to that check) | amount |
 | Data | **Data source & columns** | Loaded files, settings (label, currency, number format, date format, as-of date, fiscal-year start) and the column mapping form. Apply / Re-detect. | (always) |
 
-**Global filter bar**, which appears on every page except Overview, Data source and the contract pages. Those pages always use every row; clicking a bar there that would filter opens Line items with the filter instead (`setFilter`).
+**Global filter bar**, which appears on every page except Overview, Vendors, Data source and the contract pages. Those pages always use every row; clicking a bar there that would filter opens Line items with the filter instead (`setFilter`).
 - Up to 6 dropdowns for the main groupable columns, plus a full-text search.
 - Active filters appear as removable chips with a "Showing X of Y rows" note.
 - Filters persist across pages.
@@ -307,7 +307,7 @@ The look follows public enterprise design systems. Keep it consistent with them.
 | Surfaces | `--bg`, `--layer`, `--layer-2`, `--layer-hover`, `--selected`, `--border`, `--border-strong` |
 | Text | `--text`, `--text-2`, `--text-3` |
 | Accent | `--primary`, `--primary-weak`, `--link` |
-| Data colours | `--bar` (single series), `--other`, `--c1…--c8` (categories), `--up` / `--down` (cost increase red, decrease green), `--run` / `--grow` / `--transform` with `--rgt-ink` for labels on them |
+| Data colours | `--bar` (single series), `--other`, `--c1…--c14` (categories; IBM Carbon's 14-colour order, the last six used when a column has more than 8 values, such as owners), `--up` / `--down` (cost increase red, decrease green), `--run` / `--grow` / `--transform` with `--rgt-ink` for labels on them |
 | Urgency | `--urg-passed`, `--urg-30`, `--urg-60`, `--urg-90`, `--urg-later` |
 | Tags | `--tag-{red,orange,yellow,green,blue,gray,purple}{-bg}` |
 
@@ -366,11 +366,11 @@ The mapping form picks it up automatically.
 
 ## 8. Testing and verification
 
-**Automated (in the source repo):** `projects/it-budget-dashboard/tests/explorer_test.cjs`, a Playwright script with 85 checks that opens the file from disk. Run it with `node tests/explorer_test.cjs`, or `SCREENSHOT_DIR=… node tests/explorer_test.cjs` to also save a screenshot of each page. It checks that:
+**Automated (in the source repo):** `projects/it-budget-dashboard/tests/explorer_test.cjs`, a Playwright script with 94 checks that opens the file from disk. Run it with `node tests/explorer_test.cjs`, or `SCREENSHOT_DIR=… node tests/explorer_test.cjs` to also save a screenshot of each page. It checks that:
 - The sample opens on Overview; there is no Executive benchmarks page, and the nav groups are Analyse, Key contracts, Plan, Data.
 - Every page renders and is marked current in the nav.
 - Overview has no filter bar, shows 15 vendors plus "All other", and its bars open the vendor panel or Line items without leaving a hidden filter.
-- Vendors has no Pareto chart.
+- Vendors has no Pareto chart and no filter bar; its table has Renewal and coloured Owner columns but no Lines or Mix; the pie has one slice per owner, opens an owner's vendors, and switches to capability; the long-tail cut and size bands add up.
 - A copy with `data-upload="off"` has no Load CSV button and no Replace / Sample data buttons.
 - Service periods map to 1, 1, 3, 12 and 0.46 months; both sample contracts give the figures in section 2, including the ended invoice and term end; typing an exchange rate updates the comparison and "Use 0.89" restores it; a bar opens the line details; Export CSV gives the annualised lines.
 - No "Contract" category remains, and the bridge reconciles with 6 new lines.
@@ -472,6 +472,11 @@ Before starting large items (1, 2, 4), propose the approach to the owner in a fe
 ---
 
 ## 13. Change log
+
+**Vendors page redesign (8 Nov 2026), done by Claude, at the owner's request:**
+- No filter bar. The table drops Lines and Mix by spend type, and adds the renewal date and the owner as a coloured chip.
+- New insights at the top: KPI tiles (vendors, top-10 share, long tail, renewals in 90 days), a pie chart of spend by budget owner (or capability / cost centre) with a shared-vendor note, and a vendor-size card.
+- Palette extended to 14 categorical colours. 94 checks.
 
 **Overview, CSV loading and ended invoices (8 Nov 2026), done by Claude, at the owner's request:**
 - Overview has no filter bar and always shows the whole budget; top vendors went from 8 to 15. Bars open the vendor panel or Line items instead of applying a filter you can't see.
