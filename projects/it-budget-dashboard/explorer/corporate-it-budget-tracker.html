@@ -58,6 +58,14 @@
   --tag-blue-bg:#0043ce; --tag-blue:#d0e2ff; --tag-gray-bg:#525252; --tag-gray:#f4f4f4;
   --tag-purple-bg:#6929c4; --tag-purple:#e8daff; --shadow-drawer:-8px 0 24px rgba(0,0,0,.5); color-scheme:dark; }
 
+/* spend map and mosaic colours: 7 categorical hues in a colour-blind-checked order, grey for the rest; diverging blue/red for change */
+:root { --t1:#2a78d6; --t2:#eb6834; --t3:#1baf7a; --t4:#eda100; --t5:#e87ba4; --t6:#008300; --t7:#6250d6; --t0:#a3a29a;
+  --hollow:#a8a49a; --mos-dim:#dddbd3; --inc:#d03b3b; --inc-2:#eba29d; --dec:#2a78d6; --dec-2:#9ec5f4; --mid:#d6d4cc; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --t1:#3987e5; --t2:#d95926; --t3:#199e70; --t4:#c98500; --t5:#d55181; --t6:#008300; --t7:#9085e9; --t0:#6f6e68;
+  --hollow:#6b675e; --mos-dim:#3a3a37; --inc:#e66767; --inc-2:#8a4a47; --dec:#3987e5; --dec-2:#2f5585; --mid:#55544f; } }
+:root[data-theme="dark"] { --t1:#3987e5; --t2:#d95926; --t3:#199e70; --t4:#c98500; --t5:#d55181; --t6:#008300; --t7:#9085e9; --t0:#6f6e68;
+  --hollow:#6b675e; --mos-dim:#3a3a37; --inc:#e66767; --inc-2:#8a4a47; --dec:#3987e5; --dec-2:#2f5585; --mid:#55544f; }
+
 * { box-sizing:border-box; }
 html, body { height:100%; }
 body { margin:0; background:var(--bg); color:var(--text); font:14px/1.43 var(--font); font-variant-numeric:tabular-nums; -webkit-text-size-adjust:100%; }
@@ -152,10 +160,6 @@ body.nav-collapsed .nav-foot { display:none; }
 .seg button:hover { background:var(--layer-hover); }
 .seg button[aria-pressed="true"] { background:var(--primary-weak); color:var(--link); font-weight:600; box-shadow:inset 0 -2px 0 var(--primary); }
 .seg .n { color:var(--text-3); font-weight:400; margin-left:6px; }
-.tabs { display:flex; border-bottom:1px solid var(--border); margin-bottom:16px; overflow-x:auto; }
-.tabs button { background:none; border:0; height:40px; padding:0 16px; color:var(--text-2); border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap; }
-.tabs button:hover { color:var(--text); background:var(--layer-hover); }
-.tabs button[aria-selected="true"] { color:var(--text); font-weight:600; border-bottom-color:var(--primary); }
 .swatch { display:inline-block; width:10px; height:10px; border-radius:2px; flex:none; }
 .dot-sw { display:inline-block; width:10px; height:10px; border-radius:50%; flex:none; }
 .sw-label { display:inline-flex; gap:6px; align-items:center; }
@@ -210,14 +214,8 @@ button.hb-name { background:none; border:0; padding:0; text-align:left; color:va
 .hb.static .hb-fill { background:var(--other); }
 .hb-val { text-align:right; font-size:13px; }
 .hb-pct { text-align:right; font-size:12px; color:var(--text-3); }
-.stack { display:flex; height:12px; overflow:hidden; background:var(--layer-2); width:100%; }
-.stack span { display:block; height:100%; min-width:0; }
-.stack.tall { height:20px; }
-.stack.mini { height:8px; width:96px; display:inline-flex; vertical-align:middle; }
-.stack-seg:hover, .stack-seg:focus { filter:brightness(1.15); outline:none; }
 .legend { display:flex; flex-wrap:wrap; gap:6px 16px; font-size:12px; color:var(--text-2); margin-bottom:10px; align-items:center; }
 .legend > span { display:inline-flex; align-items:center; gap:6px; }
-.empty-mini { color:var(--text-3); font-size:13px; padding:12px 0; }
 @media (max-width:640px) { .hb { grid-template-columns:minmax(80px, 38%) 1fr 84px; } .hb-pct { display:none; } }
 
 /* ---------- charts ---------- */
@@ -259,9 +257,6 @@ table.dt { border-collapse:separate; border-spacing:0; width:100%; font-size:13p
 .dt .sort[aria-sort="ascending"]::after { content:"↑"; color:var(--text); }
 .dt .sort[aria-sort="descending"]::after { content:"↓"; color:var(--text); }
 .dt .empty-cell { text-align:center; color:var(--text-3); padding:24px; }
-.heat { position:relative; display:block; }
-.heat > i { position:absolute; inset:-3px -6px; background:var(--primary); border-radius:2px; pointer-events:none; }
-.heat > span { position:relative; }
 .table-bar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; padding:0 16px 12px; font-size:13px; color:var(--text-2); }
 .pager { display:flex; align-items:center; gap:8px; justify-content:flex-end; padding:8px 16px; border-top:1px solid var(--border); font-size:13px; color:var(--text-2); flex-wrap:wrap; }
 .pager .select { width:auto; height:28px; }
@@ -287,27 +282,60 @@ dl.kv dt, dl.kv dd { padding:6px 0; border-bottom:1px solid var(--border); margi
 dl.kv dt { color:var(--text-2); padding-right:12px; }
 dl.kv dd { overflow-wrap:anywhere; }
 
-/* ---------- vendors ---------- */
-.owner-chip { display:inline-flex; align-items:center; gap:6px; height:22px; padding:0 9px 0 7px; border-radius:11px; font-size:12px; font-weight:500; white-space:nowrap; max-width:220px; overflow:hidden; text-overflow:ellipsis;
-  background:color-mix(in srgb, var(--oc) 16%, var(--layer)); border:1px solid color-mix(in srgb, var(--oc) 45%, var(--layer)); color:var(--text); }
-.owner-cell { display:inline-flex; gap:6px; align-items:center; }
-.donut-wrap { display:grid; grid-template-columns:176px minmax(0, 1fr); gap:16px; align-items:center; }
-.donut-wrap .dt-wrap { border-top:0; }
-#v-fn-table td, #v-fn-table th { padding-left:8px; padding-right:8px; }
-.donut { width:176px; height:176px; display:block; }
-.donut .slice { stroke:var(--layer); stroke-width:1.5; cursor:pointer; }
-.donut .slice:hover, .donut .slice:focus { filter:brightness(1.12); outline:none; stroke:var(--text); }
-.donut .donut-v { fill:var(--text); font-size:20px; font-weight:600; }
-.donut .donut-l { fill:var(--text-3); font-size:12px; }
-@media (max-width:640px) { .donut-wrap { grid-template-columns:1fr; justify-items:center; } .donut-wrap .dt-wrap { width:100%; } }
-.bands { display:grid; gap:2px; font-size:13px; }
-.band-row { display:grid; grid-template-columns:minmax(110px, 30%) 64px minmax(0, 1fr) 52px; gap:10px; align-items:center; background:none; border:0; border-radius:2px; padding:7px 6px; text-align:left; width:100%; color:inherit; }
-button.band-row:hover:not(:disabled) { background:var(--layer-hover); }
-button.band-row:disabled { cursor:default; opacity:.6; }
-.band-row .num { text-align:right; }
-.band-h { font-size:12px; color:var(--text-3); padding-top:0; }
-.band-bar { display:grid; grid-template-columns:minmax(40px, 1fr) 92px; gap:10px; align-items:center; }
-.band-bar .hb-track { height:14px; }
+/* ---------- spend map (treemap overview pages) ---------- */
+.map-bar { display:flex; align-items:flex-end; gap:12px 16px; flex-wrap:wrap; margin-bottom:10px; }
+.map-bar .seg { margin-left:auto; }
+.map-crumbs { display:flex; align-items:center; gap:4px; font-size:14px; color:var(--text-3); }
+.map-crumbs button { border:0; background:none; padding:4px 6px; border-radius:var(--radius); color:var(--link); }
+.map-crumbs button:hover { background:var(--layer-hover); }
+.map-crumbs b { color:var(--text); font-weight:600; }
+.map-legend { display:flex; flex-wrap:wrap; gap:4px 14px; font-size:12px; color:var(--text-2); margin:0 0 10px; }
+.map-legend > span { display:inline-flex; align-items:center; gap:6px; }
+.swatch.hatch { background:repeating-linear-gradient(135deg, var(--hollow) 0 2px, var(--layer) 2px 5px); outline:1px solid var(--hollow); outline-offset:-1px; }
+.map-wrap { display:grid; grid-template-columns:minmax(0, 1fr) 320px; gap:16px; align-items:start; }
+.tmap { position:relative; height:clamp(480px, calc(100vh - 250px), 860px); }
+.tmap svg { display:block; width:100%; height:100%; }
+.tmap .tile { cursor:pointer; }
+.tmap .tile rect { transition:opacity .15s; }
+.tmap .tile:hover rect { opacity:.85; }
+.tmap .tile:focus { outline:none; } .tmap .tile:focus rect { stroke:var(--text); stroke-width:2; }
+.tmap text { pointer-events:none; font-family:var(--font); }
+.tmap .gh rect { fill:var(--bg); }
+.tmap .gh text { fill:var(--text); font-size:12px; font-weight:600; }
+.tmap .gh[tabindex] { cursor:zoom-in; } .tmap .gh[tabindex]:hover text { text-decoration:underline; } .tmap .gh:focus { outline:none; } .tmap .gh:focus text { text-decoration:underline; }
+.mside { background:var(--layer); border:1px solid var(--border); border-radius:var(--radius); padding:16px; min-width:0; }
+.mside h2 { margin:0; font-size:18px; line-height:24px; overflow-wrap:anywhere; }
+.ms-s { color:var(--text-3); font-size:12px; margin:2px 0 8px; }
+.ms-big { font-size:30px; line-height:36px; font-weight:600; margin:2px 0; overflow-wrap:anywhere; }
+.mside dl.kv { margin:8px 0; }
+.mside .dt-wrap { margin:8px -16px 0; }
+.mlist { list-style:none; margin:4px 0 0; padding:0; font-size:13px; }
+.mlist li { display:grid; grid-template-columns:12px minmax(0, 1fr) auto; gap:8px; align-items:center; padding:6px 4px; border-top:1px solid var(--border); cursor:pointer; }
+.mlist li:hover, .mlist li:focus { background:var(--layer-hover); outline:none; }
+.mlist li .n { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mlist li .v { color:var(--text-2); white-space:nowrap; }
+.ms-btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+@media (max-width:1100px) { .map-wrap { grid-template-columns:minmax(0, 1fr); } .tmap { height:68vh; } .map-bar .seg { margin-left:0; } }
+
+/* ---------- mosaic (application and contract pages) ---------- */
+.mnav { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; font-size:13px; margin:-4px 0 8px; }
+.mhead { margin:4px 0 16px; }
+.mhero { font-size:clamp(36px, 6vw, 64px); line-height:1; font-weight:700; letter-spacing:-.03em; overflow-wrap:anywhere; }
+.mhero small { display:block; font-size:14px; font-weight:400; letter-spacing:0; color:var(--text-2); margin-top:10px; }
+.mstats { display:grid; grid-template-columns:repeat(var(--cols, 4), minmax(0, 1fr)); border:1px solid var(--border); border-radius:var(--radius); background:var(--layer); margin-bottom:16px; overflow:hidden; }
+.mstats .kpi { border:0; border-right:1px solid var(--border); border-bottom:1px solid var(--border); border-radius:0; margin:0 -1px -1px 0; }
+.mstats .kpi-v { font-size:22px; line-height:30px; }
+.mos { display:block; width:100%; height:auto; }
+.mos rect.q.hollow { fill:none; stroke:var(--hollow); stroke-width:.9; }
+.mos rect.q.over { stroke:var(--up); stroke-width:1.4; }
+.mos g[tabindex] { cursor:default; } .mos g:hover rect, .mos g:focus rect { opacity:.78; } .mos g:focus { outline:none; }
+.mos + .map-legend { margin-top:12px; }
+.mgrid { display:grid; grid-template-columns:minmax(0, 1.5fr) minmax(240px, 1fr); gap:24px; align-items:start; }
+.mgrid .ct-bars .hb { grid-template-columns:minmax(110px, 44%) minmax(30px, 1fr) 74px 36px; }
+.m-ended { display:flex; align-items:center; gap:10px; margin-top:12px; } .m-ended .mos { width:auto; max-width:240px !important; }
+.yrow { display:grid; grid-template-columns:110px minmax(0, 1fr); gap:12px; align-items:center; padding:4px 0; }
+.yl { font-size:13px; font-weight:600; } .yl small { display:block; font-weight:400; color:var(--text-3); font-size:12px; }
+@media (max-width:900px) { .mgrid { grid-template-columns:minmax(0, 1fr); } .mstats { grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); } }
 
 /* ---------- key contracts ---------- */
 .kpis.dense { grid-template-columns:repeat(3, minmax(0, 1fr)); }
@@ -505,7 +533,7 @@ const ICONS = {
   download:'M12 4v12M7 11l5 5 5-5M4 20h16', moon:'M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z',
   search:'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-5-5', arrow:'M5 12h14M13 6l6 6-6 6',
   invoice:'M6 2h9l5 5v15H6zM14 2v6h6M9 12h8M9 16h8M9 8h2',
-  breakdown:'M3 20h18M6 20V10M11 20V4M16 20v-7M21 20v-4',
+  breakdown:'M3 20h18M6 20V10M11 20V4M16 20v-7M21 20v-4', map:'M3 3h10v10H3zM15 3h6v6h-6zM15 11h6v10h-6zM3 15h10v6H3z',
   vendors:'M3 21h18M5 21V8l7-5 7 5v13M9 10h.01M15 10h.01M9 14h.01M15 14h.01M10 21v-4h4v4',
   org:'M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
   calendar:'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4M7 14h3M7 17h3M14 14h3',
@@ -568,7 +596,6 @@ function niceTicks(max, n = 4) {
 }
 const tag = (text, color = 'gray', title) => h('span', { class:'tag ' + color, title }, text);
 const btn = (label, kind, onclick, ic, extra = {}) => h('button', { type:'button', class:'btn ' + kind, onclick, ...extra }, ic ? icon(ic) : null, label);
-const linkTo = (page, text) => h('a', { href:'#/' + page, class:'link' }, text, icon('arrow', 14));
 
 // tooltip & toast
 const tip = $('tooltip');
@@ -824,13 +851,13 @@ const S = {
   loaded:false, files:[], fileInfo:[], headers:[], rows:[], prof:[], map:{}, months:new Array(12).fill(null),
   opts:{ label:'', currency:'', asOf:dayToISO(todayDay()), fyStart:0, dateOrder:'auto', dec:'auto' },
   recs:[], dims:[], colorDim:null, colorMap:new Map(),
-  filters:{}, q:'', flag:null, page:'vendors',
-  ui:{ vFn:null, ctSort:{ key:'annual', dir:-1 }, groupBy:null, splitBy:null, bdView:'both', bSort:{ key:'value', dir:-1 }, vSort:{ key:'value', dir:-1 }, oSort:{ key:'value', dir:-1 },
+  filters:{}, q:'', flag:null, page:'map', app:null,
+  ui:{ mapMode:null, mapZoom:null, mapPick:null, bdTiles:null, bdZoom:null, orgZoom:null, yoyZoom:null, ctSort:{ key:'annual', dir:-1 }, groupBy:null, splitBy:null, bdView:'both', bSort:{ key:'value', dir:-1 }, vSort:{ key:'value', dir:-1 }, oSort:{ key:'value', dir:-1 },
     cSort:{ key:'value', dir:-1 }, lSort:{ key:null, dir:-1 }, lPage:0, lSize:50, density:'compact',
     yoyTab:'increases', ySort:{ key:'d', dir:-1 }, qSort:{ key:'sev', dir:1 }, drawerReturn:null },
 };
 const sig = () => S.headers.join('\u241f');
-function defaultPage() { return S.map.vendor != null ? 'vendors' : 'breakdown'; } // Vendors is the home page
+function defaultPage() { return S.map.vendor != null ? 'map' : 'breakdown'; } // the Spend map is the home page
 const ready = () => S.loaded && S.map.amount != null;
 const hasMonths = () => S.months.filter((c) => c != null).length >= 2;
 const asOfDay = () => isoToDay(S.opts.asOf);
@@ -977,11 +1004,15 @@ function vendorAgg(recs) {
 // ================================================================ 5. shell: pages, nav, header, filters, drawer
 const CONTRACTS = readContracts();
 const PAGES = [
-  { id:'vendors', label:'Vendors', icon:'vendors', group:'Analyse', render:pageVendors, insight:insVendors, noFilters:true,
+  { id:'map', label:'Spend map', icon:'map', group:'Analyse', render:pageMap, insight:insMap, noFilters:true,
     needs:() => S.map.vendor != null, needsText:'a vendor / supplier column' },
   { id:'breakdown', label:'Spend breakdown', icon:'breakdown', group:'Analyse', render:pageBreakdown, insight:insBreakdown },
   { id:'organisation', label:'Cost centres & owners', icon:'org', group:'Analyse', render:pageOrganisation, insight:insOrg,
     needs:() => S.map.costcentre != null || S.map.owner != null, needsText:'a cost centre or owner column' },
+  // one page per application (vendor), reached from the maps: #/app/<name>
+  { id:'app', label:'Application', hidden:true, group:'Spend map', get title() { return S.app || 'Application'; }, icon:'vendors', render:pageApp, insight:insApp, noFilters:true,
+    needs:() => S.map.vendor != null, needsText:'a vendor / supplier column' },
+  ...(CONTRACTS.length ? [{ id:'contracts', label:'All contracts', icon:'map', group:'Key contracts', render:pageContracts, insight:insContracts, noFilters:true }] : []),
   ...CONTRACTS.map((c) => ({ id:'c-' + c.id, label:c.nav || c.name, title:c.name, icon:'invoice', group:'Key contracts', contract:c, noFilters:true,
     render:() => pageContract(c), insight:() => insContract(c) })),
   { id:'yoy', label:'Year over year', icon:'compare', group:'Plan', render:pageYoy, insight:insYoy,
@@ -999,10 +1030,10 @@ function renderNav() {
     const q = qualityOf(recs);
     if (q.errors + q.warnings) badges.quality = { n:q.errors + q.warnings, red:q.errors > 0, title:`${q.errors} errors, ${q.warnings} warnings` };
   }
-  const groups = [...new Set(PAGES.map((p) => p.group))];
+  const groups = [...new Set(PAGES.filter((p) => !p.hidden).map((p) => p.group))];
   $('sidenav').replaceChildren(...groups.map((g) => h('div', { class:'nav-group' },
     h('div', { class:'nav-h' }, g),
-    PAGES.filter((p) => p.group === g).map((p) => {
+    PAGES.filter((p) => p.group === g && !p.hidden).map((p) => {
       const avail = !p.needs || (ready() && p.needs());
       const disabled = !ready() && p.id !== 'source';
       const b = badges[p.id];
@@ -1022,9 +1053,9 @@ function renderTopbar() {
 function pageHeader(page, recs, avail = true) {
   const actions = [];
   if (ready() && page.contract) { if (page.contract.invoices.some((v) => v.lines.length)) actions.push(btn('Export CSV', 'secondary', () => exportContract(page.contract), 'download', { title:'Export the invoice lines, scaled to a year', id:'export-csv' })); }
-  else if (ready() && page.id !== 'source') actions.push(btn('Export CSV', 'secondary', () => exportCsv(recs), 'download', { title:'Export the filtered rows', id:'export-csv' }));
+  else if (ready() && page.id !== 'source' && !page.hidden) actions.push(btn('Export CSV', 'secondary', () => exportCsv(recs), 'download', { title:'Export the filtered rows', id:'export-csv' }));
   return h('div', {},
-    h('nav', { class:'crumbs', 'aria-label':'Breadcrumb' }, h('a', { href:'#/' + defaultPage() }, 'IT budget'), '/', h('span', {}, page.group), '/', h('span', { 'aria-current':'page' }, page.title || page.label)),
+    h('nav', { class:'crumbs', 'aria-label':'Breadcrumb' }, h('a', { href:'#/' + defaultPage() }, 'IT budget'), '/', page.id === 'app' ? h('a', { href:'#/map' }, page.group) : h('span', {}, page.group), '/', h('span', { 'aria-current':'page' }, page.title || page.label)),
     h('div', { class:'page-head' },
       h('div', {}, h('h1', { class:'page-t' }, page.title || page.label), h('p', { class:'page-s', id:'page-insight' }, !ready() ? '' : !avail ? `Needs ${page.needsText}.` : page.insight ? page.insight(recs) : '')),
       actions.length ? h('div', { class:'page-a' }, actions) : null));
@@ -1108,33 +1139,10 @@ function lineDrawer(r) {
       dsec('All fields from the file', kv(S.headers.map((hd, c) => [pretty(hd), r.row[c]]))),
     ],
     footer:[
+      S.map.vendor != null && r.vendor && S.page !== 'app' ? btn('Application page', 'secondary', () => { closeDrawer(); goApp(r.vendor); }, 'arrow') : null,
       S.map.vendor != null && r.vendor ? btn('Show only this vendor', 'secondary', () => { closeDrawer(); delete S.filters[S.map.vendor]; setFilter(S.map.vendor, cell(r, S.map.vendor)); }) : null,
       btn('Close', 'primary', closeDrawer),
     ],
-  });
-}
-function vendorDrawer(g) {
-  const p = pageById(S.page), total = sum(p && p.noFilters ? S.recs : S.recs.filter(matches), (r) => r.amount);
-  const lines = [...g.recs].sort((a, b) => b.amount - a.amount);
-  const cols = [
-    { key:'item', label:'Line', render:(r) => r.item || `Row ${r.i + 1}` },
-    S.colorDim != null ? { key:'cat', label:hdr(S.colorDim), render:(r) => swatchLabel(cell(r, S.colorDim)) } : null,
-    { key:'amount', label:label(), num:true, render:(r) => fmtMoney(r.amount) },
-    S.map.renewal != null ? { key:'ren', label:'Renewal', render:(r) => fmtDay(r.renewal) } : null,
-  ].filter(Boolean);
-  openDrawer({
-    title:g.key,
-    sub:`${g.count} line${g.count === 1 ? '' : 's'} · ${fmtPct(total ? g.value / total : 0, 1)} of ${p && p.noFilters ? 'total' : 'filtered'} spend`,
-    body:[
-      h('div', { class:'stats' }, stat(label(), fmtMoney(g.value)),
-        S.map.prior != null ? stat('Prior year', g.priorN ? fmtMoney(g.prior) : 'New') : null,
-        S.map.prior != null && g.priorN ? stat('Change', fmtSignedPct((g.value - g.prior) / g.prior)) : null),
-      S.colorDim != null && g.value ? dsec(`Mix by ${low(S.colorDim)}`, mixBar(g.parts, g.value, true)) : null,
-      g.next ? dsec('Next notice deadline', h('div', {}, urgTag(g.nextU), ' ', `${fmtDay(g.next.deadline)} · ${g.next.item || ''} · ${fmtMoney(g.next.amount)}`)) : null,
-      S.map.owner != null ? dsec('Owners', g.owners.size ? [...g.owners].join(', ') : tag('No owner', 'yellow')) : null,
-      dsec('Lines', dataTable({ cols, rows:lines, onRow:(r) => lineDrawer(r) })),
-    ],
-    footer:[btn('Show only this vendor', 'secondary', () => { closeDrawer(); delete S.filters[S.map.vendor]; setFilter(S.map.vendor, g.key); }), btn('Close', 'primary', closeDrawer)],
   });
 }
 
@@ -1150,31 +1158,6 @@ function kpi({ id, label: l, value, raw, meta, href, alert, hint }) {
     h('div', { class:'kpi-l' }, h('span', {}, l), hint ? h('span', { title:hint }, icon('info', 14)) : null),
     h('div', { class:'kpi-v', 'data-value':raw }, value),
     h('div', { class:'kpi-m' }, meta));
-}
-const deltaTag = (d, p) => tag((d > 0 ? '▲ ' : d < 0 ? '▼ ' : '') + fmtSignedPct(p), d > 0 ? 'red' : d < 0 ? 'green' : 'gray', 'Change vs prior year (cost increase shown red)');
-function mixBar(parts, total, withLegend) {
-  const items = [...parts.entries()].sort((a, b) => b[1] - a[1]);
-  const bar = h('div', { class:'stack tall', role:'img', 'aria-label':items.map(([k, v]) => `${k} ${fmtPct(v / total)}`).join(', ') },
-    items.map(([k, v]) => h('span', { style:`width:${Math.max(0, v / total * 100)}%;background:${colorOf(k)}`, title:`${k}: ${fmtMoney(v)} (${fmtPct(v / total)})` })));
-  if (!withLegend) return bar;
-  return h('div', {}, bar, h('div', { class:'legend', style:'margin-top:8px' }, items.map(([k, v]) => h('span', {}, h('span', { class:'swatch', style:`background:${colorOf(k)}` }), `${k} `, h('b', {}, fmtC(v)), ` ${fmtPct(v / total)}`))));
-}
-function hbarList(items, { total, limit = 10, onClick, activeKey, colorFn, hint = 'Click to filter.' }) {
-  const box = h('div', { class:'hbars' });
-  if (!items.length || !total) { box.append(h('div', { class:'empty-mini' }, 'No matching spend')); return box; }
-  const shown = items.slice(0, limit), rest = items.slice(limit), restV = sum(rest, (x) => x.value);
-  const max = Math.max(restV, ...shown.map((x) => x.value)) || 1;
-  const row = (it, click) => {
-    const active = click && activeKey === it.key;
-    const kids = [h('span', { class:'hb-name', title:it.key }, it.key),
-      h('span', { class:'hb-track' }, h('span', { class:'hb-fill', style:`width:${Math.max(0, it.value / max * 100)}%` + (colorFn && click ? `;background:${colorFn(it.key)}` : '') })),
-      h('span', { class:'hb-val' }, fmtMoney(it.value)), h('span', { class:'hb-pct' }, fmtPct(it.value / total))];
-    return click ? h('button', { type:'button', class:'hb' + (active ? ' active' : ''), 'aria-pressed':String(active), title:`${it.key}: ${it.count} lines. ${hint}`, onclick:() => onClick(it.key) }, kids)
-      : h('div', { class:'hb static' }, kids);
-  };
-  shown.forEach((it) => box.append(row(it, !!onClick)));
-  if (rest.length) box.append(row({ key:`All other (${rest.length})`, value:restV }, false));
-  return box;
 }
 function axisY(g, { ticks, y, x0, x1 }) {
   ticks.forEach((t) => {
@@ -1271,17 +1254,11 @@ const sorter = (stateKey) => (c) => { const st = S.ui[stateKey]; S.ui[stateKey] 
 function segmented(options, value, onChange, ariaLabel, id) {
   return h('div', { class:'seg', role:'group', 'aria-label':ariaLabel, id }, options.map(([k, lbl, n]) => h('button', { type:'button', 'data-k':k, 'aria-pressed':String(k === value), onclick:() => onChange(k) }, lbl, n != null ? h('span', { class:'n' }, n) : null)));
 }
-function tabs(options, value, onChange, id) {
-  return h('div', { class:'tabs', role:'tablist', id }, options.map(([k, lbl]) => h('button', { type:'button', role:'tab', 'data-k':k, 'aria-selected':String(k === value), onclick:() => onChange(k) }, lbl)));
-}
 function emptyState(iconName, title, text, action) {
   return h('div', { class:'card' }, h('div', { class:'empty-state' }, h('div', { class:'hero-icon' }, icon(iconName, 28)), h('h2', {}, title), h('p', {}, text), action || null));
 }
 function monthOrder() { return Array.from({ length:12 }, (_, k) => (S.opts.fyStart + k) % 12); }
 function swatchLabel(k) { return h('span', { class:'sw-label' }, h('span', { class:'swatch', style:`background:${colorOf(k)}` }), k); }
-function heatCell(v, max) {
-  return v ? h('span', { class:'heat' }, h('i', { style:`opacity:${(0.06 + 0.36 * v / max).toFixed(3)}` }), h('span', {}, fmtMoney(v))) : h('span', { class:'muted' }, '—');
-}
 
 // ================================================================ 7. pages
 
@@ -1296,68 +1273,141 @@ function rgtClass(raw) {
   return 'none';
 }
 
-// ---------- Spend breakdown (analytical list page: chart + table, switchable) ----------
+// ---------- shared: map colours, treemap (overview pages) and mosaic (application pages) ----------
+// Overview pages are maps (treemaps): area = spend, region = group, tile = vendor or line. Detail pages are mosaics:
+// the money as countable squares. Both use the same colour per department on every page.
+const MAPC = ['--t1', '--t2', '--t3', '--t4', '--t5', '--t6', '--t7'];
+// one colour per value by spend rank: the 7 largest get a hue (a colour-blind-checked order), the rest share grey
+function mapColors(keys) { const m = new Map(); keys.forEach((k, i) => m.set(k, i < MAPC.length ? cv(MAPC[i]) : 'var(--t0)')); return m; }
+const inkOn = (color) => (color === 'var(--t4)' || color === 'var(--mid)' ? '#161616' : '#ffffff');
+// the "department" column that groups and colours the maps: capability, else cost centre, owner, the colour column or another text column
+function deptCol() {
+  const c = ['capability', 'costcentre', 'owner'].map((k) => S.map[k]).find((ci) => ci != null && S.prof[ci].uniq > 1);
+  return c ?? S.colorDim ?? S.dims.find((d) => d !== S.map.vendor && d !== S.map.item) ?? null;
+}
+// department colours come from the whole file, so a department keeps its colour when filters change
+function deptColors() { const ci = deptCol(); return ci == null ? new Map() : mapColors(groupBy(S.recs.filter((r) => r.amount > 0), ci).map((g) => g.key)); }
+function mainDepts(recs, ci) { const m = new Map(); for (const r of recs) if (r.amount > 0) m.set(cell(r, ci), (m.get(cell(r, ci)) || 0) + r.amount); return [...m].sort((a, b) => b[1] - a[1]).map(([k]) => k); }
+const clipText = (t, w, fs) => { t = String(t); const n = Math.floor(w / (fs * 0.56)); return t.length > n ? t.slice(0, Math.max(1, n - 1)) + '…' : t; };
+const goApp = (name) => go('app/' + encodeURIComponent(name));
+
+// squarified treemap layout (Bruls, Huizing & van Wijk): tiles close to square, largest first
+function squarify(items, x, y, w, h, val) {
+  const out = [], total = sum(items, val); if (!total || w <= 0 || h <= 0) return out;
+  const rest = items.filter((d) => val(d) > 0).sort((a, b) => val(b) - val(a)).map((d) => ({ d, a:val(d) / total * w * h }));
+  const worst = (row, s) => { const t = sum(row, (r) => r.a), mx = Math.max(...row.map((r) => r.a)), mn = Math.min(...row.map((r) => r.a)); return Math.max(s * s * mx / (t * t), t * t / (s * s * mn)); };
+  const layout = (row) => {
+    const t = sum(row, (r) => r.a);
+    if (w >= h) { const cw = t / h; let cy = y; for (const r of row) { const ch = r.a / cw; out.push({ d:r.d, x, y:cy, w:cw, h:ch }); cy += ch; } x += cw; w -= cw; }
+    else { const ch = t / w; let cx = x; for (const r of row) { const rw = r.a / ch; out.push({ d:r.d, x:cx, y, w:rw, h:ch }); cx += rw; } y += ch; h -= ch; }
+  };
+  let row = [];
+  while (rest.length) { const s0 = Math.min(w, h), r = rest[0]; if (!row.length || worst([...row, r], s0) <= worst(row, s0)) { row.push(r); rest.shift(); } else { layout(row); row = []; } }
+  if (row.length) layout(row);
+  return out;
+}
+// groups: [{ key, value, share?, color, items:[{ key, value, color?, ink?, label?, sub?, hatch?, tip? }] }]; drawn after it is on the page (it needs its size)
+function treemap({ id, groups, onTile, onGroup, picked, aria }) {
+  const box = h('div', { class:'tmap', id, role:'group', 'aria-label':aria });
+  const draw = () => {
+    const W = Math.floor(box.clientWidth), H = Math.floor(box.clientHeight); if (W < 20 || H < 20) return;
+    const svg = s('svg', { viewBox:`0 0 ${W} ${H}`, role:'img', 'aria-label':aria },
+      s('defs', {}, s('pattern', { id:id + '-hatch', width:7, height:7, patternUnits:'userSpaceOnUse', patternTransform:'rotate(45)' },
+        s('rect', { width:7, height:7, style:'fill:var(--layer)' }), s('line', { x1:0, y1:0, x2:0, y2:7, style:'stroke:var(--hollow);stroke-width:2.5' }))));
+    const gs = groups.filter((g) => g.value > 0), many = gs.length > 1, GAP = many ? 4 : 0, HDR = many ? 20 : 0;
+    for (const r of squarify(gs, 0, 0, W, H, (g) => g.value)) {
+      const g = r.d, gx = r.x + GAP / 2, gy = r.y + GAP / 2, gw = r.w - GAP, gh = r.h - GAP, head = HDR && gh > 44 && gw > 48 ? HDR : 0;
+      if (head) svg.append(s('g', { class:'gh', tabindex:onGroup ? 0 : null, 'data-k':g.key, onclick:onGroup ? () => onGroup(g) : null, onkeydown:onGroup ? (e) => { if (e.key === 'Enter') onGroup(g); } : null },
+        s('rect', { x:gx, y:gy, width:gw, height:head }), s('text', { x:gx + 6, y:gy + 14 }, clipText(`${g.key}  ${fmtC(g.value)}${g.share != null ? ' · ' + fmtPct(g.share) : ''}`, gw - 10, 12))));
+      for (const t of squarify(g.items.filter((i) => i.value > 0), gx, gy + head, gw, gh - head, (i) => i.value)) {
+        const it = t.d, w = Math.max(0, t.w - 2), hh = Math.max(0, t.h - 2), base = it.color || g.color || 'var(--t0)';
+        const fill = it.hatch ? `url(#${id}-hatch)` : base, ink = it.ink || (it.hatch ? 'var(--text-2)' : inkOn(base));
+        const node = s('g', { class:'tile', tabindex:0, 'data-k':it.key, 'aria-label':`${it.key}: ${fmtMoney(it.value)}`, onclick:onTile ? () => onTile(it, g) : null, onkeydown:onTile ? (e) => { if (e.key === 'Enter') onTile(it, g); } : null },
+          s('rect', { x:t.x + 1, y:t.y + 1, width:w, height:hh, rx:2, style:`fill:${fill}`, opacity:picked != null && picked !== it.key ? 0.3 : 1 }));
+        const fs = Math.max(10, Math.min(20, Math.sqrt(w * hh) / 7));
+        if (w > 44 && hh > fs + 8) node.append(s('text', { x:t.x + 7, y:t.y + 5 + fs, style:`fill:${ink};font-size:${fs}px;font-weight:600` }, clipText(it.label || it.key, w - 12, fs)));
+        if (w > 44 && hh > fs * 2 + 14) node.append(s('text', { x:t.x + 7, y:t.y + 9 + fs * 2, style:`fill:${ink};font-size:${Math.max(10, fs * 0.78)}px;opacity:.85` }, it.sub || fmtC(it.value)));
+        if (it.tip) withTip(node, it.tip);
+        svg.append(node);
+      }
+    }
+    box.replaceChildren(svg);
+  };
+  box._draw = draw; requestAnimationFrame(draw);
+  return box;
+}
+const swatchOf = (color, hatch) => h('span', { class:'swatch' + (hatch ? ' hatch' : ''), style:hatch ? null : `background:${color}` });
+const mapLegend = (entries) => h('div', { class:'map-legend' }, entries.map(([color, text, hatch]) => h('span', {}, swatchOf(color, hatch), text)));
+const deptLegend = (dcol) => { const ks = [...dcol.keys()]; return mapLegend([...ks.slice(0, 7).map((k) => [dcol.get(k), k]), ks.length > 7 ? ['var(--t0)', ks.slice(7).join(', ')] : null].filter(Boolean)); };
+function mlist(items, onPick, max = 12, id) {
+  return h('ol', { class:'mlist', id }, items.slice(0, max).map((x) => h('li', { tabindex:0, onclick:() => onPick(x), onkeydown:(e) => { if (e.key === 'Enter') onPick(x); } },
+    swatchOf(x.color, x.hatch), h('span', { class:'n', title:x.key }, x.key), h('span', { class:'v' }, fmtC(x.value)))));
+}
+function mapCrumbs(rootLabel, zoom, onRoot) {
+  return h('nav', { class:'map-crumbs', 'aria-label':'Map level' }, h('button', { type:'button', id:'map-root', onclick:onRoot }, rootLabel), zoom ? ['›', h('b', {}, zoom)] : null);
+}
+
+// unit for a mosaic: the smallest 1, 2 or 5 × 10ⁿ that keeps the count at or under `max` squares
+function unitFor(v, max) { for (let e = 0; e < 13; e++) for (const st of [1, 2, 5]) { const u = st * 10 ** e; if (Math.abs(v) / u <= max) return u; } return 1e13; }
+// split n squares across parts in proportion to their values (largest remainder, so the counts add up to n)
+function allocate(parts, n) {
+  const t = sum(parts, (p) => Math.max(0, p.value)) || 1, raw = parts.map((p) => { const x = Math.max(0, p.value) / t * n; return { ...p, x, k:Math.floor(x) }; });
+  let left = n - sum(raw, (p) => p.k);
+  [...raw].sort((a, b) => (b.x - b.k) - (a.x - a.k)).forEach((p) => { if (left > 0) { p.k++; left--; } });
+  return raw;
+}
+// cells: [{ fill, hollow?, over?, dim?, group, tip? }] laid out row by row; squares of one group share a tooltip
+function mosaic({ id, cells, cols, aria, data = {} }) {
+  const n = cells.length; cols = cols || Math.max(1, Math.min(n, Math.max(10, Math.ceil(Math.sqrt(n * 2.4)))));
+  const rows = Math.max(1, Math.ceil(n / cols)), U = 10;
+  const svg = s('svg', { class:'mos', id, viewBox:`0 0 ${cols * U} ${rows * U}`, role:'img', 'aria-label':aria, style:`max-width:${cols * 22}px`, ...data });
+  const groups = new Map();
+  cells.forEach((c, i) => {
+    const r = s('rect', { class:'q' + (c.hollow ? ' hollow' : '') + (c.over ? ' over' : '') + (c.dim ? ' dim' : ''), x:(i % cols) * U + 1, y:Math.floor(i / cols) * U + 1, width:U - 2, height:U - 2, rx:1, style:c.hollow ? null : `fill:${c.fill}` });
+    const k = c.group ?? i; if (!groups.has(k)) groups.set(k, { g:s('g', { tabindex:c.tip ? 0 : null }), tip:c.tip }); groups.get(k).g.append(r);
+  });
+  for (const { g, tip } of groups.values()) { if (tip) withTip(g, tip); svg.append(g); }
+  return svg;
+}
+
+// ---------- Spend breakdown: any column as a map ----------
 function insBreakdown(recs) {
   const ci = S.ui.groupBy; if (ci == null) return 'Group spend by any column.';
   const g = groupBy(recs, ci), t = sum(recs, (r) => r.amount);
   return g.length && t ? `${g[0].key} is the largest ${low(ci)} at ${fmtPct(g[0].value / t)} of spend (${g.length} groups).` : 'No matching spend.';
 }
 function pageBreakdown(recs) {
-  const total = sum(recs, (r) => r.amount);
-  const gci = S.ui.groupBy, sci = S.ui.splitBy;
-  const saveUi = () => store.set('ui:' + sig(), { groupBy:S.ui.groupBy, splitBy:S.ui.splitBy });
-  const controls = h('div', { class:'card', style:'margin-bottom:16px' }, h('div', { class:'card-b', style:'display:flex;gap:16px;flex-wrap:wrap;align-items:end' },
-    h('label', { class:'fb-field', style:'min-width:200px' }, h('span', { class:'fb-l' }, 'Group by'),
-      h('select', { class:'select', id:'bd-group', onchange:(e) => { S.ui.groupBy = +e.target.value; if (S.ui.splitBy === S.ui.groupBy) S.ui.splitBy = null; saveUi(); render(); } },
-        S.dims.map((d) => h('option', { value:d, selected:d === gci }, hdr(d))))),
-    h('label', { class:'fb-field', style:'min-width:200px' }, h('span', { class:'fb-l' }, 'Split by'),
-      h('select', { class:'select', id:'bd-split', onchange:(e) => { S.ui.splitBy = e.target.value === '' ? null : +e.target.value; saveUi(); render(); } },
-        h('option', { value:'', selected:sci == null }, 'None'), S.dims.filter((d) => d !== gci).map((d) => h('option', { value:d, selected:d === sci }, hdr(d))))),
-    h('div', { class:'fb-field' }, h('span', { class:'fb-l' }, 'View'), segmented([['chart', 'Chart'], ['table', 'Table'], ['both', 'Chart + table']], S.ui.bdView, (k) => { S.ui.bdView = k; render(); }, 'View', 'bd-view'))));
+  const pos = recs.filter((r) => r.amount > 0), total = sum(pos, (r) => r.amount), gci = S.ui.groupBy;
+  const tileOpts = [S.map.vendor, S.map.item, ...S.dims].filter((d, i, a) => d != null && d !== gci && a.indexOf(d) === i);
+  if (!tileOpts.includes(S.ui.bdTiles)) S.ui.bdTiles = tileOpts[0] ?? null;
+  const tci = S.ui.bdTiles, saveUi = () => store.set('ui:' + sig(), { groupBy:S.ui.groupBy, splitBy:S.ui.splitBy });
+  const controls = h('div', { class:'map-bar' },
+    h('label', { class:'fb-field', style:'min-width:200px' }, h('span', { class:'fb-l' }, 'Regions: group by'),
+      h('select', { class:'select', id:'bd-group', onchange:(e) => { S.ui.groupBy = +e.target.value; S.ui.bdZoom = null; saveUi(); render(); } }, S.dims.map((d) => h('option', { value:d, selected:d === gci }, hdr(d))))),
+    h('label', { class:'fb-field', style:'min-width:200px' }, h('span', { class:'fb-l' }, 'Tiles'),
+      h('select', { class:'select', id:'bd-tiles', onchange:(e) => { S.ui.bdTiles = +e.target.value; render(); } }, tileOpts.map((d) => h('option', { value:d, selected:d === tci }, hdr(d))))));
   if (gci == null) return [controls, emptyState('breakdown', 'No columns to group by', 'Your file has no text columns with repeating values (like category or department).')];
-  const groups = groupBy(recs, gci);
-  let splitKeys = [];
-  const splitColor = new Map();
-  if (sci != null) {
-    const sg = groupBy(recs, sci);
-    splitKeys = sg.slice(0, 7).map((x) => x.key);
-    if (sg.length > 7) splitKeys.push('Other');
-    splitKeys.forEach((k, i) => splitColor.set(k, sci === S.colorDim && S.colorMap.has(k) ? colorOf(k) : k === 'Other' ? 'var(--other)' : cv(PALETTE[i % PALETTE.length])));
-  }
-  const splitOf = (r) => { const k = cell(r, sci); return splitKeys.includes(k) ? k : 'Other'; };
-  groups.forEach((g) => { g.parts = new Map(); if (sci != null) for (const r of g.recs) g.parts.set(splitOf(r), (g.parts.get(splitOf(r)) || 0) + r.amount); });
-  const out = [controls];
-  if (S.ui.bdView !== 'table') {
-    const shown = groups.slice(0, 15), max = Math.max(...shown.map((g) => g.value), 1);
-    const rows = shown.map((g) => h('div', { class:'hb' + (S.filters[gci] === g.key ? ' active' : '') },
-      h('button', { type:'button', class:'hb-name', title:`Filter on ${g.key}`, onclick:() => setFilter(gci, g.key) }, g.key),
-      h('span', { class:'hb-track' }, sci == null
-        ? h('span', { class:'hb-fill', style:`width:${Math.max(0, g.value / max * 100)}%` + (gci === S.colorDim ? `;background:${colorOf(g.key)}` : '') })
-        : splitKeys.filter((k) => g.parts.get(k) > 0).map((k) => withTip(h('span', { class:'hb-fill stack-seg', tabindex:0, style:`width:${g.parts.get(k) / max * 100}%;background:${splitColor.get(k)}` }), () => [`${g.key} · ${k}`, fmtMoney(g.parts.get(k)), `${fmtPct(g.parts.get(k) / g.value)} of ${g.key}`]))),
-      h('span', { class:'hb-val' }, fmtMoney(g.value)), h('span', { class:'hb-pct' }, fmtPct(total ? g.value / total : 0))));
-    const legend = sci != null ? h('div', { class:'legend' }, splitKeys.map((k) => h('span', {}, h('span', { class:'swatch', style:`background:${splitColor.get(k)}` }), k))) : null;
-    out.push(h('div', { class:'grid' }, card({ title:`${label()} by ${low(gci)}${sci != null ? ' and ' + low(sci) : ''}`,
-      sub:groups.length > 15 ? `Top 15 of ${groups.length} groups · click a name to filter` : 'Click a name to filter · hover a segment for details', body:[legend, h('div', { class:'hbars' }, rows)] })));
-  }
-  if (S.ui.bdView !== 'chart') {
-    const maxCell = Math.max(...groups.flatMap((x) => [...x.parts.values()]), 1);
-    const cols = [{ key:'key', label:hdr(gci), render:(g) => (gci === S.colorDim ? swatchLabel(g.key) : g.key), cls:'strong' }];
-    splitKeys.forEach((k) => cols.push({ key:'p:' + k, label:k, num:true, sortVal:(g) => g.parts.get(k) || 0, render:(g) => heatCell(g.parts.get(k) || 0, maxCell) }));
-    cols.push({ key:'value', label:'Total', num:true, cls:'strong', render:(g) => fmtMoney(g.value) },
-      { key:'share', label:'Share', num:true, sortVal:(g) => g.value, render:(g) => fmtPct(total ? g.value / total : 0, 1) },
-      { key:'count', label:'Lines', num:true });
-    if (S.map.prior != null) cols.push({ key:'chg', label:'vs prior', num:true, sortVal:(g) => (g.prior ? (g.value - g.prior) / g.prior : null), render:(g) => (g.prior ? h('span', { style:`color:${g.value > g.prior ? 'var(--up)' : 'var(--down)'}` }, fmtSignedPct((g.value - g.prior) / g.prior)) : '—') });
-    const foot = cols.map((c, i) => (i === 0 ? 'Total' : c.key === 'value' ? fmtMoney(total) : c.key.startsWith('p:') ? fmtMoney(sum(groups, (g) => g.parts.get(c.key.slice(2)) || 0)) : c.key === 'count' ? fmtInt(recs.length) : c.key === 'share' ? '100%' : ''));
-    out.push(card({ title:`Table · ${hdr(gci)}${sci != null ? ' × ' + hdr(sci) : ''}`, sub:'Click a row to filter · shading shows relative size', flush:true,
-      body:dataTable({ cols, rows:sortRows(groups, cols, S.ui.bSort), sort:S.ui.bSort, onSort:sorter('bSort'), onRow:(g) => setFilter(gci, g.key), foot, maxHeight:'560px', id:'bd-table' }) }));
-  }
-  return out;
+  const groups = groupBy(pos, gci), colors = gci === deptCol() ? deptColors() : mapColors(groups.map((g) => g.key));
+  const zoom = groups.some((g) => g.key === S.ui.bdZoom) ? S.ui.bdZoom : (S.ui.bdZoom = null);
+  const tg = groups.filter((g) => !zoom || g.key === zoom).map((g) => ({ key:g.key, value:g.value, share:total ? g.value / total : 0, color:colors.get(g.key),
+    items:(tci == null ? g.recs.map((r) => ({ key:r.item || `Row ${r.i + 1}`, value:r.amount, rec:r })) : groupBy(g.recs, tci)).map((t) => ({ key:t.key, value:t.value, rec:t.rec,
+      tip:() => [t.key, fmtMoney(t.value), `${g.key}${t.count ? ` · ${t.count} line${t.count === 1 ? '' : 's'}` : ''}`, tci === S.map.vendor ? 'Click for the application page' : 'Click to filter'] })) }));
+  const map = treemap({ id:'tm-bd', groups:tg, aria:`Map of ${label()} by ${low(gci)}${tci != null ? ' and ' + low(tci) : ''}`,
+    onGroup:(g) => { S.ui.bdZoom = zoom ? null : g.key; render(); },
+    onTile:(it, g) => { if (it.rec) lineDrawer(it.rec); else if (tci === S.map.vendor) goApp(it.key); else { S.filters[gci] = g.key; setFilter(tci, it.key); } } });
+  const cols = [
+    { key:'key', label:hdr(gci), cls:'strong', render:(g) => h('span', { class:'sw-label' }, swatchOf(colors.get(g.key)), g.key) },
+    { key:'value', label:label(), num:true, render:(g) => h('span', { title:fmtMoney(g.value) }, fmtC(g.value)) },
+    { key:'share', label:'Share', num:true, sortVal:(g) => g.value, render:(g) => fmtPct(total ? g.value / total : 0, 1) },
+    { key:'count', label:'Lines', num:true }];
+  const side = h('aside', { class:'mside', id:'bd-side' }, h('h2', {}, `${groups.length} ${low(gci)} group${groups.length === 1 ? '' : 's'}`),
+    h('div', { class:'ms-s' }, `${fmtMoney(total)} · click a region heading to zoom, a row to filter`),
+    dataTable({ cols, rows:sortRows(groups, cols, S.ui.bSort), sort:S.ui.bSort, onSort:sorter('bSort'), onRow:(g) => setFilter(gci, g.key), id:'bd-table', maxHeight:'calc(100vh - 360px)',
+      foot:['Total', fmtC(total), '100%', fmtInt(pos.length)] }));
+  return [controls, h('div', { class:'map-bar' }, mapCrumbs(`All ${low(gci)} groups`, zoom, () => { S.ui.bdZoom = null; render(); })), h('div', { class:'map-wrap' }, map, side)];
 }
 
-// ---------- Vendors (no filter bar: always every row) ----------
-// colour per value of a column, by spend rank; the same map colours the donut and the owner chips
-function rankColors(ci) { const m = new Map(); groupBy(S.recs, ci).forEach((g, i) => m.set(g.key, cv(PALETTE[i % PALETTE.length]))); return m; }
-const ownerChip = (name, color, extra) => h('span', { class:'owner-chip', style:`--oc:${color}`, title:extra || name }, h('span', { class:'dot-sw', style:`background:${color}` }), name);
+// ---------- Spend map (the home page): every vendor as a tile, grouped four ways ----------
 // renewal date per budget line: the file's renewal column, else the day after the current term of a key contract that covers the line
 function renewalLookup() {
   const byContract = new Map();
@@ -1382,113 +1432,129 @@ function sizeBands(vendors, total) {
   const tailCut = [cuts[3], cuts[2], cuts[1]].find((c) => vendors.filter((v) => v.value < c).length >= 3) ?? cuts[3];
   return { bands, tailCut, tail:vendors.filter((v) => v.value < tailCut) };
 }
-function donut(items, { size = 210, thick = 36, label: aria, center = [], onClick }) {
-  const R = size / 2, r0 = R - thick, total = sum(items, (x) => x.value) || 1;
-  const g = s('svg', { viewBox:`0 0 ${size} ${size}`, class:'donut', role:'img', 'aria-label':aria });
-  const pt = (a, r) => `${(R + r * Math.cos(a)).toFixed(2)} ${(R + r * Math.sin(a)).toFixed(2)}`;
-  let a = -Math.PI / 2;
-  for (const it of items) {
-    const f = it.value / total; if (!(f > 0)) continue;
-    const a1 = a + f * 2 * Math.PI - (f >= 0.9999 ? 0.0001 : 0), big = f > 0.5 ? 1 : 0;
-    const path = s('path', { d:`M${pt(a, R)} A${R} ${R} 0 ${big} 1 ${pt(a1, R)} L${pt(a1, r0)} A${r0} ${r0} 0 ${big} 0 ${pt(a, r0)} Z`, style:`fill:${it.color}`, class:'slice', tabindex:0,
-      onclick:onClick ? () => onClick(it) : null, onkeydown:onClick ? (e) => { if (e.key === 'Enter') onClick(it); } : null });
-    withTip(path, () => [it.key, fmtMoney(it.value), `${fmtPct(f, 1)} of vendor spend` + (it.n != null ? ` · ${it.n} vendor${it.n === 1 ? '' : 's'}` : ''), onClick ? 'Click for its vendors' : null]);
-    g.append(path); a = a1;
-  }
-  center.forEach((t, i) => g.append(s('text', { x:R, y:R + (i - (center.length - 1) / 2) * 20 + 6, 'text-anchor':'middle', class:i === 0 ? 'donut-v' : 'donut-l' }, t)));
-  return g;
-}
-function vendorListDrawer(title, sub, vendors, all, footer) {
-  const t = sum(vendors, (v) => v.value);
-  openDrawer({ title, sub,
-    body:dataTable({ cols:[{ key:'key', label:'Vendor', cls:'strong wrap' }, { key:'value', label:label(), num:true, render:(v) => fmtMoney(v.value) }, { key:'share', label:'Share', num:true, render:(v) => fmtPct(t ? v.value / t : 0, 1) }],
-      rows:vendors, onRow:(v) => vendorDrawer(all.find((x) => x.key === v.key) || v), foot:['Total', fmtMoney(t), '100%'] }),
-    footer:[footer, btn('Close', 'primary', closeDrawer)] });
-}
-function insVendors(recs) {
+const flagLabels = (recs) => CHECKS.filter((c) => c[2] !== 'info' && recs.some((r) => r.flags.has(c[0]))).map((c) => c[1]);
+// vendor → its key contract (if one of the contracts' budget lines belongs to it)
+function contractsByVendor() { const m = new Map(); for (const c of CONTRACTS) { const d = contractData(c); for (const r of d.matched) m.set(cell(r, S.map.vendor), { c, d }); } return m; }
+function insMap(recs) {
   const g = vendorAgg(recs).filter((v) => v.value > 0), t = sum(g, (v) => v.value);
   if (!t) return 'No matching spend.';
   const top = (n) => fmtPct(sum(g.slice(0, n), (v) => v.value) / t), sb = sizeBands(g, t);
   return `${g.length} vendors. The top 10 take ${top(10)} of spend, while ${sb.tail.length} vendors under ${fmtC(sb.tailCut)} each add up to ${fmtPct(sum(sb.tail, (v) => v.value) / t)}.`;
 }
-function pageVendors(recs) {
-  const all = vendorAgg(recs), pos = all.filter((v) => v.value > 0), total = sum(all, (v) => v.value), AS = asOfDay();
-  const ren = renewalLookup(), vren = new Map(all.map((v) => [v, vendorRenewal(v, ren, AS)]));
-  // the coloured "who" column: the owner, or else the capability / cost centre column (the same colours as the pie chart)
-  const chipKey = ['owner', 'capability', 'costcentre'].find((k) => S.map[k] != null), chipCi = chipKey ? S.map[chipKey] : null;
-  const oc = chipKey ? rankColors(chipCi) : null, sb = sizeBands(pos, total);
-  const whoOf = (v) => { const m = new Map(); for (const r of v.recs) if (r.amount > 0 && r.row[chipCi]) m.set(r.row[chipCi], (m.get(r.row[chipCi]) || 0) + r.amount); return [...m].sort((a, b) => b[1] - a[1]).map(([k]) => k); };
-  const soon = pos.filter((v) => { const x = vren.get(v); return x && x.day >= AS && x.day - AS <= 90; }), anyRen = [...vren.values()].some(Boolean);
-  const top = (n) => (total ? sum(pos.slice(0, n), (v) => v.value) / total : 0);
-  const out = [h('div', { class:'kpis' },
-    kpi({ id:'v-count', label:'Vendors with spend', value:fmtInt(pos.length), raw:pos.length, meta:h('span', {}, `${fmtMoney(total)} in total`) }),
-    kpi({ id:'v-top10', label:'Top 10 vendors', value:fmtPct(top(10)), raw:top(10), meta:h('span', {}, `of spend · top 5: ${fmtPct(top(5))}`) }),
-    kpi({ id:'v-tail', label:`Vendors under ${fmtC(sb.tailCut)}`, value:fmtInt(sb.tail.length), raw:sb.tail.length,
-      meta:h('span', {}, `${fmtPct(total ? sum(sb.tail, (v) => v.value) / total : 0, 1)} of spend between them`), hint:'Small contracts: candidates to consolidate or move to a standard tool' }),
-    kpi({ id:'v-renew', label:'Renewing in the next 90 days', value:anyRen ? fmtInt(soon.length) : '—', raw:anyRen ? soon.length : null,
-      meta:h('span', { title:soon.map((v) => v.key).join(', ') }, !anyRen ? 'No renewal dates in the data yet' : soon.length ? `${fmtMoney(sum(soon, (v) => v.value))}: ${soon.slice(0, 3).map((v) => v.key).join(', ')}${soon.length > 3 ? '…' : ''}` : 'None in the next 90 days') }))];
-
-  // functional view: spend by budget owner (or capability / cost centre), as a donut with its key
-  const fns = [['owner', 'Budget owner'], ['capability', 'Capability'], ['costcentre', 'Cost centre']].filter(([k]) => S.map[k] != null && S.prof[S.map[k]].uniq > 1);
-  const cards = [];
-  if (fns.length && total) {
-    if (!fns.some(([k]) => k === S.ui.vFn)) S.ui.vFn = fns[0][0];
-    const ci = S.map[S.ui.vFn], colors = S.ui.vFn === chipKey ? oc : rankColors(ci), fnName = fns.find(([k]) => k === S.ui.vFn)[1];
-    const groups = groupBy(recs.filter((r) => r.amount > 0), ci).map((g) => ({ ...g, color:colors.get(g.key) || 'var(--other)', n:new Set(g.recs.map((r) => cell(r, S.map.vendor))).size }));
-    const open = (g) => vendorListDrawer(g.key, `${fmtMoney(g.value)} · ${fmtPct(g.value / total, 1)} of vendor spend · ${g.n} vendor${g.n === 1 ? '' : 's'}`, vendorAgg(g.recs).filter((v) => v.value > 0), all,
-      btn('List its lines', 'secondary', () => { closeDrawer(); setFilter(ci, g.key); }));
-    const fnsOf = (v) => [...new Set(v.recs.filter((r) => r.amount > 0 && r.row[ci]).map((r) => r.row[ci]))];
-    const shared = pos.filter((v) => fnsOf(v).length > 1);
-    cards.push(card({ title:`${groups[0].key}: ${fmtPct(groups[0].value / total)} of vendor spend`, id:'v-fn-card',
-      sub:`Spend by ${fnName.toLowerCase()} · click a slice or row for its vendors`,
-      body:[fns.length > 1 ? h('div', { style:'margin-bottom:12px' }, segmented(fns.map(([k, l]) => [k, l]), S.ui.vFn, (k) => { S.ui.vFn = k; render(); }, 'Group the chart by', 'v-fn')) : null,
-        h('div', { class:'donut-wrap' },
-        donut(groups, { label:groups.map((g) => `${g.key} ${fmtPct(g.value / total)}`).join(', '), center:[fmtC(total), `${pos.length} vendors`], onClick:open }),
-        dataTable({ cols:[
-          { key:'key', label:fnName, render:(g) => h('span', { class:'sw-label' }, h('span', { class:'swatch', style:`background:${g.color}` }), g.key) },
-          { key:'value', label:'Spend', num:true, render:(g) => h('span', { title:fmtMoney(g.value) }, fmtC(g.value)) },
-          { key:'share', label:'Share', num:true, render:(g) => fmtPct(g.value / total, 1) },
-          { key:'n', label:'Vendors', num:true }], rows:groups, onRow:open, maxHeight:'300px', id:'v-fn-table' })),
-        shared.length ? h('p', { class:'ct-gap', id:'v-shared' }, icon('info', 14), ` ${shared.length} vendor${shared.length === 1 ? ' is' : 's are'} bought by more than one ${fnName.toLowerCase()}: `,
-          shared.slice(0, 3).map((v, i) => [i ? '; ' : '', h('b', {}, v.key), ` (${fnsOf(v).join(', ')})`]), shared.length > 3 ? `; and ${shared.length - 3} more` : '', '. A chance to combine contracts.') : null] }));
+function pageMap(recs) {
+  const all = vendorAgg(recs).filter((v) => v.value > 0), total = sum(all, (v) => v.value), AS = asOfDay();
+  const ren = renewalLookup(), dci = deptCol(), dcol = deptColors(), conOf = contractsByVendor();
+  const info = new Map(all.map((v, i) => [v.key, { v, rank:i + 1, depts:dci != null ? mainDepts(v.recs, dci) : [], ren:vendorRenewal(v, ren, AS) }]));
+  const colorV = (key) => { const x = info.get(key); return x && x.depts.length ? dcol.get(x.depts[0]) || 'var(--t0)' : 'var(--t1)'; };
+  const vtip = (key, part) => () => { const x = info.get(key); return [key, `${fmtMoney(x.v.value)} · ${fmtPct(total ? x.v.value / total : 0, 1)} of spend · #${x.rank}`, x.depts.join(' + ') || null, part, x.ren ? `Renews ${fmtDay(x.ren.day)}` : null, 'Click for details'].filter(Boolean); };
+  const vItems = (vs) => vs.map((v) => ({ key:v.key, value:v.value, color:colorV(v.key), tip:vtip(v.key) }));
+  const sb = sizeBands(all, total);
+  const MODES = [dci != null ? ['dept', hdr(dci)] : null, ['band', 'Size band'], CONTRACTS.length ? ['contract', 'Key contracts'] : null, ['renewal', 'Renewal date']].filter(Boolean);
+  if (!MODES.some(([k]) => k === S.ui.mapMode)) S.ui.mapMode = MODES[0][0];
+  const mode = S.ui.mapMode, modeLabel = MODES.find(([k]) => k === mode)[1];
+  let groups;
+  if (mode === 'dept') groups = groupBy(recs.filter((r) => r.amount > 0), dci).map((g) => ({ key:g.key, value:g.value, color:dcol.get(g.key) || 'var(--t0)',
+    items:vendorAgg(g.recs).filter((v) => v.value > 0).map((v) => ({ key:v.key, value:v.value, color:dcol.get(g.key) || 'var(--t0)', tip:vtip(v.key, info.get(v.key).depts.length > 1 ? `This tile: ${g.key} ${fmtMoney(v.value)}` : null) })) }));
+  else if (mode === 'band') groups = sb.bands.filter((b) => b.vendors.length).map((b) => ({ key:b.label, value:b.value, items:vItems(b.vendors) }));
+  else if (mode === 'contract') { const k = all.filter((v) => conOf.has(v.key)), o = all.filter((v) => !conOf.has(v.key)); groups = [{ key:'Key contracts (invoices loaded)', value:sum(k, (v) => v.value), items:vItems(k) }, { key:'Budget lines only', value:sum(o, (v) => v.value), items:vItems(o) }]; }
+  else { const k = all.filter((v) => info.get(v.key).ren), o = all.filter((v) => !info.get(v.key).ren); groups = [{ key:'Renewal date known', value:sum(k, (v) => v.value), items:vItems(k) }, { key:'No renewal date', value:sum(o, (v) => v.value), items:vItems(o) }]; }
+  groups.forEach((g) => { g.share = total ? g.value / total : 0; });
+  const zoom = groups.some((g) => g.key === S.ui.mapZoom) ? S.ui.mapZoom : (S.ui.mapZoom = null);
+  const pick = info.has(S.ui.mapPick) ? S.ui.mapPick : (S.ui.mapPick = null);
+  const map = treemap({ id:'tm-map', groups:zoom ? groups.filter((g) => g.key === zoom) : groups, picked:pick, aria:`Map of ${label()} by ${modeLabel.toLowerCase()} and vendor`,
+    onGroup:(g) => { S.ui.mapZoom = zoom ? null : g.key; S.ui.mapPick = null; render(); }, onTile:(it) => { S.ui.mapPick = pick === it.key ? null : it.key; render(); } });
+  const top = (n) => (total ? sum(all.slice(0, n), (v) => v.value) / total : 0);
+  let side;
+  if (pick) {
+    const x = info.get(pick), con = conOf.get(pick), fl = flagLabels(x.v.recs);
+    side = [h('div', { class:'ms-s' }, `Vendor #${x.rank} of ${all.length}`), h('h2', { id:'ms-name' }, pick), h('div', { class:'ms-big' }, fmtMoney(x.v.value)), h('div', { class:'ms-s' }, `${fmtPct(total ? x.v.value / total : 0, 1)} of all spend`),
+      kv([dci != null ? [hdr(dci), x.depts.join(' + ')] : null, ['Lines', fmtInt(x.v.count)], ['Renewal', x.ren ? fmtDay(x.ren.day) : 'Not in the file'],
+        con && con.d.annualB != null ? ['Contract run-rate', fmtMoney(con.d.annualB)] : null, con && con.d.gap != null ? [con.d.gap >= 0 ? 'Headroom' : 'Over budget', fmtMoney(Math.abs(con.d.gap))] : null,
+        fl.length ? ['To check', fl.join('; ')] : null]),
+      h('div', { class:'ms-btns' }, btn('Open application page', 'primary', () => goApp(pick), 'arrow', { id:'ms-open' }), btn('Show its lines', 'secondary', () => setFilter(S.map.vendor, pick)), btn('Clear', 'ghost', () => { S.ui.mapPick = null; render(); }))];
+  } else if (zoom) {
+    const g = groups.find((x) => x.key === zoom);
+    side = [h('div', { class:'ms-s' }, modeLabel), h('h2', {}, zoom), h('div', { class:'ms-big' }, fmtMoney(g.value)), h('div', { class:'ms-s' }, `${fmtPct(g.share, 1)} of spend · ${g.items.length} vendor${g.items.length === 1 ? '' : 's'}`),
+      mlist([...g.items].sort((a, b) => b.value - a.value), (it) => { S.ui.mapPick = it.key; render(); }, 30, 'ms-list'),
+      h('div', { class:'ms-btns' }, mode === 'dept' ? btn('List its lines', 'secondary', () => setFilter(dci, zoom), null, { id:'ms-lines' }) : null, btn('Back to all', 'ghost', () => { S.ui.mapZoom = null; render(); }))];
+  } else {
+    const head = sum([...conOf.values()].filter((x, i, a) => a.findIndex((y) => y.c === x.c) === i && x.d.gap != null), (x) => x.d.gap);
+    side = [h('div', { class:'ms-s' }, `${label()} · as of ${fmtDay(AS)}`), h('div', { class:'ms-big', id:'map-total', 'data-value':total }, fmtMoney(total)), h('div', { class:'ms-s' }, `${all.length} vendors${dci != null ? ` · ${groupBy(recs, dci).length} ${low(dci)} groups` : ''}`),
+      kv([['Top 10 vendors', fmtPct(top(10))], [`Vendors under ${fmtC(sb.tailCut)}`, `${sb.tail.length} · ${fmtPct(total ? sum(sb.tail, (v) => v.value) / total : 0)}`],
+        dci != null ? [`Largest ${low(dci)}`, `${groups[0] && mode === 'dept' ? groups[0].key : mainDepts(recs, dci)[0]}`] : null,
+        CONTRACTS.length ? ['Key contracts headroom', fmtMoney(head)] : null, ['Renewal date known', `${[...info.values()].filter((x) => x.ren).length} of ${all.length} vendors`]]),
+      h('p', { class:'ms-s', style:'margin-top:12px' }, 'Area = spend. Click a region heading to zoom in, a tile for its details.'),
+      h('div', { class:'sub-h', style:'margin:14px 0 4px' }, 'Largest vendors'), mlist(all.map((v) => ({ key:v.key, value:v.value, color:colorV(v.key) })), (it) => { S.ui.mapPick = it.key; render(); }, 15, 'ms-list')];
   }
-  // long tail: how many vendors, and how much spend, in each size band
-  if (pos.length) {
-    const maxV = Math.max(...sb.bands.map((b) => b.value), 1);
-    cards.push(card({ title:`${sb.tail.length} of ${pos.length} vendors are under ${fmtC(sb.tailCut)} each: ${fmtPct(total ? sum(sb.tail, (v) => v.value) / total : 0)} of spend`, id:'v-bands',
-      sub:'Vendors grouped by their yearly spend · click a band for its vendors',
-      body:h('div', { class:'bands' },
-        h('div', { class:'band-row band-h' }, h('span', {}, 'Yearly spend per vendor'), h('span', { class:'num' }, 'Vendors'), h('span', {}, 'Spend'), h('span', { class:'num' }, 'Share')),
-        sb.bands.map((b, i) => h('button', { type:'button', class:'band-row', id:'v-band-' + i, disabled:!b.vendors.length, title:b.vendors.length ? `${b.label}: open the ${b.vendors.length} vendors` : null,
-          onclick:() => vendorListDrawer(b.label, `${b.vendors.length} vendors · ${fmtMoney(b.value)} · ${fmtPct(total ? b.value / total : 0, 1)} of spend`, b.vendors, all) },
-          h('span', { class:'band-l' }, b.label), h('span', { class:'num strong' }, fmtInt(b.vendors.length)),
-          h('span', { class:'band-bar' }, h('span', { class:'hb-track' }, h('span', { class:'hb-fill', style:`width:${b.value / maxV * 100}%;background:${b.lo >= sb.tailCut ? 'var(--bar)' : 'var(--other)'}` })), h('span', { class:'hb-val' }, fmtMoney(b.value))),
-          h('span', { class:'num muted' }, fmtPct(total ? b.value / total : 0, 1)))),
-        (() => { const big = sb.bands.slice(0, 2).flatMap((b) => b.vendors); return big.length ? h('p', { class:'ct-gap' }, `At the other end, ${big.length} vendor${big.length === 1 ? '' : 's'} at ${fmtC(sb.bands[1].lo)} or more make${big.length === 1 ? 's' : ''} up ${fmtPct(total ? sum(big, (v) => v.value) / total : 0)} of spend.`) : null; })()) }));
-  }
-  if (cards.length) out.push(h('div', { class:'grid g2' }, cards));
+  return [h('div', { class:'map-bar' }, mapCrumbs(`All vendors by ${modeLabel.toLowerCase()}`, zoom, () => { S.ui.mapZoom = null; S.ui.mapPick = null; render(); }),
+      segmented(MODES, mode, (k) => { S.ui.mapMode = k; S.ui.mapZoom = null; render(); }, 'Group the map by', 'map-mode')),
+    dci != null ? deptLegend(dcol) : null, h('div', { class:'map-wrap' }, map, h('aside', { class:'mside', id:'map-side' }, side)), footer()];
+}
 
-  const cols = [
-    { key:'rank', label:'#', num:true, sortVal:(v) => -v.value, render:(v) => all.indexOf(v) + 1 },
-    { key:'key', label:'Vendor', cls:'strong wrap' },
-    { key:'value', label:label(), num:true, cls:'strong', render:(v) => fmtMoney(v.value) },
-    { key:'share', label:'Share', num:true, sortVal:(v) => v.value, render:(v) => fmtPct(total ? v.value / total : 0, 1) },
-  ];
-  if (S.map.prior != null) cols.push({ key:'chg', label:'vs prior', num:true, sortVal:(v) => (v.priorN && v.prior ? (v.value - v.prior) / v.prior : null),
-    render:(v) => (!v.priorN || !v.prior ? tag('New', 'purple') : h('span', { style:`color:${v.value > v.prior ? 'var(--up)' : v.value < v.prior ? 'var(--down)' : 'inherit'}` }, fmtSignedPct(v.prior ? (v.value - v.prior) / v.prior : null))) });
-  cols.push({ key:'renewal', label:'Renewal', sortVal:(v) => (vren.get(v) ? vren.get(v).day : null), render:(v) => {
-    const x = vren.get(v); if (!x) return h('span', { class:'muted' }, '—');
-    const d = Math.round(x.day - AS);
-    return h('div', { title:x.note, style:'white-space:nowrap' }, fmtDay(x.day), h('div', { style:'margin-top:2px' }, d < 0 ? tag(`${-d} days ago`, 'red') : d <= 90 ? tag(`in ${d} days`, 'orange') : h('span', { class:'muted', style:'font-size:12px' }, `in ${d} days`)));
-  } });
-  if (oc) cols.push({ key:'owners', label:chipKey === 'owner' ? 'Owner' : hdr(chipCi), sortVal:(v) => whoOf(v).join(), render:(v) => {
-    const os = whoOf(v);
-    return !os.length ? tag(chipKey === 'owner' ? 'No owner' : 'None', 'yellow') : h('span', { class:'owner-cell' }, ownerChip(os[0], oc.get(os[0]) || 'var(--other)', os.join(', ')), os.length > 1 ? h('span', { class:'muted', title:os.join(', ') }, `+${os.length - 1}`) : null);
-  } });
-  out.push(card({ title:'All vendors', sub:'Click a vendor to open its lines, renewal and owners', flush:true,
-    body:dataTable({ cols, rows:sortRows(all, cols, S.ui.vSort), sort:S.ui.vSort, onSort:sorter('vSort'), onRow:(v) => vendorDrawer(v), maxHeight:'620px', id:'vendor-table',
-      foot:cols.map((c, i) => (i === 1 ? `Total (${all.length})` : c.key === 'value' ? fmtMoney(total) : c.key === 'share' ? '100%' : '')) }) }));
-  return out;
+// ---------- Application page: one vendor as a mosaic ----------
+const appVendors = () => vendorAgg(S.recs).filter((v) => v.value > 0);
+function insApp() {
+  const all = appVendors(), i = all.findIndex((v) => v.key === S.app); if (i < 0) return 'Application not found.';
+  const t = sum(all, (v) => v.value);
+  return `${fmtMoney(all[i].value)} a year: ${fmtPct(t ? all[i].value / t : 0, 1)} of all spend, #${i + 1} of ${all.length} vendors.`;
+}
+function pageApp() {
+  const all = appVendors(), i = all.findIndex((v) => v.key === S.app);
+  if (i < 0) return emptyState('vendors', 'Application not found', `No vendor called “${S.app || ''}” has spend in this file.`, h('a', { class:'btn primary', href:'#/map' }, 'Back to the spend map'));
+  const v = all[i], total = sum(all, (x) => x.value), dci = deptCol(), dcol = deptColors(), AS = asOfDay();
+  const parts = dci != null ? groupBy(v.recs.filter((r) => r.amount > 0), dci) : [{ key:v.key, value:v.value }];
+  const col = (k) => dcol.get(k) || 'var(--t1)', main = parts[0].key;
+  const con = contractsByVendor().get(v.key), ren = vendorRenewal(v, renewalLookup(), AS), fl = flagLabels(v.recs);
+  // 1. the application: its budget as squares, by department; with a key contract, budget the invoices don't use is hollow
+  const unit = unitFor(v.value, 300), n = Math.max(1, Math.round(v.value / unit));
+  let cells = allocate(parts.map((p) => ({ key:p.key, value:p.value })), n).flatMap((p) => Array.from({ length:p.k }, () => ({ fill:col(p.key), group:'p:' + p.key,
+    tip:() => [`${v.key}${parts.length > 1 ? ' · ' + p.key : ''}`, fmtMoney(p.value), `${p.k} square${p.k === 1 ? '' : 's'} of ${fmtMoney(unit)}`] })));
+  const legend = parts.map((p) => [col(p.key), `${p.key} ${fmtC(p.value)}`]);
+  if (con && con.d.annualB != null && con.d.gap != null) {
+    const r = Math.round(con.d.annualB / unit);
+    cells = cells.map((c, k) => (k < r ? c : { ...c, hollow:true, group:'unused', tip:() => ['Budget not on the current invoices', fmtMoney(con.d.gap), `${con.c.name} run-rate ${fmtMoney(con.d.annualB)}`] }));
+    for (let k = n; k < r; k++) cells.push({ fill:col(main), over:true, group:'over', tip:() => ['Run-rate above the budget', fmtMoney(-con.d.gap)] });
+    legend.push([null, `Budget not on the ${con.c.name} invoices ${fmtC(Math.max(0, con.d.gap))}`, true]);
+  }
+  const mainMos = mosaic({ id:'app-mosaic', cells, aria:`${v.key}: ${fmtMoney(v.value)} as ${n} squares of ${fmtMoney(unit)}`, data:{ 'data-unit':unit, 'data-n':cells.length } });
+  // 2. within its department, and 3. within the whole budget (this vendor in colour, everything else grey)
+  const ctx = (id, pool, scope, max) => {
+    const tot = sum(pool, (r) => r.amount), u = unitFor(tot, max), groupsC = vendorAgg(pool).filter((x) => x.value > 0);
+    const me = groupsC.find((x) => x.key === v.key), meN = me ? Math.max(1, Math.round(me.value / u)) : 0, restN = Math.max(0, Math.round(tot / u) - meN);
+    const others = allocate(groupsC.filter((x) => x !== me).map((x) => ({ key:x.key, value:x.value })), restN);
+    const cs = [...Array.from({ length:meN }, () => ({ fill:col(main), group:'me', tip:() => [v.key, fmtMoney(me.value), `${fmtPct(tot ? me.value / tot : 0, 1)} of ${scope}`] })),
+      ...others.flatMap((o) => Array.from({ length:o.k }, () => ({ fill:'var(--mos-dim)', group:'o:' + o.key, tip:() => [o.key, fmtMoney(o.value)] })))];
+    return { svg:mosaic({ id, cells:cs, aria:`${v.key} within ${scope}`, data:{ 'data-unit':u } }), u, share:tot && me ? me.value / tot : 0, tot };
+  };
+  const inDept = dci != null ? ctx('app-dept', S.recs.filter((r) => r.amount > 0 && cell(r, dci) === main), main, 400) : null;
+  const inAll = ctx('app-all', S.recs.filter((r) => r.amount > 0), 'all spend', 1100);
+  const nav = h('div', { class:'mnav' },
+    i > 0 ? h('a', { href:'#/app/' + encodeURIComponent(all[i - 1].key), id:'app-prev' }, `← #${i} ${all[i - 1].key}`) : h('span', {}),
+    h('a', { href:'#/map' }, 'Spend map'),
+    i < all.length - 1 ? h('a', { href:'#/app/' + encodeURIComponent(all[i + 1].key), id:'app-next' }, `#${i + 2} ${all[i + 1].key} →`) : h('span', {}));
+  const facts = h('aside', { class:'mside', id:'app-facts' }, h('div', { class:'ms-s' }, `#${i + 1} of ${all.length} vendors`), h('h2', {}, v.key),
+    kv([dci != null ? [hdr(dci), parts.map((p) => p.key).join(' + ')] : null, ['Share of all spend', fmtPct(total ? v.value / total : 0, 1)], ['Lines in the file', fmtInt(v.count)],
+      ['Renewal', ren ? h('span', { title:ren.note }, fmtDay(ren.day), ' ', tag(ren.day < AS ? `${Math.round(AS - ren.day)} days ago` : `in ${Math.round(ren.day - AS)} days`, ren.day < AS ? 'red' : ren.day - AS <= 90 ? 'orange' : 'gray')) : 'Not in the file'],
+      S.map.owner != null ? ['Owner', [...v.owners].join(', ') || tag('No owner', 'yellow')] : null,
+      S.map.prior != null ? ['Prior year', v.priorN ? `${fmtMoney(v.prior)} (${fmtSignedPct(v.prior ? (v.value - v.prior) / v.prior : null)})` : 'New'] : null,
+      con ? ['Key contract', h('a', { href:'#/c-' + con.c.id }, con.c.name)] : null,
+      con && con.d.annualB != null ? ['Contract run-rate', fmtMoney(con.d.annualB)] : null,
+      fl.length ? ['To check', fl.join('; ')] : null]),
+    h('div', { class:'ms-btns' }, con ? btn('Open contract page', 'primary', () => go('c-' + con.c.id), 'invoice', { id:'app-contract' }) : null, btn('Show its lines', 'secondary', () => setFilter(S.map.vendor, v.key))));
+  const lcols = [
+    { key:'item', label:'Line', cls:'wrap', render:(r) => r.item || `Row ${r.i + 1}` },
+    dci != null ? { key:'d', label:hdr(dci), render:(r) => h('span', { class:'sw-label' }, swatchOf(col(cell(r, dci))), cell(r, dci)) } : null,
+    { key:'amount', label:label(), num:true, cls:'strong', render:(r) => fmtMoney(r.amount) },
+    S.map.renewal != null ? { key:'ren', label:'Renewal', render:(r) => fmtDay(r.renewal) } : null].filter(Boolean);
+  return [nav,
+    h('div', { class:'mhead' }, h('div', { class:'mhero', id:'app-total', 'data-value':v.value }, fmtMoney(v.value), h('small', {}, `${cells.length} squares · 1 square = ${fmtMoney(unit)}`))),
+    h('div', { class:'map-wrap' }, card({ id:'app-card', title:con && con.d.gap != null ? (con.d.gap >= 0 ? `Current invoices use ${fmtPct(con.d.budget ? con.d.annualB / con.d.budget : 0)} of this budget` : `The contract run-rate is ${fmtC(-con.d.gap)} over this budget`) : `${v.key} in ${fmtMoney(unit)} squares`,
+      sub:'Hover the squares for amounts', body:[mainMos, mapLegend(legend)] }), facts),
+    h('div', { class:'grid g2', style:'margin-top:16px' },
+      inDept ? card({ id:'app-dept-card', title:`${fmtPct(inDept.share, 1)} of ${main}`, sub:`${main}: ${fmtMoney(inDept.tot)} · 1 square = ${fmtMoney(inDept.u)} · grey = the department's other vendors (hover for names)`, body:inDept.svg }) : null,
+      card({ id:'app-all-card', title:`${fmtPct(inAll.share, 1)} of all spend`, sub:`${fmtMoney(inAll.tot)} · 1 square = ${fmtMoney(inAll.u)}`, body:inAll.svg })),
+    card({ title:`${v.count} line${v.count === 1 ? '' : 's'} in the file`, sub:'Click a line for every field', flush:true, body:dataTable({ id:'app-lines', cols:lcols, rows:[...v.recs].sort((a, b) => b.amount - a.amount), onRow:(r) => lineDrawer(r) }) }),
+    footer()];
 }
 
 // ---------- Key contracts (one page per contract, from its invoice lines) ----------
@@ -1630,15 +1696,37 @@ function scheduleCard(c, d, AS) {
     { key:'st', label:'Status', render:st },
     rows.some((x) => x.note) ? { key:'note', label:'Note', cls:'wrap muted', render:(x) => x.note || '' } : null,
   ].filter(Boolean);
+  const unitY = unitFor(Math.max(...rows.map(amt)), 60), colsY = Math.max(...rows.map((x) => Math.max(1, Math.round(amt(x) / unitY))));
+  const years = h('div', { class:'yrs', id:'ct-years' }, h('p', { class:'card-s', style:'margin:0 0 8px' }, `1 square = ${fmtIn(unitY, d.ic)} · solid = current year, faded = past, hollow = still to come`),
+    rows.map((x) => { const k = Math.max(1, Math.round(amt(x) / unitY)), st = x.b < AS ? 'past' : x.a <= AS ? 'cur' : 'fut';
+      return h('div', { class:'yrow' }, h('span', { class:'yl' }, x.label, h('small', {}, fmtIn(amt(x), d.ic))),
+        mosaic({ cells:Array.from({ length:k }, () => ({ fill:st === 'past' ? 'color-mix(in srgb, var(--t1) 35%, var(--layer))' : 'var(--t1)', hollow:st === 'fut', group:'y', tip:() => [x.label, `${fmtDay(x.a)} – ${fmtDay(x.b)}`, fmtIn(amt(x), d.ic)] })), cols:colsY, aria:`${x.label}: ${fmtIn(amt(x), d.ic)}` })); }));
   return card({ id:'ct-schedule', flush:true,
     title:next ? `Next invoice: ${fmtIn(amt(next), d.ic)} on ${fmtDay(next.a)}` + (Math.abs(off) > 0.05 ? `, ${fmtPct(Math.abs(off))} ${off > 0 ? 'more' : 'less'} than the yearly fee` : '') : 'Contract years',
     sub:`${rows.length} contract years · ${fmtIn(fee, d.ic)} in fees · ${fmtIn(left, d.ic)} still to be invoiced after ${fmtDay(AS)}`,
-    body:dataTable({ id:'ct-schedule-table', cols, rows, rowClass:(x) => (x.b < AS ? 'ended' : ''), foot:cols.map((x) => (x.key === 'label' ? 'Total' : x.key === 'fee' ? fmtIn(fee, d.ic) : x.key === 'payment' ? fmtIn(paid, d.ic) : '')) }) });
+    body:[h('div', { style:'padding:0 16px 12px' }, years), dataTable({ id:'ct-schedule-table', cols, rows, rowClass:(x) => (x.b < AS ? 'ended' : ''), foot:cols.map((x) => (x.key === 'label' ? 'Total' : x.key === 'fee' ? fmtIn(fee, d.ic) : x.key === 'payment' ? fmtIn(paid, d.ic) : '')) })] });
+}
+// the contract as a mosaic in budget currency: solid squares = run-rate by product type, hollow = budget the invoices don't use, red outline = over budget
+function contractMosaic(c, d, kcol) {
+  const budget = d.matched.length ? d.budget : null, run = d.annualB, top = Math.max(budget || 0, run || 0);
+  if (!(top > 0)) return null;
+  const unit = unitFor(top, 400), B = budget != null ? Math.round(budget / unit) : 0, R = run != null ? Math.round(run / unit) : 0, cells = [];
+  allocate(d.kinds.map(([k, v]) => ({ key:k, value:v })), R).forEach((p) => { for (let j = 0; j < p.k; j++) cells.push({ fill:kcol.get(p.key), group:'k:' + p.key, tip:() => [p.key, `${fmtIn(p.value, d.ic)} a year` + (d.needFx ? ` = ${fmtMoney(p.value * d.rate)}` : ''), `${p.k} square${p.k === 1 ? '' : 's'}`] }); });
+  if (budget != null) cells.forEach((x, j) => { if (j >= B) x.over = true; });
+  for (let j = R; j < B; j++) cells.push({ hollow:true, group:'unused', tip:() => [run == null ? 'Run-rate unknown' : 'Budget not on the current invoices', run == null ? (d.lines.length ? 'Enter an exchange rate below' : 'Add the invoice lines') : fmtMoney(d.gap), `${B - R} squares`] });
+  const legend = [...d.kinds.map(([k, v]) => [kcol.get(k), `${k} ${fmtIn(v, d.ic, 0, true)}`]),
+    B > R ? [null, run == null ? `Budget ${fmtC(budget)}: run-rate unknown` : `Unused budget ${fmtC(d.gap)}`, true] : null,
+    R > B && budget != null ? ['var(--up)', `Over budget ${fmtC(-d.gap)}`] : null].filter(Boolean);
+  const ended = d.renewable.length && d.endedAnnual && d.rate != null ? Math.max(1, Math.round(d.endedAnnual * d.rate / unit)) : 0;
+  return { unit, B, R, svg:mosaic({ id:'ct-mosaic', cells, aria:`Budget ${fmtMoney(budget)} and run-rate ${fmtMoney(run)} as squares of ${fmtMoney(unit)}`, data:{ 'data-unit':unit, 'data-b':B, 'data-r':R } }),
+    legend:mapLegend(legend),
+    ended:ended ? h('div', { class:'m-ended' }, mosaic({ id:'ct-ended', cells:Array.from({ length:ended }, () => ({ fill:'var(--mos-dim)', group:'e', tip:() => ['Ended lines, not counted', `${fmtIn(d.endedAnnual, d.ic)} a year if renewed`] })), cols:Math.min(ended, 40), aria:'Ended lines' }),
+      h('span', { class:'card-s' }, `Not counted: ${d.renewable.length} ended line${d.renewable.length === 1 ? '' : 's'}, ${fmtIn(d.endedAnnual, d.ic)} a year if renewed`)) : null };
 }
 function pageContract(c) {
   const d = contractData(c), out = [], has = d.lines.length > 0, any = d.all.length > 0;
   const budLbl = d.matched.length ? [...new Set(d.matched.map((r) => r.vendor || r.item))].join(', ') : '';
-  out.push(h('div', { class:'kpis' },
+  const stats = h('div', { class:'mstats' },
     kpi({ id:'ct-annual', label:'Annual cost at current run-rate', value:has ? fmtIn(d.annual, d.ic, 0, true) : '—', raw:has ? d.annual : null,
       meta:[h('span', {}, !has ? (any ? 'Every invoice added has ended' : 'No invoice added yet') : d.cadence ? `${fmtFactor(d.factor)} the ${d.cadence} invoice of ${fmtIn(d.invoiced, d.ic, 2)}` : `${d.lines.length} lines, each scaled to 12 months`),
         d.ended.length ? h('span', {}, 'Not counted: ' + [d.renewable.length ? `${d.renewable.length} ended line${d.renewable.length === 1 ? '' : 's'} (${fmtIn(d.endedAnnual, d.ic)} a year if renewed)` : null,
@@ -1652,73 +1740,61 @@ function pageContract(c) {
       meta:d.gap == null ? h('span', {}, !has ? 'Needs invoice lines' : !d.matched.length ? 'Needs a budget line' : 'Needs an exchange rate')
         : [tag(d.gap >= 0 ? 'Budget covers the run-rate' : 'Run-rate exceeds budget', d.gap >= 0 ? 'green' : 'red'), h('span', {}, `${fmtPct(d.budget ? Math.abs(d.gap) / d.budget : 0, 1)} of budget`)] }),
     d.termEnd != null ? (() => { const days = Math.round(d.termEnd - asOfDay()); return kpi({ id:'ct-term', label:d.termGiven ? 'Contract ends' : 'Current term ends', value:fmtDay(d.termEnd), raw:dayToISO(d.termEnd),
-      meta:[tag(days < 0 ? `${-days} days ago` : `${days} days left`, days < 0 ? 'red' : days <= 90 ? 'orange' : 'gray'), h('span', {}, `as of ${fmtDay(asOfDay())}`)],
+      meta:[tag(days < 0 ? `${-days} days ago` : `${days} days left`, days < 0 ? 'red' : days <= 90 ? 'orange' : 'gray')],
       hint:d.termGiven ? 'End of the contract term in the order form.' : 'Latest end date among current lines billed for 6 months or more. Check the notice period in the contract.' }); })() : null,
     (() => { const n = keyDates(c, asOfDay()).find((x) => x.st.k !== 'passed'); return n ? kpi({ id:'ct-next', label:'Next key date', value:fmtDay(n.st.k === 'open' ? n.b : n.a), raw:dayToISO(n.st.k === 'open' ? n.b : n.a),
-      meta:[n.st.t, h('span', { title:n.note || n.label }, n.label)] }) : null; })()));
-  if (out[0].childElementCount >= 6) out[0].classList.add('dense');
-  if (c.warning) out.unshift(h('div', { class:'notice warn', id:'ct-warning' }, icon('warn'), h('span', {}, c.warning)));
+      meta:[n.st.t, h('span', { title:n.note || n.label }, n.label)] }) : null; })());
+  if (c.warning) out.push(h('div', { class:'notice warn', id:'ct-warning' }, icon('warn'), h('span', {}, c.warning)));
   if (d.unscaled.length) out.push(h('div', { class:'notice warn' }, icon('warn'), h('span', {}, `${d.unscaled.length} invoice line${d.unscaled.length === 1 ? ' has' : 's have'} no service period, so ${d.unscaled.length === 1 ? 'it is' : 'they are'} not scaled to a year: ${d.unscaled.map((l) => l.product).join(', ')}.`)));
+  stats.style.setProperty('--cols', stats.childElementCount === 6 ? 3 : Math.min(stats.childElementCount, 5));
+  out.push(stats);
 
-  const cards = [];
+  // the mosaic, with the products (or the single fee and what it includes) beside it
+  const kcol = mapColors(d.kinds.map(([k]) => k));
   const single = has && new Set(d.lines.map((l) => l.product)).size === 1 ? d.lines[0] : null;
+  let beside = null;
   if (single) {
     const l = single, inc = d.lines.flatMap((x) => x.includes || []);
-    cards.push(card({ title:`One ${d.cadence || 'yearly'} fee: ${fmtIn(d.annual, d.ic)} a year`, id:'ct-single', sub:l.product,
-      body:[kv([['Quantity', l.qty != null ? `${fmtInt(l.qty)}${l.unit ? ' ' + l.unit : ''}` : null], ['Per unit per year', l.perUnitYear != null ? fmtIn(l.perUnitYear, d.ic, 2) : null],
+    beside = h('div', { id:'ct-single' }, h('h3', { class:'card-t' }, `One ${d.cadence || 'yearly'} fee: ${fmtIn(d.annual, d.ic)} a year`), h('p', { class:'card-s' }, l.product),
+      kv([['Quantity', l.qty != null ? `${fmtInt(l.qty)}${l.unit ? ' ' + l.unit : ''}` : null], ['Per unit per year', l.perUnitYear != null ? fmtIn(l.perUnitYear, d.ic, 2) : null],
         ['Service period', l.from && l.to ? `${fmtDay(isoToDay(l.from))} – ${fmtDay(isoToDay(l.to))}` : null], l.note ? ['Note', l.note] : null]),
-        inc.length ? [h('div', { class:'sub-h', style:'margin:14px 0 6px' }, `Included (${inc.length})`), h('ul', { class:'ct-notes', id:'ct-includes' }, inc.map((x) => h('li', {}, x)))] : null] }));
+      inc.length ? [h('div', { class:'sub-h', style:'margin:14px 0 6px' }, `Included (${inc.length})`), h('ul', { class:'ct-notes', id:'ct-includes' }, inc.map((x) => h('li', {}, x)))] : null);
   } else if (has) {
     const groups = [...d.lines.reduce((m, l) => { const g = m.get(l.product) || { key:l.product, kind:l.kind, value:0, lines:[] }; g.value += l.annual || 0; g.lines.push(l); return m.set(l.product, g); }, new Map()).values()].sort((a, b) => b.value - a.value);
-    const max = Math.max(...groups.map((g) => g.value), 1), [k0, v0] = d.kinds[0];
-    cards.push(card({ title:d.kinds.length > 1 ? `${k0}: ${fmtPct(d.annual ? v0 / d.annual : 0)} of the annual cost` : `${groups[0].key}: ${fmtPct(d.annual ? groups[0].value / d.annual : 0)} of the annual cost`,
-      sub:`Per year in ${d.ic || 'invoice currency'}, by product · click a bar for details`,
-      body:[
-        h('div', { class:'stack tall', role:'img', 'aria-label':d.kinds.map(([k, v]) => `${k} ${fmtPct(v / (d.annual || 1))}`).join(', ') }, d.kinds.map(([k, v]) => h('span', { style:`width:${Math.max(0, v / (d.annual || 1) * 100)}%;background:${d.kindColor.get(k)}`, title:`${k}: ${fmtIn(v, d.ic)} a year` }))),
-        h('div', { class:'legend', style:'margin-top:8px' }, d.kinds.map(([k, v]) => h('span', {}, h('span', { class:'swatch', style:`background:${d.kindColor.get(k)}` }), `${k} `, h('b', {}, fmtIn(v, d.ic, 0, true)), ` ${fmtPct(v / (d.annual || 1))}`))),
-        h('div', { class:'hbars ct-bars', id:'ct-bars' }, groups.map((g) => h('button', { type:'button', class:'hb', title:`${g.key}: open details`, onclick:() => invoiceDrawer(c, d, g.lines) },
-          h('span', { class:'hb-name', title:g.key }, g.key), h('span', { class:'hb-track' }, h('span', { class:'hb-fill', style:`width:${Math.max(0, g.value / max * 100)}%;background:${d.kindColor.get(g.kind)}` })),
-          h('span', { class:'hb-val' }, fmtIn(g.value, d.ic)), h('span', { class:'hb-pct' }, fmtPct(d.annual ? g.value / d.annual : 0))))),
-      ] }));
-  } else if (any) {
-    cards.push(emptyState('invoice', `No current invoice for ${c.name}`, 'Every invoice added has ended. Add the latest invoice to see the run-rate.'));
-  } else {
-    cards.push(emptyState('invoice', `No invoice added for ${c.name} yet`, 'Add the invoice lines (product, quantity, service period and amount) to the contracts block in this file. This page then scales them to a full year and compares them with the budget.'));
+    const max = Math.max(...groups.map((g) => g.value), 1);
+    beside = h('div', {}, h('h3', { class:'card-t' }, `${groups.length} products · per year`), h('p', { class:'card-s' }, `In ${d.ic || 'invoice currency'} · click for the invoice lines`),
+      h('div', { class:'hbars ct-bars', id:'ct-bars' }, groups.map((g) => h('button', { type:'button', class:'hb', title:`${g.key}: open details`, onclick:() => invoiceDrawer(c, d, g.lines) },
+        h('span', { class:'hb-name sw-label', title:g.key }, swatchOf(kcol.get(g.kind)), g.key), h('span', { class:'hb-track' }, h('span', { class:'hb-fill', style:`width:${Math.max(0, g.value / max * 100)}%;background:${kcol.get(g.kind)}` })),
+        h('span', { class:'hb-val' }, fmtIn(g.value, d.ic, 0, true)), h('span', { class:'hb-pct' }, fmtPct(d.annual ? g.value / d.annual : 0))))));
   }
+  const m = contractMosaic(c, d, kcol);
+  if (m) out.push(card({ id:'ct-mosaic-card', title:d.gap == null ? 'Budget and run-rate' : d.gap >= 0 ? `Current invoices use ${fmtPct(d.budget ? d.annualB / d.budget : 0)} of the budget: ${fmtC(d.gap)} to spare` : `The run-rate is ${fmtC(-d.gap)} over budget`,
+    sub:`1 square = ${fmtMoney(m.unit)} · solid = current invoices scaled to a year${d.kinds.length > 1 ? ', by product type' : ''} · hollow = budget the invoices don't use · hover for amounts`,
+    body:h('div', { class:'mgrid' }, h('div', {}, m.svg, m.legend, m.ended), beside) }));
+  else if (beside) out.push(card({ body:beside }));
+  else out.push(emptyState('invoice', any ? `No current invoice for ${c.name}` : `No invoice added for ${c.name} yet`, any ? 'Every invoice added has ended. Add the latest invoice to see the run-rate.' : 'Add the invoice lines (product, quantity, service period and amount) to the contracts block in this file. This page then scales them to a full year and compares them with the budget.'));
 
-  // budget vs run-rate, exchange rate, and the budget lines behind the comparison
+  // the budget lines behind the comparison, and the exchange rate
   const bcols = [
     { key:'n', label:'Budget line', render:(r) => h('div', {}, h('div', { class:'strong' }, r.vendor || r.item || `Row ${r.i + 1}`), r.item && r.item !== r.vendor ? h('div', { class:'muted' }, r.item) : null) },
     S.map.capability != null ? { key:'cap', label:hdr(S.map.capability), render:(r) => cell(r, S.map.capability) } : null,
     { key:'a', label:label(), num:true, render:(r) => fmtMoney(r.amount) },
   ].filter(Boolean);
-  const cmpMax = Math.max(d.budget, d.annualB || 0, 1);
-  const bar = (lbl, v, color, id) => [h('span', { class:'hb-name' }, lbl), h('span', { class:'hb-track' }, h('span', { class:'hb-fill', style:`width:${v == null ? 0 : Math.max(0, v / cmpMax * 100)}%;background:${color}` })), h('span', { class:'hb-val', id }, v == null ? '—' : fmtMoney(v))];
-  const fxIn = d.needFx ? h('div', { class:'ct-fx' },
+  const fxIn = d.needFx ? h('div', { class:'ct-fx', style:'margin:0 16px 12px;padding-top:0;border-top:0' },
     h('label', { class:'fb-field' }, h('span', { class:'fb-l' }, `Exchange rate: 1 ${d.ic} = … ${d.bc}`),
       h('input', { class:'input', id:'ct-fx-rate', type:'number', min:0, step:'0.0001', value:d.rate ?? '', placeholder:'e.g. 1.10',
         onchange:(e) => { const v = +e.target.value; store.set(`fx:${d.ic}:${d.bc}`, e.target.value !== '' && v > 0 ? v : null); setTimeout(render, 0); } })),
     h('p', { class:'helper', style:'margin:0;flex:1;min-width:200px' }, d.rateFrom === 'mine' ? 'Your rate, saved in this browser only.' : d.rateFrom === 'file' ? `Assumed rate from this file${c.fx && c.fx.note ? ': ' + c.fx.note : '.'} Type your budget rate to replace it.` : 'Type the rate your budget uses.'),
     d.rateFrom === 'mine' && d.fileRate ? btn(`Use ${d.fileRate}`, 'ghost sm', () => { store.set(`fx:${d.ic}:${d.bc}`, null); render(); }, null, { id:'ct-fx-reset' }) : null) : null;
-  cards.push(card({ title:d.gap == null ? 'Budget vs run-rate' : d.gap >= 0 ? `The budget covers the run-rate with ${fmtC(d.gap)} to spare` : `The run-rate is ${fmtC(-d.gap)} over budget`,
-    sub:`In ${d.bc || 'budget currency'} · budget = ${matchText(c, d)} · click a line for details`, flush:true,
-    body:[
-      h('div', { style:'padding:0 16px 4px' },
-        h('div', { class:'ct-cmp', role:'img', 'aria-label':`Budget ${fmtMoney(d.budget)}, run-rate ${fmtMoney(d.annualB)}` },
-          bar('Budget', d.matched.length ? d.budget : null, 'var(--bar)', 'ct-cmp-budget'), bar('Run-rate', d.annualB, 'var(--c3)', 'ct-cmp-run')),
-        d.gap != null ? h('p', { class:'ct-gap' }, d.gap >= 0 ? `${fmtPct(d.gap / (d.budget || 1), 1)} of the budget is not on ${has && c.invoices.length === 1 ? 'this invoice' : 'these invoices'}: for example partner services, growth in quantities or price rises.` : 'At today’s quantities the contract costs more than budgeted.') : null,
-        fxIn),
-      h('div', { class:'sub-h' }, 'Budget lines'),
-      dataTable({ cols:bcols, rows:d.matched, onRow:(r) => lineDrawer(r), empty:`No row’s vendor matches “${c.match || ''}”.`, id:'ct-budget-table', foot:d.matched.length > 1 ? bcols.map((x, i) => (i === 0 ? 'Total' : x.key === 'a' ? fmtMoney(d.budget) : '')) : null }),
-      d.related.length ? [h('div', { class:'sub-h' }, 'Related lines (not counted)'), dataTable({ cols:bcols, rows:d.related, onRow:(r) => lineDrawer(r), id:'ct-related-table' })] : null,
-    ] }));
-  out.push(h('div', { class:'grid g2' }, cards));
-  for (const x of [scheduleCard(c, d, asOfDay()), datesCard(c, asOfDay())]) if (x) out.push(h('div', { class:'grid' }, x));
+  out.push(card({ id:'ct-budget-card', title:`Budget: ${d.matched.length ? fmtMoney(d.budget) : 'no matching line'}`, sub:`In ${d.bc || 'budget currency'} · budget = ${matchText(c, d)} · click a line for details`, flush:true,
+    body:[fxIn, dataTable({ cols:bcols, rows:d.matched, onRow:(r) => lineDrawer(r), empty:`No row’s vendor matches “${c.match || ''}”.`, id:'ct-budget-table', foot:d.matched.length > 1 ? bcols.map((x, i) => (i === 0 ? 'Total' : x.key === 'a' ? fmtMoney(d.budget) : '')) : null }),
+      d.related.length ? [h('div', { class:'sub-h' }, 'Related lines (not counted)'), dataTable({ cols:bcols, rows:d.related, onRow:(r) => lineDrawer(r), id:'ct-related-table' })] : null] }));
+  for (const x of [scheduleCard(c, d, asOfDay()), datesCard(c, asOfDay())]) if (x) out.push(x);
 
   if (any) {
     const multi = c.invoices.length > 1;
     const cols = [
-      { key:'product', label:'Product', cls:'wrap', render:(l) => h('div', {}, h('div', { class:'sw-label strong' }, h('span', { class:'swatch', style:`background:${d.kindColor.get(l.kind)}` }), l.product), h('div', { class:'muted' }, l.kind), l.ended ? h('div', { style:'margin-top:4px' }, tag(l.superseded ? 'Replaced · not counted' : `Ended ${l.to ? fmtDay(isoToDay(l.to)) : ''} · not counted`, 'gray', l.endNote)) : null) },
+      { key:'product', label:'Product', cls:'wrap', render:(l) => h('div', {}, h('div', { class:'sw-label strong' }, swatchOf(kcol.get(l.kind) || 'var(--t0)'), l.product), h('div', { class:'muted' }, l.kind), l.ended ? h('div', { style:'margin-top:4px' }, tag(l.superseded ? 'Replaced · not counted' : `Ended ${l.to ? fmtDay(isoToDay(l.to)) : ''} · not counted`, 'gray', l.endNote)) : null) },
       multi ? { key:'ref', label:'Invoice', sortVal:(l) => l.inv.short || l.inv.ref, render:(l) => h('span', { title:l.inv.ref, style:'white-space:nowrap' }, l.inv.short || l.inv.ref) } : null,
       { key:'qty', label:'Quantity', num:true, render:(l) => (l.qty == null ? '—' : `${fmtInt(l.qty)}${l.unit ? ' ' + l.unit : ''}`) },
       { key:'from', label:'Service period', sortVal:(l) => l.from || '', render:(l) => (l.from && l.to ? `${fmtDay(isoToDay(l.from))} – ${fmtDay(isoToDay(l.to))}` : '—') },
@@ -1746,6 +1822,7 @@ function pageContract(c) {
     d.replaced.length ? `${d.replaced.length} line${d.replaced.length === 1 ? '' : 's'} from an order that was replaced ${d.replaced.length === 1 ? 'is' : 'are'} shown for comparison but not counted.` : null,
     d.termEnd != null ? (d.termGiven ? `The contract runs ${c.term.from ? fmtDay(isoToDay(c.term.from)) + ' – ' : 'until '}${fmtDay(d.termEnd)}.` : `The current term ends ${fmtDay(d.termEnd)}: the latest end date among current lines billed for 6 months or more.`) : null,
     `The budget is the ${matchText(c, d)}${d.related.length ? `; ${d.related.length} other row${d.related.length === 1 ? '' : 's'} mentioning the contract ${d.related.length === 1 ? 'is' : 'are'} listed as related but not counted` : ''}.`,
+    'In the mosaic each square is the same amount of money; squares are rounded to the nearest whole square.',
     ...(c.notes || []),
   ].filter(Boolean);
   out.push(card({ title:'How these figures are calculated', body:h('ul', { class:'ct-notes' }, notes.map((n) => h('li', {}, n))) }));
@@ -1753,7 +1830,7 @@ function pageContract(c) {
   return out;
 }
 
-// ---------- Cost centres & owners ----------
+// ---------- Cost centres & owners: a map of who holds the budget ----------
 function insOrg(recs) {
   const t = sum(recs, (r) => r.amount), parts = [];
   if (S.map.costcentre != null) parts.push(`${new Set(recs.map((r) => cell(r, S.map.costcentre))).size} cost centres`);
@@ -1761,75 +1838,88 @@ function insOrg(recs) {
   return parts.join(' · ') + '.';
 }
 function pageOrganisation(recs) {
-  const total = sum(recs, (r) => r.amount), out = [];
-  const cc = S.map.costcentre;
-  if (cc != null) {
-    const groups = groupBy(recs, cc);
-    if (S.colorDim != null && S.colorDim !== cc) {
-      const keys = [...S.colorMap.keys()];
-      const cellV = (g, k) => sum(g.recs.filter((r) => cell(r, S.colorDim) === k), (r) => r.amount);
-      const maxCell = Math.max(...groups.flatMap((g) => keys.map((k) => cellV(g, k))), 1);
-      const cols = [{ key:'key', label:hdr(cc), cls:'strong' },
-        ...keys.map((k) => ({ key:'k:' + k, label:k, num:true, sortVal:(g) => cellV(g, k), render:(g) => heatCell(cellV(g, k), maxCell) })),
-        { key:'value', label:'Total', num:true, cls:'strong', render:(g) => fmtMoney(g.value) },
-        { key:'share', label:'Share', num:true, sortVal:(g) => g.value, render:(g) => fmtPct(total ? g.value / total : 0, 1) }];
-      out.push(h('div', { class:'grid' }, card({ title:groups[0] && total ? `${groups[0].key} holds the largest share at ${fmtPct(groups[0].value / total)}` : `Spend by ${low(cc)}`,
-        sub:`Heat map: ${hdr(cc)} × ${hdr(S.colorDim)} · darker = more spend · click a row to filter`, flush:true,
-        body:dataTable({ cols, rows:sortRows(groups, cols, S.ui.cSort), sort:S.ui.cSort, onSort:sorter('cSort'), onRow:(g) => setFilter(cc, g.key),
-          foot:cols.map((c, i) => (i === 0 ? 'Total' : c.key === 'value' ? fmtMoney(total) : c.key.startsWith('k:') ? fmtMoney(sum(recs.filter((r) => cell(r, S.colorDim) === c.key.slice(2)), (r) => r.amount)) : c.key === 'share' ? '100%' : '')) }) })));
-    } else {
-      out.push(h('div', { class:'grid' }, card({ title:`Spend by ${low(cc)}`, body:hbarList(groups, { total, limit:20, onClick:(k) => setFilter(cc, k), activeKey:S.filters[cc] }) })));
-    }
-  }
-  if (S.map.owner != null) {
-    const groups = groupBy(recs, S.map.owner).map((g) => {
-      const next = g.recs.map((r) => ({ r, u:urgencyOf(r) })).filter((x) => x.u).sort((a, b) => a.u.days - b.u.days)[0];
-      return { ...g, vendors:new Set(g.recs.map((r) => r.vendor).filter(Boolean)).size, next };
-    });
+  const pos = recs.filter((r) => r.amount > 0), total = sum(pos, (r) => r.amount), cc = S.map.costcentre, ow = S.map.owner;
+  const gci = cc ?? ow, tci = cc != null && ow != null ? ow : S.map.vendor ?? S.map.item;
+  const groups = groupBy(pos, gci), colors = gci === deptCol() ? deptColors() : mapColors(groups.map((g) => g.key));
+  const zoom = groups.some((g) => g.key === S.ui.orgZoom) ? S.ui.orgZoom : (S.ui.orgZoom = null);
+  const tg = groups.filter((g) => !zoom || g.key === zoom).map((g) => ({ key:g.key, value:g.value, share:total ? g.value / total : 0, color:colors.get(g.key),
+    items:(tci == null ? [{ key:g.key, value:g.value }] : groupBy(g.recs, tci)).map((t) => ({ key:t.key, value:t.value, hatch:t.key === BLANK && tci === ow, label:t.key === BLANK && tci === ow ? 'No owner' : t.key,
+      tip:() => [t.key === BLANK ? 'No owner' : t.key, fmtMoney(t.value), `${hdr(gci)}: ${g.key}`] })) }));
+  const map = treemap({ id:'tm-org', groups:tg, aria:`Map of ${label()} by ${low(gci)}`, onGroup:(g) => { S.ui.orgZoom = zoom ? null : g.key; render(); },
+    onTile:(it, g) => { if (tci === S.map.vendor) goApp(it.key); else { S.filters[gci] = g.key; setFilter(tci, it.key); } } });
+  let side;
+  if (ow != null) {
+    const og = groupBy(recs, ow).map((g) => ({ ...g, vendors:new Set(g.recs.map((r) => r.vendor).filter(Boolean)).size, next:g.recs.map((r) => ({ r, u:urgencyOf(r) })).filter((x) => x.u).sort((a, b) => a.u.days - b.u.days)[0] }));
     const cols = [
       { key:'key', label:'Owner', cls:'strong', render:(g) => (g.key === BLANK ? tag('No owner', 'yellow') : g.key) },
-      { key:'count', label:'Lines', num:true },
-      S.map.vendor != null ? { key:'vendors', label:'Vendors', num:true } : null,
-      { key:'value', label:label(), num:true, cls:'strong', render:(g) => fmtMoney(g.value) },
+      { key:'value', label:label(), num:true, render:(g) => fmtC(g.value) },
       { key:'share', label:'Share', num:true, sortVal:(g) => g.value, render:(g) => fmtPct(total ? g.value / total : 0, 1) },
-      S.map.renewal != null ? { key:'next', label:'Next deadline', sortVal:(g) => (g.next ? g.next.u.days : null), render:(g) => (g.next ? urgTag(g.next.u) : h('span', { class:'muted' }, '—')) } : null,
-    ].filter(Boolean);
-    out.push(card({ title:'Budget owners', sub:'Who is accountable for each part of the budget · rows without an owner are highlighted · click to filter', flush:true,
-      body:dataTable({ cols, rows:sortRows(groups, cols, S.ui.oSort), sort:S.ui.oSort, onSort:sorter('oSort'), onRow:(g) => setFilter(S.map.owner, g.key), rowClass:(g) => (g.key === BLANK ? 'hl' : '') }) }));
-  }
-  return out;
+      S.map.renewal != null ? { key:'next', label:'Next deadline', sortVal:(g) => (g.next ? g.next.u.days : null), render:(g) => (g.next ? urgTag(g.next.u) : h('span', { class:'muted' }, '—')) } : null].filter(Boolean);
+    side = [h('h2', {}, 'Budget owners'), h('div', { class:'ms-s' }, 'Rows without an owner are highlighted · click to filter'),
+      dataTable({ cols, rows:sortRows(og, cols, S.ui.oSort), sort:S.ui.oSort, onSort:sorter('oSort'), onRow:(g) => setFilter(ow, g.key), rowClass:(g) => (g.key === BLANK ? 'hl' : ''), id:'org-owners', maxHeight:'calc(100vh - 360px)' })];
+  } else side = [h('h2', {}, `${groups.length} ${low(gci)}s`), h('div', { class:'ms-s' }, fmtMoney(total)), mlist(groups.map((g) => ({ key:g.key, value:g.value, color:colors.get(g.key) })), (x) => { S.ui.orgZoom = x.key; render(); }, 40)];
+  return [h('div', { class:'map-bar' }, mapCrumbs(`All ${low(gci)}s`, zoom, () => { S.ui.orgZoom = null; render(); })), h('div', { class:'map-wrap' }, map, h('aside', { class:'mside', id:'org-side' }, side))];
 }
 
-// ---------- Year over year ----------
+// ---------- Key contracts overview: every contract as a region (budget), its products and unused budget as tiles ----------
+function insContracts() {
+  const ds = CONTRACTS.map((c) => contractData(c)), withGap = ds.filter((d) => d.gap != null);
+  if (!withGap.length) return `${CONTRACTS.length} key contracts. Add invoices and budget lines to compare them.`;
+  const g = sum(withGap, (d) => d.gap);
+  return `${CONTRACTS.length} key contracts with ${fmtMoney(sum(ds, (d) => d.budget))} of budget. Their run-rate is ${fmtMoney(Math.abs(g))} ${g >= 0 ? 'below' : 'above'} budget` + (withGap.length < ds.length ? ` (${withGap.length} of ${ds.length} comparable).` : '.');
+}
+function pageContracts() {
+  const ds = CONTRACTS.map((c) => ({ c, d:contractData(c) })), dci = deptCol(), dcol = deptColors(), AS = asOfDay();
+  const colOf = (x) => (dci != null && x.d.matched.length ? dcol.get(mainDepts(x.d.matched, dci)[0]) || 'var(--t1)' : 'var(--t1)');
+  const groups = ds.map((x) => {
+    const { c, d } = x, color = colOf(x), items = [];
+    if (d.annualB != null) for (const [k, v] of d.kinds) items.push({ key:`${c.id}:${k}`, label:k, value:v * d.rate, color, tip:() => [`${c.name} · ${k}`, `${fmtMoney(v * d.rate)} a year`, d.needFx ? `${fmtIn(v, d.ic)} × ${d.rate}` : null] });
+    if (d.gap != null && d.gap > 0) items.push({ key:`${c.id}:unused`, label:'Unused budget', value:d.gap, hatch:true, tip:() => [`${c.name}: budget not on the current invoices`, fmtMoney(d.gap)] });
+    if (d.annualB == null && d.matched.length) items.push({ key:`${c.id}:unknown`, label:d.lines.length ? 'Needs an exchange rate' : 'No current invoice', value:d.budget, hatch:true, tip:() => [c.name, `Budget ${fmtMoney(d.budget)}`, d.lines.length ? 'Enter an exchange rate on the contract page' : 'Add the invoice lines'] });
+    return { key:c.name, id:c.id, value:sum(items, (i) => i.value), color, items };
+  });
+  const tot = { budget:sum(ds, (x) => x.d.budget), run:sum(ds.filter((x) => x.d.annualB != null), (x) => x.d.annualB), gap:sum(ds.filter((x) => x.d.gap != null), (x) => x.d.gap) };
+  const map = treemap({ id:'tm-contracts', groups, aria:'Map of key contracts: budget split into run-rate by product and unused budget', onGroup:(g) => go('c-' + g.id), onTile:(it, g) => go('c-' + g.id) });
+  const dates = ds.flatMap(({ c }) => keyDates(c, AS).filter((x) => x.st.k !== 'passed').map((x) => ({ ...x, c }))).sort((p, q) => (p.st.k === 'open' ? AS : p.a) - (q.st.k === 'open' ? AS : q.a));
+  const side = h('aside', { class:'mside', id:'contracts-side' }, h('div', { class:'ms-s' }, 'Key contracts · run-rate from current invoices'),
+    h('div', { class:'ms-big', id:'ct-all-gap', 'data-value':tot.gap }, (tot.gap >= 0 ? '+' : '−') + fmtMoney(Math.abs(tot.gap))), h('div', { class:'ms-s' }, `${tot.gap >= 0 ? 'below' : 'above'} budget`),
+    kv([['Budget', fmtMoney(tot.budget)], ['Run-rate', fmtMoney(tot.run)]]),
+    h('div', { class:'sub-h', style:'margin:14px 0 4px' }, 'Contracts'),
+    h('ol', { class:'mlist', id:'contracts-list' }, ds.map((x) => h('li', { tabindex:0, onclick:() => go('c-' + x.c.id), onkeydown:(e) => { if (e.key === 'Enter') go('c-' + x.c.id); } },
+      swatchOf(colOf(x)), h('span', { class:'n' }, x.c.nav || x.c.name), h('span', { class:'v' }, x.d.gap == null ? '—' : tag((x.d.gap >= 0 ? '+' : '−') + fmtC(Math.abs(x.d.gap)), x.d.gap >= 0 ? 'green' : 'red'))))),
+    dates.length ? [h('div', { class:'sub-h', style:'margin:14px 0 4px' }, 'Next dates'), h('ol', { class:'mlist', id:'contracts-dates' }, dates.slice(0, 8).map((x) => h('li', { onclick:() => go('c-' + x.c.id) },
+      h('span', {}), h('span', { class:'n', title:x.label }, `${x.c.nav || x.c.name}: ${x.label}`), h('span', { class:'v' }, x.st.k === 'open' ? `open, ${Math.round(x.b - AS)} d left` : fmtDay(x.a)))))] : null);
+  return [mapLegend([['var(--t1)', 'Region = a contract\'s budget, coloured by its department'], [null, 'Hatched = budget the current invoices don\'t use', true]]), h('div', { class:'map-wrap' }, map, side), footer()];
+}
+
+// ---------- Year over year: tiles sized by this year's budget, coloured by change ----------
 function insYoy(recs) {
   const b = computeBridge(recs), d = b.next - b.prior;
   return b.prior ? `${d >= 0 ? 'Up' : 'Down'} ${fmtC(Math.abs(d))} (${fmtSignedPct(d / b.prior)}) from the prior year: ${fmtSigned(b.added)} new, ${fmtSigned(b.increases)} increases, ${fmtSigned(-b.decreases)} decreases, ${fmtSigned(-b.removed)} removed.` : 'No prior-year figures in the selection.';
 }
+const YOY_BUCKETS = [['new', 'New (no prior year)', 'var(--t7)'], ['up2', 'Up 25% or more', 'var(--inc)'], ['up1', 'Up 5–25%', 'var(--inc-2)'], ['flat', 'Within ±5%', 'var(--mid)'], ['dn1', 'Down 5–25%', 'var(--dec-2)'], ['dn2', 'Down 25% or more', 'var(--dec)']];
+function yoyBucket(v, p) { if (!p) return 'new'; const c = (v - p) / p; return c >= 0.25 ? 'up2' : c >= 0.05 ? 'up1' : c > -0.05 ? 'flat' : c > -0.25 ? 'dn1' : 'dn2'; }
 function pageYoy(recs) {
-  const b = computeBridge(recs);
-  const out = [h('div', { class:'grid' }, card({ title:'Bridge from prior year', sub:'Lines with a blank or zero prior-year figure count as new; lines budgeted at 0 with a prior figure count as removed · hover for values',
-    body:h('div', { class:'chart' }, waterfall(bridgeSteps(b), { height:300 })) }))];
-  const groups = {
-    increases:recs.filter((r) => r.prior > 0 && r.amount > r.prior),
-    decreases:recs.filter((r) => r.prior > 0 && r.amount < r.prior && r.amount !== 0),
-    new:recs.filter((r) => !r.prior && r.amount),
-    removed:recs.filter((r) => r.prior > 0 && r.amount === 0),
-  };
-  const t = tabs([['increases', `Increases (${groups.increases.length})`], ['decreases', `Decreases (${groups.decreases.length})`], ['new', `New (${groups.new.length})`], ['removed', `Removed (${groups.removed.length})`]], S.ui.yoyTab, (k) => { S.ui.yoyTab = k; render(); }, 'yoy-tabs');
-  const rows = groups[S.ui.yoyTab].map((r) => ({ r, d:r.amount - (r.prior || 0) }));
-  const cols = [
-    { key:'item', label:'Line', cls:'wrap strong', sortVal:(x) => x.r.item, render:(x) => x.r.item || `Row ${x.r.i + 1}` },
-    S.map.vendor != null ? { key:'vendor', label:'Vendor', sortVal:(x) => x.r.vendor, render:(x) => x.r.vendor } : null,
-    S.colorDim != null ? { key:'cat', label:hdr(S.colorDim), sortVal:(x) => cell(x.r, S.colorDim), render:(x) => swatchLabel(cell(x.r, S.colorDim)) } : null,
-    { key:'prior', label:'Prior year', num:true, sortVal:(x) => x.r.prior, render:(x) => (!x.r.prior ? tag('New', 'purple') : fmtMoney(x.r.prior)) },
-    { key:'amount', label:label(), num:true, sortVal:(x) => x.r.amount, render:(x) => fmtMoney(x.r.amount) },
-    { key:'d', label:'Change', num:true, cls:'strong', sortVal:(x) => Math.abs(x.d), render:(x) => h('span', { style:`color:${x.d > 0 ? 'var(--up)' : 'var(--down)'}` }, fmtSigned(x.d)) },
-    { key:'p', label:'Change %', num:true, sortVal:(x) => (x.r.prior ? x.d / x.r.prior : null), render:(x) => (x.r.prior ? fmtSignedPct(x.d / x.r.prior) : '—') },
-  ].filter(Boolean);
-  out.push(t, card({ title:{ increases:'Lines that cost more', decreases:'Lines that cost less', new:'New spend', removed:'Cancelled lines' }[S.ui.yoyTab], sub:'Sorted by size of change · click a row for details', flush:true,
-    body:dataTable({ cols, rows:sortRows(rows, cols, S.ui.ySort), sort:S.ui.ySort, onSort:sorter('ySort'), onRow:(x) => lineDrawer(x.r), maxHeight:'560px', empty:'No lines in this group.', id:'yoy-table',
-      foot:cols.map((c, i) => (i === 0 ? `Total (${rows.length})` : c.key === 'd' ? fmtSigned(sum(rows, (x) => x.d)) : c.key === 'amount' ? fmtMoney(sum(rows, (x) => x.r.amount)) : c.key === 'prior' ? fmtMoney(sum(rows, (x) => x.r.prior)) : '')) }) }));
-  return out;
+  const b = computeBridge(recs), dci = deptCol(), tci = S.map.vendor ?? S.map.item, pos = recs.filter((r) => r.amount > 0), total = sum(pos, (r) => r.amount);
+  const colorB = new Map(YOY_BUCKETS.map(([k, , c]) => [k, c]));
+  const tiles = (rs) => (tci == null ? rs.map((r) => ({ key:`Row ${r.i + 1}`, value:r.amount, prior:r.prior || 0 })) : groupBy(rs, tci).map((t) => ({ key:t.key, value:t.value, prior:t.prior })));
+  const groups = (dci != null ? groupBy(pos, dci) : [{ key:'All lines', value:total, recs:pos }]).map((g) => ({ key:g.key, value:g.value, share:total ? g.value / total : 0,
+    items:tiles(g.recs).map((t) => { const k = yoyBucket(t.value, t.prior), c = colorB.get(k);
+      return { key:t.key, value:t.value, color:c, ink:k === 'flat' || k === 'up1' || k === 'dn1' ? '#161616' : '#ffffff', sub:k === 'new' ? 'New' : fmtSignedPct((t.value - t.prior) / t.prior),
+        tip:() => [t.key, `${label()} ${fmtMoney(t.value)}`, t.prior ? `Prior year ${fmtMoney(t.prior)} (${fmtSignedPct((t.value - t.prior) / t.prior)})` : 'New: no prior-year amount'] }; }) }));
+  const zoom = groups.some((g) => g.key === S.ui.yoyZoom) ? S.ui.yoyZoom : (S.ui.yoyZoom = null);
+  const map = treemap({ id:'tm-yoy', groups:zoom ? groups.filter((g) => g.key === zoom) : groups, aria:'Map of this year\'s budget coloured by change from the prior year',
+    onGroup:(g) => { S.ui.yoyZoom = zoom ? null : g.key; render(); }, onTile:(it) => { if (tci === S.map.vendor) goApp(it.key); } });
+  const changes = tiles(pos.concat(recs.filter((r) => r.amount === 0 && r.prior > 0))).filter((t) => t.prior).map((t) => ({ ...t, d:t.value - t.prior }));
+  const top = (arr) => h('ol', { class:'mlist' }, arr.slice(0, 5).map((t) => h('li', { onclick:() => { if (tci === S.map.vendor && t.value > 0) goApp(t.key); } }, h('span', {}), h('span', { class:'n', title:t.key }, t.key), h('span', { class:'v' }, fmtSigned(t.d)))));
+  const side = h('aside', { class:'mside', id:'yoy-side' }, h('div', { class:'ms-s' }, 'Bridge from the prior year'),
+    h('div', { class:'ms-big' }, b.prior ? fmtSignedPct((b.next - b.prior) / b.prior) : '—'),
+    kv([['Prior year', fmtMoney(b.prior)], ['New', `${fmtSigned(b.added)} (${b.newCount} lines)`], ['Increases', fmtSigned(b.increases)], ['Decreases', fmtSigned(-b.decreases)], ['Removed', `${fmtSigned(-b.removed)} (${b.removedCount} lines)`], [label(), fmtMoney(b.next)]]),
+    h('div', { class:'chart small' }, waterfall(bridgeSteps(b), { height:220, compact:true, width:560 })),
+    h('div', { class:'sub-h', style:'margin:14px 0 4px' }, 'Largest increases'), top(changes.filter((t) => t.d > 0).sort((p, q) => q.d - p.d)),
+    h('div', { class:'sub-h', style:'margin:14px 0 4px' }, 'Largest decreases'), top(changes.filter((t) => t.d < 0).sort((p, q) => p.d - q.d)));
+  return [h('div', { class:'map-bar' }, mapCrumbs(dci != null ? `All ${low(dci)} groups` : 'All lines', zoom, () => { S.ui.yoyZoom = null; render(); })),
+    mapLegend(YOY_BUCKETS.map(([, l, c]) => [c, l])), h('div', { class:'map-wrap' }, map, side)];
 }
 
 // ---------- Line items ----------
@@ -1935,9 +2025,9 @@ function readForms() {
 // ---------- landing, unavailable, footer ----------
 function landing() {
   const feats = [
-    ['vendors', 'Vendors', 'The home page: spend by department, vendor size bands, renewal dates and owners, with a detail panel per vendor.', 'Needs: a vendor column'],
-    ['breakdown', 'Spend breakdown', 'Spend by any column, as chart, table or both.', 'Needs: an amount column'],
-    ['invoice', 'Key contracts', 'A page per major contract: invoice lines scaled to a full year and compared with the budget.', 'Needs: invoice lines in the contracts block'],
+    ['map', 'Spend map', 'The home page: every vendor as a tile sized by spend, grouped by department, size, contract or renewal. Click to zoom and drill in.', 'Needs: a vendor column'],
+    ['vendors', 'Application pages', 'A page per vendor that shows its spend as countable squares, within its department and the whole budget.', 'Needs: a vendor column'],
+    ['invoice', 'Key contracts', 'A map of all contracts, and a page per contract: invoice lines scaled to a year, as squares against the budget.', 'Needs: invoice lines in the contracts block'],
     ['compare', 'Year over year', 'A bridge from the prior year to this budget, with the biggest increases and decreases.', 'Needs: a prior-year amount column'],
   ];
   return h('div', { class:'landing' },
@@ -1974,20 +2064,24 @@ function render() {
     content.append(...[].concat(avail ? page.render(recs) : unavailable(page)));
   }
   $('main').replaceChildren(content);
-  document.title = S.loaded ? `${page.label} · Corporate IT Budget Tracker` : 'Corporate IT Budget Tracker';
+  document.title = S.loaded ? `${page.title || page.label} · Corporate IT Budget Tracker` : 'Corporate IT Budget Tracker';
   if (aeId) {
     const el = $(aeId);
     if (el && el !== document.activeElement) { el.focus({ preventScroll:true }); if (caret != null && el.setSelectionRange) try { el.setSelectionRange(caret, caret); } catch (e) { /* not a text input */ } }
   }
 }
-function go(id) { if (location.hash !== '#/' + id) location.hash = '#/' + id; else { S.page = id; render(); } }
+function go(id) { if (location.hash !== '#/' + id) location.hash = '#/' + id; else route(); }
 function route() {
-  const id = (location.hash.match(/^#\/([\w-]+)/) || [])[1];
-  const prev = S.page;
-  S.page = pageById(id) ? id : defaultPage();
+  const m = location.hash.match(/^#\/([\w-]+)(?:\/(.+))?/) || [];
+  let id = m[1];
+  if (id === 'vendors' || id === 'overview') id = 'map';   // older links
+  const prev = S.page + '|' + S.app;
+  S.app = id === 'app' && m[2] ? decodeURIComponent(m[2]) : null;
+  S.page = pageById(id) && (id !== 'app' || S.app) ? id : defaultPage();
+  S.ui.mapPick = null;
   closeDrawer();
   render();
-  if (prev !== S.page) $('main').scrollTop = 0;
+  if (prev !== S.page + '|' + S.app) $('main').scrollTop = 0;
 }
 function apply() {
   setCurrency(S.opts.currency);
@@ -2108,6 +2202,7 @@ addEventListener('dragover', (e) => e.preventDefault());
 addEventListener('drop', (e) => { e.preventDefault(); dragDepth = 0; document.body.classList.remove('dragging'); if (e.dataTransfer.files.length) readFiles(e.dataTransfer.files); });
 }
 addEventListener('hashchange', route);
+let rzT; addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => { hideTip(); document.querySelectorAll('.tmap').forEach((b) => b._draw && b._draw()); }, 120); });
 route();
 if ($('sample-csv').dataset.autoload === 'true') loadSample();
 

@@ -13,7 +13,7 @@ You are taking over a working prototype. This document explains what it is, how 
 | **What it is** | A browser app for next year's **corporate IT budget**. It covers **operational budgeting** (vendors with their renewal dates and owners, spend breakdowns, year over year) and **key contracts**: one page per major contract, built from its invoice lines, scaled to a full year and compared with the budget. |
 | **Primary goal** | Show leadership and budget owners where corporate IT money goes (by capability, vendor and Run / Grow / Transform), what renews when, and whether the largest contracts fit their budget |
 | **Input** | One or more **CSV files with any column layout**. The app detects what each column means, and the user can correct it. |
-| **Users** | CFO, CIO and IT finance at a fast-growing life sciences / SaaS company, plus budget owners. Everyone starts on **Vendors**, the home page; budget owners want line detail. |
+| **Users** | CFO, CIO and IT finance at a fast-growing life sciences / SaaS company, plus budget owners. Everyone starts on the **Spend map**, the home page; budget owners want line detail. |
 | **Taxonomy** | "Contract" is a procurement vehicle, not a technology category. Lines are categorised as **Hardware, Licence (software) or Service**. |
 | **Phase** | **UI prototype.** The owner is getting feedback on the interface before moving it into the company's GitLab, most likely served as a static site on GitLab Pages with access control. |
 | **Data sensitivity** | Real budgets and contract values are confidential. The app must never send data anywhere. |
@@ -26,16 +26,16 @@ You are taking over a working prototype. This document explains what it is, how 
 4. **The owner's focus is the UI** and **accepting any CSV**. Keep both central.
 5. A previous Gemini session added an Executive benchmarks page and the Hardware / Licence / Service taxonomy. Claude integrated it with fixes (see the change log in section 13).
 6. **The owner then had Executive benchmarks and the vendor Pareto chart removed**, and asked for **a page per key contract built from its invoices, adjusted to a yearly figure**. Don't bring the removed views back unless the owner asks.
-7. **Vendors has no filter bar.** It opens with a spend-by-owner pie chart and a vendor-size view, and its table shows renewal date and colour-coded owners instead of line counts and spend-type mix. The owner's own build also has **no way to load CSV files in the page** (`data-upload="off"`, section 3): its data is embedded at build time.
-8. **The owner then dropped the Overview, Renewals and Cash flow pages and made Vendors the home page**, and renamed the app **Corporate IT Budget Tracker**. Don't bring those pages back unless the owner asks. In the owner's own build, department names are relabelled at build time at the owner's request (the file's values are otherwise unchanged).
+7. **Two visual styles, chosen by the owner.** Overview pages are **maps** (treemaps: area = spend, regions = groups, tiles = vendors) with a side panel. Detail pages, one per application (vendor) and one per key contract, are **mosaics**: the money as countable squares of a stated unit. The owner's own build has **no way to load CSV files in the page** (`data-upload="off"`, section 3): its data is embedded at build time.
+8. **The owner then dropped the Overview, Renewals and Cash flow pages and made the vendor view the home page**, and renamed the app **Corporate IT Budget Tracker**. Don't bring those pages back unless the owner asks. In the owner's own build, department names are relabelled at build time at the owner's request (the file's values are otherwise unchanged).
 
 ---
 
 ## 2. Quick start
 
 1. Open `corporate-it-budget-tracker.html` in Chrome, Edge or Firefox. Opening it straight from disk (`file://`) works.
-2. Select **Use sample data**. This loads a fictional 43-line budget embedded in the file, plus three fictional key contracts, and opens on **Vendors**.
-3. Click through every page in the left side panel. Click pie slices, bars and table rows to open the details panel on the right.
+2. Select **Use sample data**. This loads a fictional 43-line budget embedded in the file, plus three fictional key contracts, and opens on the **Spend map**.
+3. Click through every page in the left side panel. On a map, click a region heading to zoom in and a tile for its details; "Open application page" opens the vendor's mosaic page.
 4. Load a real CSV with **Load CSV** in the top bar, or drag files onto the window.
 
 ### Expected numbers for the sample data (use these as a regression check)
@@ -44,16 +44,16 @@ Set **Data source & columns → Urgency as of = 2026-11-07** first, because rene
 
 | Check | Expected |
 |---|---|
-| Total budget (footer of the Vendors table) | **5,817,000** across **43** lines and **23** vendors, in EUR (from the `currency` column) |
+| Total budget (Spend map side panel) | **5,817,000** across **43** lines and **23** vendors, in EUR (from the `currency` column) |
 | Change vs prior year | **+11.6%** (prior-year total **5,214,500**) |
 | Year-over-year bridge | 5,214,500 + **680,000 new (6 lines)** + 493,500 increases − 208,000 decreases − 63,000 removed (2 lines) = 5,817,000 |
 | Category split | Service 2,962,000 · Licence 2,365,000 · Hardware 490,000 (no "Contract" category) |
 | Run / Grow / Transform | Run 3,771,000 (**64.8%**) · Grow 1,746,000 (**30.0%**) · Transform 300,000 (**5.2%**) |
 | Business capabilities | Enterprise IT 80.6% · ERP & Supply Chain 11.6% · Commercial 5.0% · G&A 2.8% |
-| Vendors page | 23 vendors; top 5 = **49%** of spend, top 10 = **75%**; no vendor under €25k, so the long-tail cut moves to €50k: **3 vendors**; pie by budget owner, largest Head of Workplace (24%); by capability, 4 slices with Enterprise IT largest |
+| Spend map | 23 vendors in 4 business-capability regions (Enterprise IT largest); top 10 = **75%**; no vendor under €25k, so the long-tail cut moves to €50k: **3 vendors**; size-band view shows 23 tiles |
 | Key contract: Contoso Cloud | Monthly invoice 56,500 × 12 = **678,000** a year; budget (2 lines) **758,000**; headroom **80,000**; no exchange rate needed |
 | Key contract: Fabrikam Security | Endpoint licences 176,400 billed yearly (×1) + SOC and retainer 72,500 a quarter (×4) = **466,400 USD**; at the file's illustrative rate 0.89 = **415,096 EUR**; budget (3 lines) **441,000**; headroom **25,904**; contract ends **30 Sep 2029**; contract years 400,000 / 466,400 / 532,800 invoiced, next **466,400 on 1 Oct 2027**; next key date: endpoint-count window opens **3 Jul 2027**. An ended onboarding invoice (12,000 for 6 months) is listed but not counted. Typing rate 0.95 gives **2,080 over budget** |
-| Vendors renewing in the next 90 days (Vendors tile) | **8**, worth **€1,985,000** |
+| All contracts | 3 contracts; run-rate **107,904** below budget in total (80,000 + 2,000 + 25,904) |
 | Data quality | 97% score, 0 errors, **5 warnings** (3 no owner, 1 no cost centre, 1 renewal date passed) |
 | Monthly columns detected | 12 (Jan…Dec) |
 
@@ -75,7 +75,7 @@ Repo: `jaypeethambaran/about`, branch `claude/cloud-environment-setup-6a26xz`, f
   Vendor,Item,Annual Cost
   Northwind Software,Office productivity suite,"$486,000.00"
   ```
-  Expected: total 5,517,000 over 39 rows and currency USD. It opens on Vendors. Year over year and Cost centres show an explanation page instead of charts. On the contract pages, Contoso (EUR invoice, USD budget, no USD rate in the file) asks for an exchange rate instead of guessing, and Fabrikam (USD invoice) shows a run-rate **25,400 over** the 441,000 budget.
+  Expected: total 5,517,000 over 39 rows and currency USD. It opens on the Spend map. Year over year and Cost centres show an explanation page instead of charts. On the contract pages, Contoso (EUR invoice, USD budget, no USD rate in the file) asks for an exchange rate instead of guessing, and Fabrikam (USD invoice) shows a run-rate **25,400 over** the 441,000 budget.
 - **`examples/utf8-names.csv`:** non-ASCII names (Zürich, Genève, Malmö) and `€` amounts. They must display exactly as written; total 6,000.
 - **`examples/pivot-export-macroman.csv`:** a fictional **Excel pivot-table export saved on a Mac**, the shape real finance exports come in:
   - Mac Roman encoding.
@@ -167,7 +167,8 @@ Repo: `jaypeethambaran/about`, branch `claude/cloud-environment-setup-6a26xz`, f
 6. **Charts and components:**
    - Layout: `card`, `kpi`, `dataTable` with `sortRows`, `segmented`, `tabs`, `emptyState`, `heatCell`.
    - Bars: `hbarList`, `mixBar`.
-   - SVG charts: `donut`, `columnChart` (a line's monthly phasing in the details panel), `waterfall` and `ring`.
+   - Maps and mosaics: `squarify` (squarified treemap layout), `treemap` (drawn after it is on the page, redrawn on resize), `mosaic` (squares, grouped tooltips), `unitFor` (1/2/5 × 10ⁿ unit so a mosaic stays under a square count) and `allocate` (splits squares across parts so they add up). Colours: `mapColors` (7 checked hues + grey) and `deptColors` (one colour per department for the whole file).
+   - SVG charts: `columnChart` (a line's monthly phasing in the details panel), `waterfall` and `ring`.
 7. **Pages:** one `pageX(recs)` function per page, plus `insX(recs)` for the one-line finding in each page header. `rgtClass()` maps a spend-type value to Run / Grow / Transform so those three always get `--run` / `--grow` / `--transform`.
    - **Key contracts:** `readContracts()` parses `#contracts-json` at start-up (into `CONTRACTS`, which adds one `PAGES` entry per contract); `annualise()` and `periodMonths()` scale each invoice line; `contractData(c)` returns everything a page needs (lines, matched budget lines, rate, run-rate, gap); `pageContract`, `insContract`, `invoiceDrawer`, `matchText`, `fmtIn` (money in any currency) and `fmtFactor`.
 8. **Rendering, routing and loading:**
@@ -180,7 +181,7 @@ Repo: `jaypeethambaran/about`, branch `claude/cloud-environment-setup-6a26xz`, f
 
 - **Everything is re-rendered on every state change.** `render()` rebuilds the nav, top bar and whole page into `#main`. Interaction handlers mutate state (`S`) and call `render()`. There is no virtual DOM.
 - **Focus is restored by element id after each render.** Any control that triggers `render()` while the user is in it, such as a select, the search box or segmented buttons, **needs a stable `id`**, or keyboard users lose their place.
-- **Routing:** `location.hash` is `#/vendors`, `#/breakdown` and so on, and `hashchange` calls `route()`. An unknown page, such as the removed `#/overview`, `#/renewals` or `#/cashflow`, opens the home page (`defaultPage()`: Vendors, or Spend breakdown when there is no vendor column). Filters are *not* in the URL yet.
+- **Routing:** `location.hash` is `#/map`, `#/breakdown` and so on; an application page is `#/app/<vendor name, URL-encoded>`, and `hashchange` calls `route()`. An unknown page, such as the removed `#/overview`, `#/renewals` or `#/cashflow`, opens the home page (`defaultPage()`: the Spend map, or Spend breakdown when there is no vendor column); `#/vendors` and `#/overview` also go to the map. Filters are *not* in the URL yet.
 - **The drawer** is built when opened and isn't re-rendered with the page. It shows a snapshot.
 
 ### State: the `S` object
@@ -243,7 +244,7 @@ S = {
   - **zero amount** (info)
 - **Monthly phasing:** rows with month columns use them. Rows without them are spread evenly over 12 months, and the share of spend this affects is always stated.
 - **Fiscal year start** (`opts.fyStart`) sets the month order in a line's monthly chart.
-- **New spend:** a blank **or zero** prior-year figure counts as new in the bridge, the Year over year tabs and the vendor table.
+- **New spend:** a blank **or zero** prior-year figure counts as new in the bridge, the Year over year map and the application pages.
 - **Run / Grow / Transform classification** (`rgtClass`), applied to the spend-type value, case-insensitive, for colours:
   - *transform*, *innovat*, *change the business*, *CTB* → Transform
   - *grow*, *expan*, *scale* → Grow
@@ -257,7 +258,7 @@ S = {
   - **Headroom** = budget − run-rate in budget currency. Negative is shown as "Run-rate over budget" with a red KPI accent.
   - **Invoice check:** the lines must add up to `total − vat` when the invoice gives a total.
   - **Ended invoices** (`"status": "ended"` on an invoice or a line) are listed last, greyed, and left out of the run-rate; the page states what they would add a year if renewed. Status is set in the data, not from dates, because a monthly invoice from a past month still stands for a recurring charge.
-  - **Current term ends** = the latest end date among current lines billed for 6 months or more, with days left from "as of" (orange within 90 days). Monthly and quarterly contracts don't show it. When the contract has `term`, the tile says **Contract ends** and uses `term.to`; the Vendors renewal date is the day after.
+  - **Current term ends** = the latest end date among current lines billed for 6 months or more, with days left from "as of" (orange within 90 days). Monthly and quarterly contracts don't show it. When the contract has `term`, the tile says **Contract ends** and uses `term.to`; the renewal date on the map and application pages is the day after.
   - **Replaced orders** (`"status": "superseded"`) are listed and greyed like ended ones, but without an "if renewed" value.
   - **Contract years** (`schedule`): one row per year with the yearly fee and, when it differs, what is invoiced (back-loaded payment plans). The title names the next invoice and how far it is from the yearly fee; the subtitle gives what is still to be invoiced after "as of".
   - **Key dates** (`dates`): single dates or windows (`from` … `date`), with status Passed / Open (days left) / In N days; the next one is also a KPI tile. Six tiles show as two rows of three.
@@ -271,16 +272,18 @@ Each entry is `{ id, label, icon, group, render, insight, needs?, needsText?, no
 
 | Group | Page | Shows | Needs |
 |---|---|---|---|
-| Analyse | **Vendors** | **The home page and first nav item. No filter bar: it always shows the whole budget.** KPI tiles: vendors with spend, top-10 share, vendors in the long tail (under 25k, moving to 50k / 100k when fewer than 3 vendors are that small; thresholds scale with the budget size), renewals in the next 90 days. A **pie (donut) chart by budget owner**, switchable to capability or cost centre, with its key as a table and a note on vendors bought by more than one owner; a **vendor-size card** (vendors and spend per spend band). Then the vendor table: rank, spend, share, change vs prior, **renewal date** (the file's renewal column, else the day after a key contract's current term) and **owner as a coloured chip** (same colours as the pie). Without an owner column the chips show the capability (else cost centre) column, under that column's name. Slices, bands and rows open panels. The Pareto chart, Lines and Mix columns were removed at the owner's request. | vendor |
-| Analyse | **Spend breakdown** | **Group by** any column, **Split by** another, and a **View** switch (Chart / Table / Chart + table). Stacked bars plus a cross-table with shaded cells. Clicking filters. | amount |
-| Analyse | **Cost centres & owners** | Shaded grid of cost centre × colour column, and an owner table with lines lacking an owner highlighted | cost centre or owner |
-| Key contracts | **One page per contract** in `#contracts-json` (id `c-<id>`) | KPI tiles: annual cost at current run-rate, budget, run-rate in budget currency (when currencies differ), headroom or over budget, and current term end (yearly or half-yearly contracts). Cards: annual cost by product (coloured by `kind`, click for line details); budget vs run-rate bars with the exchange-rate input and the matched and related budget lines; the invoice lines table (quantity, service period, invoiced, factor, per year, per unit per month, share) with an invoice-total check; and how the figures are calculated. Export CSV gives the annualised lines. No filter bar. | invoice lines in `#contracts-json` |
-| Plan | **Year over year** | Waterfall bridge, then Increases / Decreases / New / Removed tabs | prior-year amount |
+| Analyse | **Spend map** | **The home page and first nav item. No filter bar.** A treemap of every vendor (area = spend) grouped by department (capability, else cost centre, owner or the colour column), size band, key contract or renewal date known; tiles are coloured by department in every grouping. Click a region heading to zoom, a tile to show it in the side panel (rank, share, renewal, contract run-rate, data checks) with **Open application page** and **Show its lines**. The side panel otherwise shows the total, top-10 share, long tail, contract headroom and the largest vendors. | vendor |
+| (hidden) | **Application page** `#/app/<name>` | One vendor as a **mosaic**: its spend as squares (unit chosen so there are at most 300), split by department; with a key contract, budget the invoices don't use is hollow. Facts panel (rank, share, renewal, owner, prior year, contract, checks), two context mosaics (within its department, within the whole budget; other vendors grey with names on hover), its lines, and links to the previous and next vendor by rank. | vendor |
+| Analyse | **Spend breakdown** | A map with **Regions: group by** any column and **Tiles** by vendor, item or another column; a side table of the groups (click to filter). Keeps the filter bar. | amount |
+| Analyse | **Cost centres & owners** | A map by cost centre (tiles = owners, "No owner" hatched) or by owner, plus the owner table with lines lacking an owner highlighted | cost centre or owner |
+| Key contracts | **All contracts** | A map: each contract is a region sized by its budget, split into run-rate by product type and a hatched "unused budget" tile. Side panel: total headroom, each contract's gap and the next dates across contracts. | invoice lines |
+| Key contracts | **One page per contract** in `#contracts-json` (id `c-<id>`) | A stats strip, then a **mosaic** in budget currency: solid squares = run-rate by product type, hollow = budget the invoices don't use, red outline = over budget, grey = ended lines not counted; the products (or the single fee and what it includes) beside it. Contract years are rows of squares (faded past, solid current, hollow to come). Then: stats as before: annual cost at current run-rate, budget, run-rate in budget currency (when currencies differ), headroom or over budget, and current term end (yearly or half-yearly contracts). Cards: annual cost by product (coloured by `kind`, click for line details); budget vs run-rate bars with the exchange-rate input and the matched and related budget lines; the invoice lines table (quantity, service period, invoiced, factor, per year, per unit per month, share) with an invoice-total check; and how the figures are calculated. Export CSV gives the annualised lines. No filter bar. | invoice lines in `#contracts-json` |
+| Plan | **Year over year** | A map sized by this year's budget and coloured by change from the prior year (new, up 25%+, up 5–25%, within ±5%, down 5–25%, down 25%+; blue/red, never colour alone: each tile also shows the %). Side panel: the bridge figures, a compact waterfall, and the largest increases and decreases. | prior-year amount |
 | Data | **Line items** | Every original column, sortable, 25/50/100/250 rows per page, compact or comfortable rows, totals footer. A row opens the **line details panel**. | amount |
 | Data | **Data quality** | Score ring, checks by severity and "View rows" (filters Line items to that check) | amount |
 | Data | **Data source & columns** | Loaded files, settings (label, currency, number format, date format, as-of date, fiscal-year start) and the column mapping form. Apply / Re-detect. | (always) |
 
-**Global filter bar**, which appears on every page except Vendors, Data source and the contract pages. Those pages always use every row; clicking a bar there that would filter opens Line items with the filter instead (`setFilter`).
+**Global filter bar**, which appears on every page except the Spend map, application pages, All contracts, Data source and the contract pages. Those pages always use every row; clicking a bar there that would filter opens Line items with the filter instead (`setFilter`).
 - Up to 6 dropdowns for the main groupable columns, plus a full-text search.
 - Active filters appear as removable chips with a "Showing X of Y rows" note.
 - Filters persist across pages.
@@ -370,11 +373,12 @@ The mapping form picks it up automatically.
 
 ## 8. Testing and verification
 
-**Automated (in the source repo):** `projects/it-budget-dashboard/tests/explorer_test.cjs`, a Playwright script with 101 checks that opens the file from disk. Run it with `node tests/explorer_test.cjs`, or `SCREENSHOT_DIR=… node tests/explorer_test.cjs` to also save a screenshot of each page. It checks that:
-- The app is called Corporate IT Budget Tracker. The sample opens on Vendors, the first nav item; there are no Overview, Renewals, Cash flow or Executive benchmarks pages, old links to them open Vendors, and the nav groups are Analyse, Key contracts, Plan, Data.
+**Automated (in the source repo):** `projects/it-budget-dashboard/tests/explorer_test.cjs`, a Playwright script with 110 checks that opens the file from disk. Run it with `node tests/explorer_test.cjs`, or `SCREENSHOT_DIR=… node tests/explorer_test.cjs` to also save a screenshot of each page. It checks that:
+- The app is called Corporate IT Budget Tracker. The sample opens on the Spend map, the first nav item; there are no Overview, Renewals, Cash flow, Vendors or Executive benchmarks pages, old links open the map, and application pages are not in the navigation.
 - Every page renders and is marked current in the nav.
 - "List its lines" in a department's panel opens Line items filtered to that department.
-- Vendors has no Pareto chart and no filter bar; its table has Renewal and coloured Owner columns but no Lines or Mix; the pie has one slice per owner, opens an owner's vendors, and switches to capability; the long-tail cut and size bands add up.
+- The map has one tile per vendor and department, 4 regions with the largest first; a region zooms; the size-band view has 23 tiles; a tile opens the side panel and "Open application page" opens `#/app/Northwind%20Software`, whose mosaic has round(total ÷ unit) squares, two context mosaics, its lines and a next link; a contract vendor's page shows hollow squares and links to its contract; an unknown name shows a clear message.
+- All contracts: 3 contracts and 107,904 total headroom; contract mosaics: hollow squares = budget squares − run-rate squares, and red-outlined squares when a typed rate puts the run-rate over budget; contract years drawn as 3 rows.
 - A copy with `data-upload="off"` has no Load CSV button and no Replace / Sample data buttons.
 - Service periods map to 1, 1, 3, 12 and 0.46 months; both sample contracts give the figures in section 2, including the ended and replaced orders, contract end, contract years, key dates and the warning banner (as of 8 Nov 2026); typing an exchange rate updates the comparison and "Use 0.89" restores it; a bar opens the line details; Export CSV gives the annualised lines.
 - No "Contract" category remains, and the bridge reconciles with 6 new lines.
@@ -391,10 +395,10 @@ The mapping form picks it up automatically.
 If you can't run it, do the manual checklist below after every change.
 
 **Manual checklist:**
-1. Sample data loads on Vendors. Check every number in section 2, including the Key contracts pages.
+1. Sample data loads on the Spend map. Check every number in section 2, including the Key contracts pages.
 2. Visit every nav item, and check the browser console shows no errors.
 3. Clicking a vendor bar adds a filter chip, and all pages respect it. **Clear filters** resets them.
-4. A Vendors row opens the panel. Clicking a line inside opens line details. Esc closes the panel, and focus returns to where it was.
+4. A map tile opens its side panel; Open application page shows the mosaic; clicking a line opens line details. Esc closes the panel, and focus returns to where it was.
 5. Data source: changing the amount column to `prior_year_budget` and selecting **Apply** gives total 5,214,500. **Re-detect columns** followed by **Apply** restores it.
 6. Load the EU, minimal, UTF-8 and pivot-export CSVs; check against section 2.
 7. On Fabrikam Security, type an exchange rate, check the KPIs update, then select **Use 0.89**.
@@ -402,7 +406,7 @@ If you can't run it, do the manual checklist below after every change.
 
 **Invariants that must always hold:**
 - Bridge reconciles: `prior + added + increases − decreases − removed = total`.
-- The Vendors table total equals the sum of the Line items table.
+- The Spend map total equals the sum of the Line items table.
 - Filtered totals are the same on every page.
 
 ---
@@ -435,9 +439,9 @@ If you can't run it, do the manual checklist below after every change.
 3. **Excel (.xlsx) import** without libraries.
 4. **Column chooser and grouping on Line items** (show/hide and reorder columns, group rows by a column with subtotals), plus a sticky first column.
 5. **Budget vs actuals:** allow a second CSV of actuals by month, and add a Variance page showing actual vs phased budget and forecast to year end.
-6. **Licence utilisation:** an optional `licences used` column, showing cost of unused seats and price per active user on Vendors.
-7. **Contract actions on Vendors:** "Give notice / Renew / Renegotiate" status per vendor, kept in `localStorage`, with CSV export of the action list.
-8. **Print / PDF executive pack:** a print stylesheet producing a two-page summary (Vendors + key contracts).
+6. **Licence utilisation:** an optional `licences used` column, showing cost of unused seats and price per active user on the application pages.
+7. **Contract actions on the application pages:** "Give notice / Renew / Renegotiate" status per vendor, kept in `localStorage`, with CSV export of the action list.
+8. **Print / PDF executive pack:** a print stylesheet producing a two-page summary (Spend map + key contracts).
 9. **Performance:** cache aggregates per filter state; virtualise the Line items table for 50k rows.
 10. **Accessibility:** focus trap in the drawer; text alternatives (a data table) for each SVG chart; a high-contrast check.
 11. **Multi-currency budgets** with an FX rate table and a stated rate date (contract pages already convert one invoice currency).
@@ -474,6 +478,11 @@ Before starting large items (1, 2, 4), propose the approach to the owner in a fe
 ---
 
 ## 13. Change log
+
+**Maps for overview pages, mosaics for detail pages (9 Nov 2026), done by Claude, at the owner's request:**
+- Overview pages are now treemaps with a side panel: the Spend map (replaces Vendors as the home page; group by department, size band, key contract or renewal), Spend breakdown, Cost centres & owners, a new All contracts page and Year over year (coloured by change).
+- Detail pages are now mosaics: a new page per application (`#/app/<name>`) and the contract pages (run-rate squares by product type inside the budget, unused budget hollow, contract years as rows of squares). All contract figures, tables and test hooks are unchanged.
+- Removed the Vendors page (donut, size-band card, owner chips) and helpers nothing used any more. 110 checks.
 
 **Vendors as the home page (8 Nov 2026), done by Claude, at the owner's request:**
 - Removed the Overview, Renewals and Cash flow pages with their code (timeline, renewals calendar, sparkline). Vendors is the first nav item and the page every file opens on; old links to the removed pages open it. Renewal dates stay in the Vendors table and panels.
